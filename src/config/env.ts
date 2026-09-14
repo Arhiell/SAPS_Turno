@@ -27,7 +27,17 @@ const envSchema = z.object({
   SUPABASE_JWKS_URL: z
     .string()
     .url()
-    .optional()
+    .optional(),
+
+  // Clave utilizada para formar nuestrar JWT.
+  JWT_ACCESS_SECRET: z.string().min(12),
+
+  //Tiempo de expiración del JWT en segundos.
+  JWT_ACCESS_EXPIRES_MINUTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(10),
 });
 
 const result = envSchema.safeParse(process.env);

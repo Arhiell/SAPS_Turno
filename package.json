@@ -7,7 +7,8 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "seed:superadmin": "tsx src/scripts/create-super-admin.ts"
   },
   "repository": {
     "type": "git",
@@ -28,6 +29,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "helmet": "^8.3.0",
+    "jose": "^6.2.12",
     "morgan": "^1.12.1",
     "zod": "^4.6.4"
   },

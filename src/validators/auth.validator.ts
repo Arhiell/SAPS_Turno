@@ -38,4 +38,26 @@ export const registerSchema = z.object({
  * TypeScript obtiene automáticamente el tipo
  * a partir del esquema de Zod.
  */
-export type RegisterInput = z.infer<typeof registerSchema>;
+export type RegisterInput = 
+  z.infer<typeof registerSchema>;
+
+/**
+ * Login mediante email o nombre de usuario.
+ */
+export const loginSchema = z
+  .object({
+    identifier: z
+      .string()
+      .trim()
+      .min(3),
+
+    password: z
+      .string()
+      .min(1)
+  })
+  .strict();
+
+export type LoginInput =
+  z.infer<typeof loginSchema>;
+
+

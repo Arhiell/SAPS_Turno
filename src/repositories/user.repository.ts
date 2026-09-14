@@ -170,5 +170,162 @@ export const createUser = async (
     );
   }
 
+  
+
   return data;
+};
+
+/**
+ * Busca al usuario para iniciar sesión.
+ *
+ * Aquí sí necesitamos password_hash,
+ * pero exclusivamente dentro del backend.
+ */
+export const findUserForLogin = async (
+  identifier: string
+) => {
+  const { data, error } = await supabase
+    .from("usuarios")
+    .select(`
+      id_usuario,
+      id_rol,
+      nombre_usuario,
+      email,
+      password_hash,
+      email_verificado,
+      intentos_fallidos,
+      bloqueado_hasta,
+      activo
+    `)
+    .or(
+      `email.ilike.${identifier},nombre_usuario.ilike.${identifier}`
+    )
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `Error buscando usuario: ${error.message}`
+    );
+  }
+
+  return data;
+};
+
+/**
+ * Obtiene un rol mediante su UUID.
+ */
+export const findRoleById = async (
+  idRol: string
+) => {
+  const { data, error } = await supabase
+    .from("roles")
+    .select("id_rol, codigo, nombre, activo")
+    .eq("id_rol", idRol)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `Error obteniendo rol: ${error.message}`
+    );
+  }
+
+  return data;
+};
+
+/**
+ * Obtiene información actual del usuario.
+ *
+ * Será utilizado por el middleware JWT.
+ */
+export const findUserById = async (
+  idUsuario: string
+) => {
+  const { data, error } = await supabase
+    .from("usuarios")
+    .select(`
+      id_usuario,
+      id_rol,
+      nombre_usuario,
+      email,
+      activo
+    `)
+    .eq("id_usuario", idUsuario)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `Error buscando usuario: ${error.message}`
+    );
+  }
+
+  return data;
+};
+
+/**
+ * Reinicia intentos fallidos y registra
+ * el último acceso exitoso.
+ */
+export const registerSuccessfulLogin = async (
+  idUsuario: string
+) => {
+  const { error } = await supabase
+    .from("usuarios")
+    .update({
+      intentos_fallidos: 0,
+      bloqueado_hasta: null,
+      ultimo_acceso: new Date().toISOString()
+    })
+    .eq("id_usuario", idUsuario);
+
+  if (error) {
+    throw new Error(
+      `Error actualizando acceso: ${error.message}`
+    );
+  }
+};
+
+/**
+ * Comprueba que una salita exista y esté activa.
+ */
+export const findActiveSalitaById = async (
+  idSalita: string
+) => {
+  const { data, error } = await supabase
+    .from("salitas")
+    .select("id_salita, nombre, activo")
+    .eq("id_salita", idSalita)
+    .eq("activo", true)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `Error buscando salita: ${error.message}`
+    );
+  }
+
+  return data;
+};
+
+/**
+ * Vincula un administrador con su salita.
+ */
+export const assignUserToSalita = async (
+  idUsuario: string,
+  idSalita: string
+) => {
+  const { error } = await supabase
+    .from("usuario_salita")
+    .insert({
+      id_usuario: idUsuario,
+      id_salita: idSalita,
+      es_principal: true,
+      activo: true
+    });
+
+  if (error) {
+    throw new Error(
+      `Error asignando usuario a salita: ${error.message}`
+    );
+  }
 };
