@@ -38,6 +38,20 @@ const envSchema = z.object({
     .int()
     .positive()
     .default(10),
+
+  //Cantidad máxima de intentos incorrectos antes de bloquear temporalmente la cuenta.
+  LOGIN_MAX_ATTEMPTS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(5),
+
+  //Duración del bloqueo temporal.
+  LOGIN_LOCK_MINUTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(15),
 });
 
 const result = envSchema.safeParse(process.env);

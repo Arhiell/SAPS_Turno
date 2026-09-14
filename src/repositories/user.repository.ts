@@ -329,3 +329,53 @@ export const assignUserToSalita = async (
     );
   }
 };
+
+/**
+ * Registra un intento fallido de inicio de sesión.
+ *
+ * También puede establecer la fecha hasta
+ * la cual la cuenta queda bloqueada.
+ */
+export const registerFailedLogin = async (
+  idUsuario: string,
+  attempts: number,
+  blockedUntil: string | null
+) => {
+  const { error } = await supabase
+    .from("usuarios")
+    .update({
+      intentos_fallidos: attempts,
+      bloqueado_hasta: blockedUntil
+    })
+    .eq("id_usuario", idUsuario);
+
+  if (error) {
+    throw new Error(
+      `Error registrando intento fallido: ${error.message}`
+    );
+  }
+};
+
+/**
+ * Limpia un bloqueo que ya venció.
+ *
+ * El usuario vuelve a comenzar desde
+ * cero intentos fallidos.
+ */
+export const clearExpiredLoginLock = async (
+  idUsuario: string
+) => {
+  const { error } = await supabase
+    .from("usuarios")
+    .update({
+      intentos_fallidos: 0,
+      bloqueado_hasta: null
+    })
+    .eq("id_usuario", idUsuario);
+
+  if (error) {
+    throw new Error(
+      `Error limpiando bloqueo: ${error.message}`
+    );
+  }
+};

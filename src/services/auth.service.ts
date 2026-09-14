@@ -1,6 +1,9 @@
+import { env } from "../config/env.js"; 
+
 import type {
   RegisterInput
 } from "../validators/auth.validator.js";
+
 
 import {
   createUser,
@@ -22,8 +25,10 @@ import type {
 } from "../validators/auth.validator.js";
 
 import {
+  clearExpiredLoginLock,
   findRoleById,
   findUserForLogin,
+  registerFailedLogin,
   registerSuccessfulLogin
 } from "../repositories/user.repository.js";
 
@@ -34,6 +39,8 @@ import {
 import {
   generateAccessToken
 } from "./jwt.service.js";
+
+
 
 // Registra una cuenta pública. Todo registro público recibe siempre
 //el rol PACIENTE.
@@ -100,7 +107,15 @@ export const registerUser = async (
 
 
 /**
- * Inicia sesión y genera un Access Token.
+ * Inicia sesión mediante email o username.
+ *
+ * También controla:
+ * - usuario activo
+ * - bloqueo temporal
+ * - intentos fallidos
+ * - contraseña
+ * - rol activo
+ * - último acceso
  */
 export const loginUser = async (
   input: LoginInput
@@ -108,10 +123,20 @@ export const loginUser = async (
   const identifier =
     input.identifier.trim().toLowerCase();
 
-  // Buscamos email o username.
-  const user =
-    await findUserForLogin(identifier);
+  /**
+   * Buscamos al usuario por email
+   * o nombre de usuario.
+   */
+  const user = await findUserForLogin(
+    identifier
+  );
 
+  /**
+   * Utilizamos un mensaje genérico.
+   *
+   * No queremos revelar si determinado
+   * correo existe en el sistema.
+   */
   if (!user) {
     throw new AppError(
       "Credenciales incorrectas",
@@ -119,6 +144,9 @@ export const loginUser = async (
     );
   }
 
+  /**
+   * Una cuenta desactivada no puede ingresar.
+   */
   if (!user.activo) {
     throw new AppError(
       "La cuenta se encuentra deshabilitada",
@@ -126,13 +154,15 @@ export const loginUser = async (
     );
   }
 
+  const now = new Date();
+
   /**
-   * Si existe un bloqueo vigente,
-   * rechazamos el inicio.
+   * Si existe un bloqueo que todavía
+   * está vigente, rechazamos el login.
    */
   if (
     user.bloqueado_hasta &&
-    new Date(user.bloqueado_hasta) > new Date()
+    new Date(user.bloqueado_hasta) > now
   ) {
     throw new AppError(
       "La cuenta se encuentra temporalmente bloqueada",
@@ -140,6 +170,28 @@ export const loginUser = async (
     );
   }
 
+  /**
+   * Si existía un bloqueo pero ya venció,
+   * reiniciamos los intentos.
+   */
+  let failedAttempts =
+    user.intentos_fallidos ?? 0;
+
+  if (
+    user.bloqueado_hasta &&
+    new Date(user.bloqueado_hasta) <= now
+  ) {
+    await clearExpiredLoginLock(
+      user.id_usuario
+    );
+
+    failedAttempts = 0;
+  }
+
+  /**
+   * Comparamos la contraseña recibida
+   * contra el hash Argon2 almacenado.
+   */
   const passwordIsValid =
     await verifyPassword(
       user.password_hash,
@@ -147,12 +199,58 @@ export const loginUser = async (
     );
 
   if (!passwordIsValid) {
+    const newAttempts =
+      failedAttempts + 1;
+
+    /**
+     * Si alcanzó el máximo permitido,
+     * calculamos la fecha del bloqueo.
+     */
+    if (
+      newAttempts >=
+      env.LOGIN_MAX_ATTEMPTS
+    ) {
+      const blockedUntil = new Date(
+        now.getTime() +
+          env.LOGIN_LOCK_MINUTES *
+            60 *
+            1000
+      );
+
+      await registerFailedLogin(
+        user.id_usuario,
+        newAttempts,
+        blockedUntil.toISOString()
+      );
+
+      throw new AppError(
+        "Demasiados intentos fallidos. La cuenta fue bloqueada temporalmente",
+        423
+      );
+    }
+
+    /**
+     * Todavía no alcanzó el límite,
+     * solamente incrementamos el contador.
+     */
+    await registerFailedLogin(
+      user.id_usuario,
+      newAttempts,
+      null
+    );
+
     throw new AppError(
       "Credenciales incorrectas",
       401
     );
   }
 
+  /**
+   * La contraseña es correcta.
+   *
+   * Ahora comprobamos que el rol
+   * continúe existiendo y esté activo.
+   */
   const role = await findRoleById(
     user.id_rol
   );
@@ -164,7 +262,12 @@ export const loginUser = async (
     );
   }
 
-  // Registramos el acceso exitoso.
+  /**
+   * Login exitoso:
+   * - intentos = 0
+   * - bloqueo = NULL
+   * - ultimo_acceso = ahora
+   */
   await registerSuccessfulLogin(
     user.id_usuario
   );
@@ -172,10 +275,14 @@ export const loginUser = async (
   const authenticatedUser = {
     id_usuario: user.id_usuario,
     email: user.email,
-    nombre_usuario: user.nombre_usuario,
+    nombre_usuario:
+      user.nombre_usuario,
     rol: role.codigo
   };
 
+  /**
+   * Finalmente generamos el JWT.
+   */
   const accessToken =
     await generateAccessToken(
       authenticatedUser
