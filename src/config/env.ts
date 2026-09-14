@@ -60,6 +60,14 @@ const envSchema = z.object({
     .int()
     .positive()
     .default(7),
+
+  // Minutos durante los cuales será válido un
+  // token de recuperación de contraseña.
+  PASSWORD_RECOVERY_MINUTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(15),
 });
 
 const result = envSchema.safeParse(process.env);

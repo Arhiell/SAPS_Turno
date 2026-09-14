@@ -128,3 +128,25 @@ export const revokeRefreshSession = async (
     );
   }
 };
+
+// Revoca todas las sesiones activas de un usuario.
+// Se utiliza, por ejemplo, después de recuperar una contraseña.
+export const revokeAllUserRefreshSessions =
+  async (
+    idUsuario: string
+  ) => {
+    const { error } = await supabase
+      .from("sesiones_refresh")
+      .update({
+        fecha_revocacion:
+          new Date().toISOString()
+      })
+      .eq("id_usuario", idUsuario)
+      .is("fecha_revocacion", null);
+
+    if (error) {
+      throw new Error(
+        `Error revocando sesiones: ${error.message}`
+      );
+    }
+  };
