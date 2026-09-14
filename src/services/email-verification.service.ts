@@ -117,3 +117,50 @@ export const verifyUserEmail = async (
     verification.id_token
   );
 };
+
+/**
+ * Genera un token de verificación directamente
+ * para un usuario recién creado.
+ *
+ * Se utiliza durante el registro.
+ */
+export const createVerificationForUser = async (
+  idUsuario: string,
+  ip: string | null
+) => {
+  /**
+   * Invalidamos cualquier token anterior
+   * pendiente para ese mismo usuario.
+   */
+  await invalidatePreviousEmailTokens(
+    idUsuario
+  );
+
+  /// Generamos el token original.
+   
+  const token =
+    generateEmailVerificationToken();
+
+  //    Solo almacenaremos su hash.
+  const tokenHash =
+    hashEmailVerificationToken(token);
+
+  // Calculamos cuándo vence.
+  const expiration = new Date(
+    Date.now() +
+      env.EMAIL_VERIFICATION_HOURS *
+        60 *
+        60 *
+        1000
+  );
+
+  await createEmailVerificationToken(
+    idUsuario,
+    tokenHash,
+    expiration.toISOString(),
+    ip
+  );
+
+  // Devolvemos el token original. Nunca está almacenado en la DB.
+  return token;
+};

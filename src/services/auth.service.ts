@@ -44,12 +44,17 @@ import {
 } from "./jwt.service.js";
 import { access } from "node:fs";
 
+import {
+  createVerificationForUser
+} from "./email-verification.service.js";
+
 
 
 // Registra una cuenta pública. Todo registro público recibe siempre
 //el rol PACIENTE.
 export const registerUser = async (
-  input: RegisterInput
+  input: RegisterInput,
+  ip: string | null
 ) => {
   // Normalizamos datos antes de utilizarlos.
   const email = input.email.trim().toLowerCase();
@@ -99,16 +104,25 @@ export const registerUser = async (
     password_hash: passwordHash
   });
 
-  return {
-    ...user,
+  // El usuario fue creado con: email_verificado = false
+  // Ahora generamos automáticamente su token de verificación.
+  const verificationToken =
+    await createVerificationForUser(
+    user.id_usuario,
+    ip
+  );
 
-    rol: {
-      codigo: patientRole.codigo,
-      nombre: patientRole.nombre
-    }
+  return {
+    user: {
+      ...user,
+     rol: {
+       codigo: patientRole.codigo,
+       nombre: patientRole.nombre
+       }
+    },
+    verificationToken
   };
 };
-
 
 /**
  * Inicia sesión mediante email o username.

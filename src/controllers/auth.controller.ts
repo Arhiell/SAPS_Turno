@@ -1,3 +1,7 @@
+import {
+  env
+} from "../config/env.js";
+
 import type {
   Request,
   Response,
@@ -49,21 +53,38 @@ export const register = async (
       });
     }
 
-    /**
-     * El service se ocupa de las reglas
-     * y creación del usuario.
-     */
-    const user = await registerUser(
-      validation.data
+    //Además de registrar el usuario, generamos automáticamente su token de verificación de email.
+    const result = await registerUser(
+      validation.data,
+      req.ip ?? null
     );
 
-    return res.status(201).json({
+    const response: {
+      success: boolean;
+       message: string;
+       data: {
+        user: typeof result.user;
+        verificationToken?: string;
+      };
+    } = {
       success: true,
       message: "Usuario registrado correctamente",
       data: {
-        user
+        user: result.user
       }
-    });
+    };
+
+
+if (
+  env.NODE_ENV === "development"
+) {
+  response.data.verificationToken =
+    result.verificationToken;
+}
+
+return res.status(201).json(
+  response
+);
   } catch (error) {
     next(error);
   }
