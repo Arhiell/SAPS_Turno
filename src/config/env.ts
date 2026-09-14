@@ -52,6 +52,14 @@ const envSchema = z.object({
     .int()
     .positive()
     .default(15),
+
+  // Cantidad de días que permanece
+  // valida una sesión refresh.
+  REFRESH_TOKEN_EXPIRES_DAYS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(7),
 });
 
 const result = envSchema.safeParse(process.env);

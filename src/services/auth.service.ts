@@ -4,7 +4,6 @@ import type {
   RegisterInput
 } from "../validators/auth.validator.js";
 
-
 import {
   createUser,
   findRoleByCode,
@@ -25,6 +24,10 @@ import type {
 } from "../validators/auth.validator.js";
 
 import {
+  createSession
+} from "../services/session.service.js";
+
+import {
   clearExpiredLoginLock,
   findRoleById,
   findUserForLogin,
@@ -39,6 +42,7 @@ import {
 import {
   generateAccessToken
 } from "./jwt.service.js";
+import { access } from "node:fs";
 
 
 
@@ -117,15 +121,19 @@ export const registerUser = async (
  * - rol activo
  * - último acceso
  */
+
 export const loginUser = async (
-  input: LoginInput
+  input: LoginInput,
+  metadata: {
+    ip: string | null;
+    userAgent: string | null;
+  }
 ) => {
   const identifier =
     input.identifier.trim().toLowerCase();
 
   /**
-   * Buscamos al usuario por email
-   * o nombre de usuario.
+   * Buscamos al usuario por email o nombre de usuario.
    */
   const user = await findUserForLogin(
     identifier
@@ -133,7 +141,6 @@ export const loginUser = async (
 
   /**
    * Utilizamos un mensaje genérico.
-   *
    * No queremos revelar si determinado
    * correo existe en el sistema.
    */
@@ -144,9 +151,7 @@ export const loginUser = async (
     );
   }
 
-  /**
-   * Una cuenta desactivada no puede ingresar.
-   */
+  // Una cuenta desactivada no puede ingresar.
   if (!user.activo) {
     throw new AppError(
       "La cuenta se encuentra deshabilitada",
@@ -247,9 +252,7 @@ export const loginUser = async (
 
   /**
    * La contraseña es correcta.
-   *
-   * Ahora comprobamos que el rol
-   * continúe existiendo y esté activo.
+   * Ahora comprobamos que el rol continúe existiendo y esté activo.
    */
   const role = await findRoleById(
     user.id_rol
@@ -280,6 +283,7 @@ export const loginUser = async (
     rol: role.codigo
   };
 
+
   /**
    * Finalmente generamos el JWT.
    */
@@ -288,8 +292,17 @@ export const loginUser = async (
       authenticatedUser
     );
 
-  return {
+  // Creamos tambien una sesión resfresh
+  const refreshToken =
+   await createSession (
+    user.id_usuario,
+    metadata
+   );
+
+   return {
     user: authenticatedUser,
-    accessToken
-  };
+    accessToken,
+    refreshToken
+   };
+
 };

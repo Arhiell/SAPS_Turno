@@ -60,4 +60,16 @@ export const loginSchema = z
 export type LoginInput =
   z.infer<typeof loginSchema>;
 
+// Refresh y logout reciben el refresh token actual.
+export const refreshTokenSchema = z
+  .object({
+    refreshToken: z
+      .string()
+      .min(
+        64,
+        "Refresh token inválido"
+      )
+  })
+  .strict();
+
 
