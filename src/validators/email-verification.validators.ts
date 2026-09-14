@@ -1,0 +1,30 @@
+import { z } from "zod";
+
+// Solicitud de un correo de verificación.
+export const requestEmailVerificationSchema =
+  z.object({
+    email: z
+      .string()
+      .trim()
+      .email("El correo no es válido")
+      .max(254)
+  }).strict();
+
+// Confirmación mediante token.
+export const verifyEmailSchema =
+  z.object({
+    token: z
+      .string()
+      .length(
+        64,
+        "El token de verificación no es válido"
+      )
+  }).strict();
+
+export type RequestEmailVerificationInput =
+  z.infer<
+    typeof requestEmailVerificationSchema
+  >;
+
+export type VerifyEmailInput =
+  z.infer<typeof verifyEmailSchema>;

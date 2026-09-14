@@ -2,21 +2,12 @@ import {
   supabase
 } from "../config/supabase.js";
 
-/**
- * Datos necesarios para crear
- * una sesión refresh.
- */
+// Datos necesarios para crear una sesión refresh.
 interface CreateSessionData {
   id_usuario: string;
-
-  // Guardamos solamente el hash.
   token_hash: string;
-
-  // IP desde donde inició sesión.
   ip_origen: string | null;
-
   user_agent: string | null;
-
   fecha_expiracion: string;
 }
 
@@ -33,20 +24,11 @@ export const createRefreshSession = async (
   const { data, error } = await supabase
     .from("sesiones_refresh")
     .insert({
-      id_usuario:
-        session.id_usuario,
-
-      token_hash:
-        session.token_hash,
-
-      ip_origen:
-        session.ip_origen,
-
-      user_agent:
-        session.user_agent,
-
-      fecha_expiracion:
-        session.fecha_expiracion
+      id_usuario: session.id_usuario,
+      token_hash: session.token_hash,
+      ip_origen: session.ip_origen,
+      user_agent: session.user_agent,
+      fecha_expiracion: session.fecha_expiracion
     })
     .select(`
       id_sesion,
@@ -78,16 +60,11 @@ export const findRefreshSession = async (
       id_sesion,
       id_usuario,
       token_hash,
-      ip_origen,
-      user_agent,
       fecha_creacion,
       fecha_expiracion,
       fecha_revocacion
     `)
-    .eq(
-      "token_hash",
-      tokenHash
-    )
+    .eq("token_hash", tokenHash)
     .maybeSingle();
 
   if (error) {

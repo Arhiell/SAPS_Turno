@@ -68,6 +68,16 @@ const envSchema = z.object({
     .int()
     .positive()
     .default(15),
+
+  /**
+  * Horas durante las cuales será válido
+  * un token de verificación de correo.
+  */
+  EMAIL_VERIFICATION_HOURS: z.coerce
+   .number()
+    .int()
+    .positive()
+    .default(24),
 });
 
 const result = envSchema.safeParse(process.env);

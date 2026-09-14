@@ -57,20 +57,10 @@ export const createSession = async (
   //Guardamos la sesión utilizando
 await createRefreshSession({
   id_usuario: idUsuario,
-
-  // Solo enviamos el hash.
-  token_hash:
-    refreshTokenHash,
-
-  // En PostgreSQL se llama ip_origen.
-  ip_origen:
-    metadata.ip,
-
-  user_agent:
-    metadata.userAgent,
-
-  fecha_expiracion:
-    expiration.toISOString()
+  token_hash: refreshTokenHash,
+  ip_origen: metadata.ip,
+  user_agent: metadata.userAgent,
+  fecha_expiracion: expiration.toISOString()
 });
 
   return refreshToken;
