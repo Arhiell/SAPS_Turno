@@ -1,12 +1,14 @@
 import {
   createUser,
   findRoleByCode,
-  findUserByEmail
+  findUserByEmail,
+  verifyUserEmailDirectly
 } from "../repositories/user.repository.js";
 
 import {
   hashPassword
 } from "../services/password.service.js";
+
 
 /**
  * Credenciales recibidas solo desde
@@ -58,4 +60,11 @@ const user = await createUser({
 console.log(
   "Super Admin creado:",
   user.email
+);
+
+
+// El Super_Admin inicial es creado mediante un proceso interno de confianza
+// Lo marca directamente como verifcado.
+await verifyUserEmailDirectly(
+  user.id_usuario
 );

@@ -379,3 +379,26 @@ export const clearExpiredLoginLock = async (
     );
   }
 };
+
+/**
+ * Marca una cuenta como email verificado.
+ *
+ * Se utiliza para cuentas internas creadas
+ * mediante procesos de confianza.
+ */
+export const verifyUserEmailDirectly = async (
+  idUsuario: string
+) => {
+  const { error } = await supabase
+    .from("usuarios")
+    .update({
+      email_verificado: true
+    })
+    .eq("id_usuario", idUsuario);
+
+  if (error) {
+    throw new Error(
+      `Error verificando email del usuario: ${error.message}`
+    );
+  }
+};

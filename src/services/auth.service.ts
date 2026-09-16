@@ -48,7 +48,9 @@ import {
   createVerificationForUser
 } from "./email-verification.service.js";
 
-
+import {
+  validateLoginAccess
+} from "./login-access.service.js";
 
 // Registra una cuenta pública. Todo registro público recibe siempre
 //el rol PACIENTE.
@@ -165,13 +167,17 @@ export const loginUser = async (
     );
   }
 
-  // Una cuenta desactivada no puede ingresar.
-  if (!user.activo) {
-    throw new AppError(
-      "La cuenta se encuentra deshabilitada",
-      403
-    );
-  }
+  /**
+   * Antes de revisar la contraseña,
+    * comprobamos las reglas de acceso.
+   */
+  validateLoginAccess({
+    activo: user.activo,
+    email_verificado:
+      user.email_verificado,
+      bloqueado_hasta:
+        user.bloqueado_hasta
+  });
 
   const now = new Date();
 
