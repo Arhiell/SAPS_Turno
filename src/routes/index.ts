@@ -6,6 +6,7 @@ import authRoutes from "./auth.routes.js";
 import passwordRecoveryRoutes from "./password-recovery.routes.js";
 import emailVerificationRoutes
 from "./email-verification.routes.js";
+import especialidadRoutes from "./especialidad.routes.js";
 
 const router = Router();
 
@@ -23,5 +24,8 @@ router.use("/auth/password", passwordRecoveryRoutes);
 
 // Verificación de email
 router.use("/auth/email", emailVerificationRoutes);
+
+// Especialidades
+router.use("/especialidades", especialidadRoutes);
 
 export default router;
