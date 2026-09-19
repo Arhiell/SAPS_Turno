@@ -52,11 +52,20 @@ import {
   validateLoginAccess
 } from "./login-access.service.js";
 
+import {
+  createVerificationForNewUser
+} from "./email-verification.service.js";
+
+import type {
+  RequestMetadata
+} from "../types/request-metadata.types.js";
+
+
 // Registra una cuenta pública. Todo registro público recibe siempre
 //el rol PACIENTE.
 export const registerUser = async (
   input: RegisterInput,
-  ip: string | null
+  metadata: RequestMetadata
 ) => {
   // Normalizamos datos antes de utilizarlos.
   const email = input.email.trim().toLowerCase();
@@ -106,13 +115,16 @@ export const registerUser = async (
     password_hash: passwordHash
   });
 
-  // El usuario fue creado con: email_verificado = false
-  // Ahora generamos automáticamente su token de verificación.
+  /*
+  * Después de crear correctamente la cuenta,
+  * generamos su token de verificación.
+  */
   const verificationToken =
-    await createVerificationForUser(
-    user.id_usuario,
-    ip
-  );
+    await createVerificationForNewUser(
+      user.id_usuario,
+      metadata.ip
+    );
+
 
   return {
     user: {

@@ -164,3 +164,55 @@ export const createVerificationForUser = async (
   // Devolvemos el token original. Nunca está almacenado en la DB.
   return token;
 };
+
+/**
+ * Genera directamente un token de verificación
+ * para un usuario que acaba de registrarse.
+ *
+ * En este caso ya conocemos el id_usuario,
+ * por lo que no necesitamos volver a buscar
+ * el usuario mediante email.
+ */
+export const createVerificationForNewUser =
+  async (
+    idUsuario: string,
+    ip: string | null
+  ) => {
+    /**
+     * Invalidamos cualquier token anterior.
+     *
+     * Normalmente un usuario recién creado
+     * no tendrá ninguno, pero mantenemos
+     * una única regla de seguridad.
+     */
+    await invalidatePreviousEmailTokens(
+      idUsuario
+    );
+
+    const token =
+      generateEmailVerificationToken();
+
+    const tokenHash =
+      hashEmailVerificationToken(token);
+
+    const expiration = new Date(
+      Date.now() +
+        env.EMAIL_VERIFICATION_HOURS *
+          60 *
+          60 *
+          1000
+    );
+
+    /**
+     * En PostgreSQL almacenamos solamente
+     * el hash del token original.
+     */
+    await createEmailVerificationToken(
+      idUsuario,
+      tokenHash,
+      expiration.toISOString(),
+      ip
+    );
+
+    return token;
+  };

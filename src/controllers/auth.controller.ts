@@ -56,7 +56,9 @@ export const register = async (
     //Además de registrar el usuario, generamos automáticamente su token de verificación de email.
     const result = await registerUser(
       validation.data,
-      req.ip ?? null
+      {
+        ip: req.ip ?? null
+      }
     );
 
     const response: {
