@@ -78,6 +78,15 @@ const envSchema = z.object({
     .int()
     .positive()
     .default(24),
+
+  /**
+   *  Client ID utilizado por Google Identity Services.
+   * El backend comprobará que los ID Tokens
+   * hayan sido emitidos para nuestra aplicación.
+   * */
+  GOOGLE_CLIENT_ID: z
+    .string()
+    .min(1, "Falta GOOGLE_CLIENT_ID"),
 });
 
 const result = envSchema.safeParse(process.env);
@@ -92,6 +101,10 @@ if (!result.success) {
   throw new Error(
     "Configuración de variables de entorno inválida"
   );
+
+  
 }
+
+
 
 export const env = result.data;

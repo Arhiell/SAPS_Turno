@@ -10,6 +10,8 @@ import especialidadRoutes from "./especialidad.routes.js";
 import salitaRoutes from "./salita.routes.js";
 import barrioRoutes from "./barrio.routes.js";
 import zonaRoutes from "./zona.routes.js";
+import googleAuthRoutes
+  from "./google-auth.routes.js";
 
 const router = Router();
 
@@ -28,6 +30,9 @@ router.use("/auth/password", passwordRecoveryRoutes);
 // Verificación de email
 router.use("/auth/email", emailVerificationRoutes);
 
+// Autenticación federada Google.
+router.use("/auth/google", googleAuthRoutes);
+
 // Especialidades
 router.use("/especialidades", especialidadRoutes);
 
@@ -39,5 +44,7 @@ router.use("/barrios", barrioRoutes);
 
 // Zonas
 router.use("/zonas", zonaRoutes);
+
+
 
 export default router;
