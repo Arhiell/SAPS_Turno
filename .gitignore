@@ -9,6 +9,9 @@ dist/
 .env.*
 !.env.example
 
+# Base de datos local
+/src/BBDD/SAPS_Turno_BBDD3_FINAL.sql
+
 # Logs
 *.log
 npm-debug.log*
