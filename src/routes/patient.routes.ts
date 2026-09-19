@@ -7,6 +7,17 @@ import {
 } from "../controllers/patient.controller.js";
 
 import {
+  getPatientByDniController,
+  getPatientController,
+  listPatientsController
+} from "../controllers/patient-read.controller.js";
+
+import {
+  updatePatientController,
+  updatePatientStatusController
+} from "../controllers/patient-update.controller.js";
+
+import {
   authenticate
 } from "../middlewares/auth.middleware.js";
 
@@ -16,13 +27,78 @@ import {
 
 const router = Router();
 
+router.use(authenticate);
+
 /**
- * Administradores y recepción
- * pueden registrar pacientes.
+ * Listar pacientes.
+ */
+router.get(
+  "/",
+  requireRole(
+    "SUPER_ADMIN",
+    "ADMIN_SALITA",
+    "RECEPCION"
+  ),
+  listPatientsController
+);
+
+/**
+ * Buscar paciente por DNI.
+ */
+router.get(
+  "/dni/:dni",
+  requireRole(
+    "SUPER_ADMIN",
+    "ADMIN_SALITA",
+    "RECEPCION"
+  ),
+  getPatientByDniController
+);
+
+/**
+ * Cambiar estado.
+ */
+router.patch(
+  "/:id/status",
+  requireRole(
+    "SUPER_ADMIN",
+    "ADMIN_SALITA",
+    "RECEPCION"
+  ),
+  updatePatientStatusController
+);
+
+/**
+ * Buscar paciente por ID.
+ */
+router.get(
+  "/:id",
+  requireRole(
+    "SUPER_ADMIN",
+    "ADMIN_SALITA",
+    "RECEPCION"
+  ),
+  getPatientController
+);
+
+/**
+ * Actualizar paciente.
+ */
+router.patch(
+  "/:id",
+  requireRole(
+    "SUPER_ADMIN",
+    "ADMIN_SALITA",
+    "RECEPCION"
+  ),
+  updatePatientController
+);
+
+/**
+ * Crear paciente.
  */
 router.post(
   "/",
-  authenticate,
   requireRole(
     "SUPER_ADMIN",
     "ADMIN_SALITA",
