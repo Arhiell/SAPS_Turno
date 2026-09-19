@@ -1,3 +1,7 @@
+import {
+  env
+} from "../config/env.js";
+
 import type {
   Request,
   Response,
@@ -14,9 +18,12 @@ import {
 } from "../validators/user.validator.js";
 
 import {
-  createAdminAccount,
   createPatientAccount
 } from "../services/user-management.service.js";
+
+import {
+  createAdminWithVerification
+} from "../services/admin-onboarding.service.js";
 
 /**
  * GET /api/users/health
@@ -44,7 +51,8 @@ export const userHealthCheck = async (
 };
 
 /**
- * Crea un Administrador de Salita.
+ * Crea un ADMIN_SALITA y genera
+ * automáticamente su verificación de email.
  */
 export const createAdmin = async (
   req: Request,
@@ -60,29 +68,62 @@ export const createAdmin = async (
     if (!validation.success) {
       return res.status(400).json({
         success: false,
-        message: "Datos inválidos",
+        message:
+          "Datos del administrador inválidos",
         errors:
-          validation.error.flatten().fieldErrors
+          validation.error.flatten()
+            .fieldErrors
       });
     }
 
-    const user =
-      await createAdminAccount(
-        validation.data
+    /**
+     * El service coordina:
+     *
+     * - creación del usuario
+     * - relación con salita
+     * - token de email
+     */
+    const result =
+      await createAdminWithVerification(
+        validation.data,
+        {
+          ip: req.ip ?? null
+        }
       );
 
-    return res.status(201).json({
+    const response: {
+      success: boolean;
+      message: string;
+      data: {
+        user: typeof result.user;
+        verificationToken?: string;
+      };
+    } = {
       success: true,
+
       message:
         "Administrador creado correctamente",
+
       data: {
-        user
+        user: result.user
       }
-    });
+    };
+
+    if (
+      env.NODE_ENV === "development"
+    ) {
+      response.data.verificationToken =
+        result.verificationToken;
+    }
+
+    return res.status(201).json(
+      response
+    );
   } catch (error) {
     next(error);
   }
 };
+
 
 /**
  * Crea una cuenta con rol PACIENTE.
