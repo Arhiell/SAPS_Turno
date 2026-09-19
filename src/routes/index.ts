@@ -14,6 +14,8 @@ import googleAuthRoutes from "./google-auth.routes.js";
 import patientRoutes from "./patient.routes.js";
 import salitaBarrioRoutes from "./salita-barrio.routes.js";
 import profesionalRoutes from "./profesional.routes.js";
+import profesionalEspecialidadRoutes from "./profesional-especialidad.routes.js";
+import profesionalSalitaRoutes from "./profesional-salita.routes.js";
 
 const router = Router();
 
@@ -55,5 +57,11 @@ router.use("/salita-barrios", salitaBarrioRoutes);
 
 // Profesionales.
 router.use("/profesionales", profesionalRoutes);
+
+// Profesionales-Especialidades.
+router.use("/profesionales", profesionalEspecialidadRoutes);
+
+// Profesionales-Salitas.
+router.use("/profesionales", profesionalSalitaRoutes);
 
 export default router;
