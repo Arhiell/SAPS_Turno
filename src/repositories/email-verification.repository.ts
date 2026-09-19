@@ -6,133 +6,110 @@ import {
  * Busca el usuario necesario para
  * el proceso de verificación.
  */
-export const findUserForEmailVerification =
-  async (
-    email: string
-  ) => {
-    const { data, error } = await supabase
-      .from("usuarios")
-      .select(`
+export const findUserForEmailVerification = async (email: string) => {
+  const { data, error } = await supabase
+    .from("usuarios")
+    .select(
+      `
         id_usuario,
         email,
         email_verificado,
         activo
-      `)
-      .ilike("email", email)
-      .limit(1)
-      .maybeSingle();
+      `,
+    )
+    .ilike("email", email)
+    .limit(1)
+    .maybeSingle();
 
-    if (error) {
-      throw new Error(
-        `Error buscando usuario: ${error.message}`
-      );
-    }
+  if (error) {
+    throw new Error(`Error buscando usuario: ${error.message}`);
+  }
 
-    return data;
-  };
+  return data;
+};
 
 // Invalida tokens anteriores todavía pendientes de ese usuario.
-export const invalidatePreviousEmailTokens =
-  async (
-    idUsuario: string
-  ) => {
-    const { error } = await supabase
-      .from("tokens_verificacion_email")
-      .update({
-        fecha_uso: new Date().toISOString()
-      })
-      .eq("id_usuario", idUsuario)
-      .is("fecha_uso", null);
+export const invalidatePreviousEmailTokens = async (idUsuario: string) => {
+  const { error } = await supabase
+    .from("tokens_verificacion_email")
+    .update({
+      fecha_uso: new Date().toISOString(),
+    })
+    .eq("id_usuario", idUsuario)
+    .is("fecha_uso", null);
 
-    if (error) {
-      throw new Error(
-        `Error invalidando tokens de email: ${error.message}`
-      );
-    }
-  };
+  if (error) {
+    throw new Error(`Error invalidando tokens de email:
+       ${error.message}`);
+  }
+};
 
 // Guarda solamente el HASH del token.
-export const createEmailVerificationToken =
-  async (
-    idUsuario: string,
-    tokenHash: string,
-    expiration: string,
-    ip: string | null
-  ) => {
-    const { error } = await supabase
-      .from("tokens_verificacion_email")
-      .insert({
-        id_usuario: idUsuario,
-        token_hash: tokenHash,
-        fecha_expiracion: expiration,
-        ip_solicitud: ip
-      });
+export const createEmailVerificationToken = async (
+  idUsuario: string,
+  tokenHash: string,
+  expiration: string,
+  ip: string | null,
+) => {
+  const { error } = await supabase.from("tokens_verificacion_email").insert({
+    id_usuario: idUsuario,
+    token_hash: tokenHash,
+    fecha_expiracion: expiration,
+    ip_solicitud: ip,
+  });
 
-    if (error) {
-      throw new Error(
-        `Error creando token de email: ${error.message}`
-      );
-    }
-  };
+  if (error) {
+    throw new Error(`Error creando token de email: ${error.message}`);
+  }
+};
 
 // Busca un token todavía no utilizado.
-export const findEmailVerificationToken =
-  async (
-    tokenHash: string
-  ) => {
-    const { data, error } = await supabase
-      .from("tokens_verificacion_email")
-      .select(`
+export const findEmailVerificationToken = async (tokenHash: string) => {
+  const { data, error } = await supabase
+    .from("tokens_verificacion_email")
+    .select(
+      `
         id_token,
         id_usuario,
         fecha_expiracion,
         fecha_uso
-      `)
-      .eq("token_hash", tokenHash)
-      .is("fecha_uso", null)
-      .maybeSingle();
+      `,
+    )
+    .eq("token_hash", tokenHash)
+    .is("fecha_uso", null)
+    .maybeSingle();
 
-    if (error) {
-      throw new Error(
-        `Error buscando token de email: ${error.message}`
-      );
-    }
+  if (error) {
+    throw new Error(`Error buscando token de email: ${error.message}`);
+  }
 
-    return data;
-  };
+  return data;
+};
 
 // Marca el correo del usuario como verificado.
-export const markEmailAsVerified = async (
-  idUsuario: string
-) => {
+export const markEmailAsVerified = async (idUsuario: string) => {
   const { error } = await supabase
     .from("usuarios")
     .update({
-      email_verificado: true
+      email_verificado: true,
     })
     .eq("id_usuario", idUsuario);
 
   if (error) {
-    throw new Error(
-      `Error verificando correo: ${error.message}`
-    );
+    throw new Error(`Error verificando correo: ${error.message}`);
   }
 };
 
 //El token pasa a considerarse utilizado.
-export const markEmailTokenAsUsed = async (
-  idToken: string
-) => {
+export const markEmailTokenAsUsed = async (idToken: string) => {
   const { error } = await supabase
     .from("tokens_verificacion_email")
     .update({
-      fecha_uso: new Date().toISOString()
+      fecha_uso: new Date().toISOString(),
     })
     .eq("id_token", idToken);
 
   if (error) {
-    throw new Error(
-      `Error marcando token como utilizado: ${error.message}`
-    );
+    throw new Error(`Error marcando token como utilizado: ${error.message}`);
   }
 };

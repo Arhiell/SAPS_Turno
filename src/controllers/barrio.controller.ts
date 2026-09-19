@@ -1,25 +1,25 @@
-import type { Request, Response, NextFunction } from "express";
+import type {
+  Request,
+  Response,
+  NextFunction
+} from "express";
 
 import {
   getBarrios,
   getBarrio,
   crearBarrio,
   actualizarBarrio,
-  eliminarBarrio
+  eliminarBarrio,
 } from "../services/barrio.service.js";
 
 // GET /
-export const getAllBarrios = async (
-  _req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const getAllBarrios = async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const barrios = await getBarrios();
 
     return res.status(200).json({
       success: true,
-      data: barrios
+      data: barrios,
     });
   } catch (error) {
     next(error);
@@ -27,24 +27,20 @@ export const getAllBarrios = async (
 };
 
 // GET /:id
-export const getBarrioById = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const getBarrioById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const barrio = await getBarrio(String(req.params.id));
 
     if (!barrio) {
       return res.status(404).json({
         success: false,
-        message: "Barrio no encontrado"
+        message: "Barrio no encontrado",
       });
     }
 
     return res.status(200).json({
       success: true,
-      data: barrio
+      data: barrio,
     });
   } catch (error) {
     next(error);
@@ -52,17 +48,13 @@ export const getBarrioById = async (
 };
 
 // POST /
-export const createBarrio = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const createBarrio = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const barrio = await crearBarrio(req.body);
 
     return res.status(201).json({
       success: true,
-      data: barrio
+      data: barrio,
     });
   } catch (error) {
     next(error);
@@ -70,27 +62,20 @@ export const createBarrio = async (
 };
 
 // PUT /:id
-export const updateBarrio = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const updateBarrio = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const barrio = await actualizarBarrio(
-      String(req.params.id),
-      req.body
-    );
+    const barrio = await actualizarBarrio(String(req.params.id), req.body);
 
     if (!barrio) {
       return res.status(404).json({
         success: false,
-        message: "Barrio no encontrado"
+        message: "Barrio no encontrado",
       });
     }
 
     return res.status(200).json({
       success: true,
-      data: barrio
+      data: barrio,
     });
   } catch (error) {
     next(error);
@@ -98,27 +83,21 @@ export const updateBarrio = async (
 };
 
 // DELETE /:id
-export const deleteBarrio = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const deleteBarrio = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const barrio = await eliminarBarrio(
-      String(req.params.id)
-    );
+    const barrio = await eliminarBarrio(String(req.params.id));
 
     if (!barrio) {
       return res.status(404).json({
         success: false,
-        message: "Barrio no encontrado"
+        message: "Barrio no encontrado",
       });
     }
 
     return res.status(200).json({
       success: true,
       message: "Barrio eliminado correctamente",
-      data: barrio
+      data: barrio,
     });
   } catch (error) {
     next(error);

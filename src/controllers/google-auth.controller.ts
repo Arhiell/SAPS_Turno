@@ -18,48 +18,30 @@ import {
  * Registro o login mediante Google.
  */
 export const googleLogin = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const validation =
-      googleLoginSchema.safeParse(
-        req.body
-      );
+  req: Request, res: Response, next: NextFunction) => {
+    try {
+      const validation = googleLoginSchema.safeParse(req.body);
 
-    if (!validation.success) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Credencial de Google inválida",
-        errors:
-          validation.error.flatten()
-            .fieldErrors
+      if (!validation.success) {
+        return res.status(400).json({
+          success: false,
+          message: "Credencial de Google inválida",
+          errors: validation.error.flatten().fieldErrors,
+        });
+      }
+
+      const result = await loginWithGoogle(validation.data, {
+        ip: req.ip ?? null,
+
+        userAgent: req.get("user-agent") ?? null,
       });
+
+      return res.status(200).json({
+        success: true,
+        message: "Inicio de sesión con Google correcto",
+        data: result,
+      });
+    } catch (error) {
+      next(error);
     }
-
-    const result =
-      await loginWithGoogle(
-        validation.data,
-        {
-          ip:
-            req.ip ?? null,
-
-          userAgent:
-            req.get(
-              "user-agent"
-            ) ?? null
-        }
-      );
-
-    return res.status(200).json({
-      success: true,
-      message:
-        "Inicio de sesión con Google correcto",
-      data: result
-    });
-  } catch (error) {
-    next(error);
-  }
 };

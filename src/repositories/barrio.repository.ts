@@ -1,10 +1,13 @@
-import { supabase } from "../config/supabase.js";
+import {
+   supabase
+} from "../config/supabase.js";
 
 // GET todos
 export const getAllBarrios = async () => {
   const { data, error } = await supabase
     .from("barrios")
-    .select(`
+    .select(
+      `
       id_barrio,
       id_zona,
       nombre,
@@ -12,7 +15,8 @@ export const getAllBarrios = async () => {
       activo,
       fecha_creacion,
       fecha_actualizacion
-    `)
+    `,
+    )
     .order("nombre", { ascending: true });
 
   if (error) {
@@ -26,7 +30,8 @@ export const getAllBarrios = async () => {
 export const getBarrioById = async (id: string) => {
   const { data, error } = await supabase
     .from("barrios")
-    .select(`
+    .select(
+      `
       id_barrio,
       id_zona,
       nombre,
@@ -34,7 +39,8 @@ export const getBarrioById = async (id: string) => {
       activo,
       fecha_creacion,
       fecha_actualizacion
-    `)
+    `,
+    )
     .eq("id_barrio", id)
     .maybeSingle();
 
@@ -55,7 +61,8 @@ export const createBarrio = async (barrio: {
   const { data, error } = await supabase
     .from("barrios")
     .insert(barrio)
-    .select(`
+    .select(
+      `
       id_barrio,
       id_zona,
       nombre,
@@ -63,7 +70,8 @@ export const createBarrio = async (barrio: {
       activo,
       fecha_creacion,
       fecha_actualizacion
-    `)
+    `,
+    )
     .single();
 
   if (error) {
@@ -81,13 +89,14 @@ export const updateBarrio = async (
     nombre?: string;
     codigo_postal?: string | null;
     activo?: boolean;
-  }
+  },
 ) => {
   const { data, error } = await supabase
     .from("barrios")
     .update(barrio)
     .eq("id_barrio", id)
-    .select(`
+    .select(
+      `
       id_barrio,
       id_zona,
       nombre,
@@ -95,7 +104,8 @@ export const updateBarrio = async (
       activo,
       fecha_creacion,
       fecha_actualizacion
-    `)
+    `,
+    )
     .maybeSingle();
 
   if (error) {
@@ -111,7 +121,8 @@ export const deleteBarrio = async (id: string) => {
     .from("barrios")
     .update({ activo: false })
     .eq("id_barrio", id)
-    .select(`
+    .select(
+      `
       id_barrio,
       id_zona,
       nombre,
@@ -119,7 +130,8 @@ export const deleteBarrio = async (id: string) => {
       activo,
       fecha_creacion,
       fecha_actualizacion
-    `)
+    `,
+    )
     .maybeSingle();
 
   if (error) {

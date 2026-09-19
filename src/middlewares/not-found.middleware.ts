@@ -1,4 +1,5 @@
-// Para las rutas inexistentes, se lanza un error 404 y se pasa al siguiente middleware de manejo de errores.
+// Para las rutas inexistentes, se lanza un error 404
+// y se pasa al siguiente middleware de manejo de errores.
 
 import type {
   Request,
@@ -6,7 +7,9 @@ import type {
   NextFunction
 } from "express";
 
-import { AppError } from "../utils/app-error.js";
+import {
+  AppError
+} from "../utils/app-error.js";
 
 export const notFoundHandler = (
   req: Request,

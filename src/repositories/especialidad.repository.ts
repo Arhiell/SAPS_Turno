@@ -1,10 +1,13 @@
-import { supabase } from "../config/supabase.js";
+import {
+  supabase
+} from "../config/supabase.js";
 
 // GET todos
 export const getAllEspecialidades = async () => {
   const { data, error } = await supabase
     .from("especialidades")
-    .select(`
+    .select(
+      `
       id_especialidad,
       codigo,
       nombre,
@@ -13,7 +16,8 @@ export const getAllEspecialidades = async () => {
       activo,
       fecha_creacion,
       fecha_actualizacion
-    `)
+    `,
+    )
     .order("nombre", { ascending: true });
 
   if (error) {
@@ -27,7 +31,8 @@ export const getAllEspecialidades = async () => {
 export const getEspecialidadById = async (id: string) => {
   const { data, error } = await supabase
     .from("especialidades")
-    .select(`
+    .select(
+      `
       id_especialidad,
       codigo,
       nombre,
@@ -36,7 +41,8 @@ export const getEspecialidadById = async (id: string) => {
       activo,
       fecha_creacion,
       fecha_actualizacion
-    `)
+    `,
+    )
     .eq("id_especialidad", id)
     .maybeSingle();
 
@@ -58,7 +64,8 @@ export const createEspecialidad = async (especialidad: {
   const { data, error } = await supabase
     .from("especialidades")
     .insert(especialidad)
-    .select(`
+    .select(
+      `
       id_especialidad,
       codigo,
       nombre,
@@ -67,7 +74,8 @@ export const createEspecialidad = async (especialidad: {
       activo,
       fecha_creacion,
       fecha_actualizacion
-    `)
+    `,
+    )
     .single();
 
   if (error) {
@@ -86,13 +94,14 @@ export const updateEspecialidad = async (
     descripcion?: string | null;
     requiere_profesional?: boolean;
     activo?: boolean;
-  }
+  },
 ) => {
   const { data, error } = await supabase
     .from("especialidades")
     .update(especialidad)
     .eq("id_especialidad", id)
-    .select(`
+    .select(
+      `
       id_especialidad,
       codigo,
       nombre,
@@ -101,7 +110,8 @@ export const updateEspecialidad = async (
       activo,
       fecha_creacion,
       fecha_actualizacion
-    `)
+    `,
+    )
     .maybeSingle();
 
   if (error) {
@@ -117,7 +127,8 @@ export const deleteEspecialidad = async (id: string) => {
     .from("especialidades")
     .update({ activo: false })
     .eq("id_especialidad", id)
-    .select(`
+    .select(
+      `
       id_especialidad,
       codigo,
       nombre,
@@ -126,7 +137,8 @@ export const deleteEspecialidad = async (id: string) => {
       activo,
       fecha_creacion,
       fecha_actualizacion
-    `)
+    `,
+    )
     .maybeSingle();
 
   if (error) {

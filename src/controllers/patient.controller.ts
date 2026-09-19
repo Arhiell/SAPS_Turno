@@ -16,43 +16,29 @@ import {
  * POST /api/patients
  * Registra un paciente.
  */
-export const createPatientController =
-  async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
+export const createPatientController = async (
+    req: Request, res: Response, next: NextFunction) => {
     try {
-      const validation =
-        createPatientSchema.safeParse(
-          req.body
-        );
+      const validation = createPatientSchema.safeParse(req.body);
 
       if (!validation.success) {
         return res.status(400).json({
           success: false,
-          message:
-            "Datos del paciente inválidos",
-          errors:
-            validation.error.flatten()
-              .fieldErrors
+          message: "Datos del paciente inválidos",
+          errors: validation.error.flatten().fieldErrors,
         });
       }
 
-      const patient =
-        await registerPatient(
-          validation.data
-        );
+      const patient = await registerPatient(validation.data);
 
       return res.status(201).json({
         success: true,
-        message:
-          "Paciente registrado correctamente",
+        message: "Paciente registrado correctamente",
         data: {
-          patient
-        }
+          patient,
+        },
       });
     } catch (error) {
       next(error);
     }
-  };
+};

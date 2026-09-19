@@ -6,11 +6,11 @@ import morgan from "morgan";
 import routes from "./routes/index.js";
 
 import {
-  notFoundHandler,
+  notFoundHandler
 } from "./middlewares/not-found.middleware.js";
 
 import {
-  errorHandler,
+  errorHandler
 } from "./middlewares/error.middleware.js";
 
 const app = express();
@@ -21,13 +21,13 @@ app.use(
   cors({
     origin: true,
     credentials: true,
-  })
+  }),
 );
 
 app.use(
   express.json({
     limit: "1mb",
-  })
+  }),
 );
 
 app.use(morgan("dev"));

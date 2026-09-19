@@ -11,14 +11,11 @@ import {
 /**
  * Verifica únicamente que la API esté funcionando.
  */
-export const healthCheck = (
-  _req: Request,
-  res: Response
-) => {
+export const healthCheck = (_req: Request, res: Response) => {
   res.status(200).json({
     success: true,
     message: "SAPS Turno API funcionando correctamente",
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 };
 
@@ -26,19 +23,16 @@ export const healthCheck = (
  * Verifica conexión real con Supabase/PostgreSQL.
  */
 export const databaseHealthCheck = async (
-  _req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const database = await checkDatabaseConnection();
+  _req: Request, res: Response, next: NextFunction) => {
+    try {
+      const database = await checkDatabaseConnection();
 
-    res.status(200).json({
-      success: true,
-      message: "Conexión con la base de datos correcta",
-      data: database
-    });
-  } catch (error) {
-    next(error);
-  }
+      res.status(200).json({
+        success: true,
+        message: "Conexión con la base de datos correcta",
+        data: database,
+      });
+    } catch (error) {
+      next(error);
+    }
 };

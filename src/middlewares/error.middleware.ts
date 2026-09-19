@@ -1,4 +1,4 @@
-//Errores Globales 
+//Errores Globales
 
 import type {
   Request,
@@ -6,25 +6,23 @@ import type {
   NextFunction
 } from "express";
 
-import { AppError } from "../utils/app-error.js";
+import {
+  AppError
+} from "../utils/app-error.js";
 
-export const errorHandler = (
-  error: Error,
-  _req: Request,
-  res: Response,
-  _next: NextFunction
-) => {
-  console.error(error);
+export const errorHandler = (error: Error, _req: Request, res:
+  Response, _next: NextFunction) => {
+    console.error(error);
 
   if (error instanceof AppError) {
     return res.status(error.statusCode).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 
   return res.status(500).json({
     success: false,
-    message: "Error interno del servidor"
+    message: "Error interno del servidor",
   });
 };

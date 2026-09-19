@@ -1,51 +1,43 @@
 import {
-  supabase
-} from "../config/supabase.js";
+  supabase }
+   from "../config/supabase.js";
 
 /**
  * Busca una identidad Google mediante
  * el identificador estable "sub".
  */
-export const findGoogleIdentity = async (
-  googleId: string
-) => {
+export const findGoogleIdentity = async (googleId: string) => {
   const { data, error } = await supabase
     .from("usuario_identidades")
-    .select(`
+    .select(
+      `
       id_identidad,
       id_usuario,
       proveedor,
       proveedor_usuario_id,
       email_proveedor
-    `)
-    .eq("proveedor", "GOOGLE")
-    .eq(
-      "proveedor_usuario_id",
-      googleId
+    `,
     )
+    .eq("proveedor", "GOOGLE")
+    .eq("proveedor_usuario_id", googleId)
     .maybeSingle();
 
   if (error) {
-    throw new Error(
-      `Error buscando identidad Google: ${error.message}`
-    );
+    throw new Error(`Error buscando identidad Google: ${error.message}`);
   }
 
   return data;
 };
 
-
 /**
  * Comprueba si ese email ya pertenece
  * a una cuenta local.
  */
-export const findUserByGoogleEmail =
-  async (
-    email: string
-  ) => {
-    const { data, error } = await supabase
-      .from("usuarios")
-      .select(`
+export const findUserByGoogleEmail = async (email: string) => {
+  const { data, error } = await supabase
+    .from("usuarios")
+    .select(
+      `
         id_usuario,
         nombre_usuario,
         email,
@@ -53,20 +45,18 @@ export const findUserByGoogleEmail =
         email_verificado,
         activo,
         id_rol
-      `)
-      .ilike("email", email)
-      .limit(1)
-      .maybeSingle();
+      `,
+    )
+    .ilike("email", email)
+    .limit(1)
+    .maybeSingle();
 
-    if (error) {
-      throw new Error(
-        `Error buscando usuario por email: ${error.message}`
-      );
-    }
+  if (error) {
+    throw new Error(`Error buscando usuario por email: ${error.message}`);
+  }
 
-    return data;
-  };
-
+  return data;
+};
 
 interface CreateGoogleUserData {
   idRol: string;
@@ -77,43 +67,38 @@ interface CreateGoogleUserData {
 /**
  * Crea una cuenta sin contraseña local.
  */
-export const createGoogleUser = async (
-  data: CreateGoogleUserData
-) => {
-  const { data: user, error } =
-    await supabase
-      .from("usuarios")
-      .insert({
-        id_rol: data.idRol,
-        nombre_usuario:
-          data.username,
-        email: data.email,
+export const createGoogleUser = async (data: CreateGoogleUserData) => {
+  const { data: user, error } = await supabase
+    .from("usuarios")
+    .insert({
+      id_rol: data.idRol,
+      nombre_usuario: data.username,
+      email: data.email,
 
-        // Cuenta exclusivamente Google.
-        password_hash: null,
+      // Cuenta exclusivamente Google.
+      password_hash: null,
 
-        // Google ya verificó el email.
-        email_verificado: true
-      })
-      .select(`
+      // Google ya verificó el email.
+      email_verificado: true,
+    })
+    .select(
+      `
         id_usuario,
         id_rol,
         nombre_usuario,
         email,
         email_verificado,
         activo
-      `)
-      .single();
+      `,
+    )
+    .single();
 
   if (error) {
-    throw new Error(
-      `Error creando usuario Google: ${error.message}`
-    );
+    throw new Error(`Error creando usuario Google: ${error.message}`);
   }
 
   return user;
 };
-
 
 interface CreateGoogleIdentityData {
   idUsuario: string;
@@ -125,27 +110,18 @@ interface CreateGoogleIdentityData {
  * Relaciona nuestro usuario con
  * la identidad estable de Google.
  */
-export const createGoogleIdentity = async (
-  data: CreateGoogleIdentityData
-) => {
-  const { error } = await supabase
-    .from("usuario_identidades")
-    .insert({
-      id_usuario:
-        data.idUsuario,
+export const createGoogleIdentity = async (data: CreateGoogleIdentityData) => {
+  const { error } = await supabase.from("usuario_identidades").insert({
+    id_usuario: data.idUsuario,
 
-      proveedor: "GOOGLE",
+    proveedor: "GOOGLE",
 
-      proveedor_usuario_id:
-        data.googleId,
+    proveedor_usuario_id: data.googleId,
 
-      email_proveedor:
-        data.email
-    });
+    email_proveedor: data.email,
+  });
 
   if (error) {
-    throw new Error(
-      `Error guardando identidad Google: ${error.message}`
-    );
+    throw new Error(`Error guardando identidad Google: ${error.message}`);
   }
 };

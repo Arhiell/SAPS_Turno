@@ -102,9 +102,7 @@ if (!result.success) {
     "Configuración de variables de entorno inválida"
   );
 
-  
+
 }
-
-
 
 export const env = result.data;
