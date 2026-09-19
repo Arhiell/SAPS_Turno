@@ -57,8 +57,37 @@ export const createPatientAccountSchema = z
   })
   .strict();
 
+/**
+ * Datos de una cuenta PROFESIONAL.
+ */
+export const createProfessionalAccountSchema = z
+  .object({
+    nombre_usuario: z
+      .string()
+      .trim()
+      .min(3)
+      .max(60),
+
+    email: z
+      .string()
+      .trim()
+      .email(),
+
+    password: z
+      .string()
+      .min(8)
+      .regex(/[A-Z]/)
+      .regex(/[a-z]/)
+      .regex(/[0-9]/)
+      .regex(/[^A-Za-z0-9]/)
+  })
+  .strict();
+
 export type CreateAdminInput =
   z.infer<typeof createAdminSchema>;
 
 export type CreatePatientAccountInput =
   z.infer<typeof createPatientAccountSchema>;
+
+export type CreateProfessionalAccountInput =
+  z.infer<typeof createProfessionalAccountSchema>;

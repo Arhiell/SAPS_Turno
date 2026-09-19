@@ -14,11 +14,14 @@ import {
 
 import {
   createAdminSchema,
-  createPatientAccountSchema
+  createPatientAccountSchema,
+  createProfessionalAccountSchema
 } from "../validators/user.validator.js";
 
 import {
-  createPatientAccount
+  createAdminAccount,
+  createPatientAccount,
+  createProfessionalAccount
 } from "../services/user-management.service.js";
 
 import {
@@ -36,15 +39,15 @@ export const userHealthCheck = async (
     try {
       const result = await checkUserModule();
 
-      return res.status(200).json({
-        success: true,
-        message: "Módulo de usuarios conectado correctamente",
-        data: result,
-      });
-    } catch (error) {
-      // El middleware global se encargará del error.
-      next(error);
-    }
+    return res.status(200).json({
+      success: true,
+      message: "Módulo de usuarios conectado correctamente",
+      data: result
+    });
+  } catch (error) {
+    // El middleware global se encargará del error.
+    next(error);
+  }
 };
 
 /**
@@ -52,63 +55,88 @@ export const userHealthCheck = async (
  * automáticamente su verificación de email.
  */
 export const createAdmin = async (
-  req: Request, res: Response, next: NextFunction) => {
-    try {
-      const validation = createAdminSchema.safeParse(req.body);
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const validation =
+      createAdminSchema.safeParse(
+        req.body
+      );
 
-      if (!validation.success) {
-        return res.status(400).json({
-          success: false,
-          message: "Datos del administrador inválidos",
-          errors: validation.error.flatten().fieldErrors,
-        });
-      }
-
-      /**
-       * El service coordina:
-       *
-       * - creación del usuario
-       * - relación con salita
-       * - token de email
-       */
-      const result = await createAdminWithVerification(validation.data, {
-        ip: req.ip ?? null,
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Datos del administrador inválidos",
+        errors:
+          validation.error.flatten()
+            .fieldErrors
       });
-
-      const response: {
-        success: boolean;
-        message: string;
-        data: {
-          user: typeof result.user;
-          verificationToken?: string;
-        };
-      } = {
-        success: true,
-
-        message: "Administrador creado correctamente",
-
-        data: {
-          user: result.user,
-        },
-      };
-
-      if (env.NODE_ENV === "development") {
-        response.data.verificationToken = result.verificationToken;
-      }
-
-      return res.status(201).json(response);
-    } catch (error) {
-      next(error);
     }
+
+    /**
+     * El service coordina:
+     *
+     * - creación del usuario
+     * - relación con salita
+     * - token de email
+     */
+    const result =
+      await createAdminWithVerification(
+        validation.data,
+        {
+          ip: req.ip ?? null
+        }
+      );
+
+    const response: {
+      success: boolean;
+      message: string;
+      data: {
+        user: typeof result.user;
+        verificationToken?: string;
+      };
+    } = {
+      success: true,
+
+      message:
+        "Administrador creado correctamente",
+
+      data: {
+        user: result.user
+      }
+    };
+
+    if (
+      env.NODE_ENV === "development"
+    ) {
+      response.data.verificationToken =
+        result.verificationToken;
+    }
+
+    return res.status(201).json(
+      response
+    );
+  } catch (error) {
+    next(error);
+  }
 };
 
 /**
  * Crea una cuenta con rol PACIENTE.
  */
 export const createPatient = async (
-  req: Request, res: Response, next: NextFunction) => {
-    try {
-      const validation = createPatientAccountSchema.safeParse(req.body);
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const validation =
+      createPatientAccountSchema.safeParse(
+        req.body
+      );
 
       if (!validation.success) {
         return res.status(400).json({
@@ -120,14 +148,16 @@ export const createPatient = async (
 
       const user = await createPatientAccount(validation.data);
 
-      return res.status(201).json({
-        success: true,
-        message: "Cuenta de paciente creada correctamente",
-        data: {
-          user,
-        },
-      });
-    } catch (error) {
-      next(error);
-    }
+    return res.status(201).json({
+      success: true,
+      message:
+        "Cuenta de paciente creada correctamente",
+      data: {
+        user
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
 };
+

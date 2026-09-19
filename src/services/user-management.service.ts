@@ -1,6 +1,7 @@
 import type {
   CreateAdminInput,
-  CreatePatientAccountInput
+  CreatePatientAccountInput,
+  CreateProfessionalAccountInput
 } from "../validators/user.validator.js";
 
 import {
@@ -142,6 +143,53 @@ export const createPatientAccount = async (
   if (!role) {
     throw new AppError(
       "Rol PACIENTE no encontrado",
+      500
+    );
+  }
+
+  const passwordHash =
+    await hashPassword(input.password);
+
+  const user = await createUser({
+    id_rol: role.id_rol,
+    nombre_usuario: username,
+    email,
+    password_hash: passwordHash
+  });
+
+  return {
+    ...user,
+    rol: role.codigo
+  };
+};
+
+/**
+ * Crea una cuenta PROFESIONAL.
+ *
+ * El usuario queda asociado al rol
+ * PROFESIONAL. La relación con una
+ * salita se realizará posteriormente.
+ */
+export const createProfessionalAccount = async (
+  input: CreateProfessionalAccountInput
+) => {
+  const email =
+    input.email.toLowerCase();
+
+  const username =
+    input.nombre_usuario.trim();
+
+  await ensureUserDoesNotExist(
+    email,
+    username
+  );
+
+  const role =
+    await findRoleByCode("PROFESIONAL");
+
+  if (!role) {
+    throw new AppError(
+      "Rol PROFESIONAL no encontrado",
       500
     );
   }
