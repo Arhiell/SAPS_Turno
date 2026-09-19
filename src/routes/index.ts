@@ -10,8 +10,8 @@ import especialidadRoutes from "./especialidad.routes.js";
 import salitaRoutes from "./salita.routes.js";
 import barrioRoutes from "./barrio.routes.js";
 import zonaRoutes from "./zona.routes.js";
-import googleAuthRoutes
-  from "./google-auth.routes.js";
+import googleAuthRoutes from "./google-auth.routes.js";
+import patientRoutes from "./patient.routes.js";
 
 const router = Router();
 
@@ -44,6 +44,9 @@ router.use("/barrios", barrioRoutes);
 
 // Zonas
 router.use("/zonas", zonaRoutes);
+
+//Pacientess
+router.use("/patients", patientRoutes);
 
 
 
