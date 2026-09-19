@@ -7,6 +7,9 @@ import passwordRecoveryRoutes from "./password-recovery.routes.js";
 import emailVerificationRoutes
 from "./email-verification.routes.js";
 import especialidadRoutes from "./especialidad.routes.js";
+import salitaRoutes from "./salita.routes.js";
+import barrioRoutes from "./barrio.routes.js";
+import zonaRoutes from "./zona.routes.js";
 
 const router = Router();
 
@@ -27,5 +30,14 @@ router.use("/auth/email", emailVerificationRoutes);
 
 // Especialidades
 router.use("/especialidades", especialidadRoutes);
+
+// Salitas
+router.use("/salitas", salitaRoutes);
+
+// Barrios
+router.use("/barrios", barrioRoutes);
+
+// Zonas
+router.use("/zonas", zonaRoutes);
 
 export default router;
