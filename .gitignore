@@ -28,3 +28,6 @@ coverage/
 # Caché
 .cache/
 .tmp/
+
+//Bruno extension
+SAPS Turno API/
