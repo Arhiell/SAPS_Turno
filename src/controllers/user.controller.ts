@@ -161,3 +161,32 @@ export const createPatient = async (
   }
 };
 
+export const createProfessional = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const validation =
+      createProfessionalAccountSchema.safeParse(req.body);
+
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Datos inválidos",
+        errors: validation.error.flatten().fieldErrors
+      });
+    }
+
+    const user = await createProfessionalAccount(validation.data);
+
+    return res.status(201).json({
+      success: true,
+      message: "Cuenta de profesional creada correctamente",
+      data: { user }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

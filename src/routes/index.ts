@@ -13,6 +13,10 @@ import zonaRoutes from "./zona.routes.js";
 import googleAuthRoutes from "./google-auth.routes.js";
 import patientRoutes from "./patient.routes.js";
 
+import tutorRoutes from "./tutor.routes.js";
+import salitaBarrioRoutes from "./salita-barrio.routes.js";
+import profesionalRoutes from "./profesional.routes.js";
+
 const router = Router();
 
 // Estado general.
