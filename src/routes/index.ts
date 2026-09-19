@@ -5,13 +5,15 @@ import userRoutes from "./user.routes.js";
 import authRoutes from "./auth.routes.js";
 import passwordRecoveryRoutes from "./password-recovery.routes.js";
 import emailVerificationRoutes
-from "./email-verification.routes.js";
+  from "./email-verification.routes.js";
 import especialidadRoutes from "./especialidad.routes.js";
 import salitaRoutes from "./salita.routes.js";
 import barrioRoutes from "./barrio.routes.js";
 import zonaRoutes from "./zona.routes.js";
 import googleAuthRoutes from "./google-auth.routes.js";
 import patientRoutes from "./patient.routes.js";
+import salitaBarrioRoutes from "./salita-barrio.routes.js";
+import profesionalRoutes from "./profesional.routes.js";
 
 const router = Router();
 
@@ -27,27 +29,31 @@ router.use("/auth", authRoutes);
 // Recuperación de contraseña.
 router.use("/auth/password", passwordRecoveryRoutes);
 
-// Verificación de email
+// Verificación de email.
 router.use("/auth/email", emailVerificationRoutes);
 
 // Autenticación federada Google.
 router.use("/auth/google", googleAuthRoutes);
 
-// Especialidades
+// Especialidades.
 router.use("/especialidades", especialidadRoutes);
 
-// Salitas
+// Salitas.
 router.use("/salitas", salitaRoutes);
 
-// Barrios
+// Barrios.
 router.use("/barrios", barrioRoutes);
 
-// Zonas
+// Zonas.
 router.use("/zonas", zonaRoutes);
 
-//Pacientess
+// Pacientes.
 router.use("/patients", patientRoutes);
 
+// Salitas-Barrios.
+router.use("/salita-barrios", salitaBarrioRoutes);
 
+// Profesionales.
+router.use("/profesionales", profesionalRoutes);
 
 export default router;

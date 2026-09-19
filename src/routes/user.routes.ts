@@ -3,6 +3,7 @@ import { Router } from "express";
 import {
   createAdmin,
   createPatient,
+  createProfessional,
   userHealthCheck
 } from "../controllers/user.controller.js";
 
@@ -47,6 +48,20 @@ router.post(
     "ADMIN_SALITA"
   ),
   createPatient
+);
+
+/**
+ * SUPER_ADMIN y ADMIN_SALITA
+ * pueden crear profesionales.
+ */
+router.post(
+  "/professionals",
+  authenticate,
+  requireRole(
+    "SUPER_ADMIN",
+    "ADMIN_SALITA"
+  ),
+  createProfessional
 );
 
 export default router;

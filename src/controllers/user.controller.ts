@@ -14,11 +14,14 @@ import {
 
 import {
   createAdminSchema,
-  createPatientAccountSchema
+  createPatientAccountSchema,
+  createProfessionalAccountSchema
 } from "../validators/user.validator.js";
 
 import {
-  createPatientAccount
+  createAdminAccount,
+  createPatientAccount,
+  createProfessionalAccount
 } from "../services/user-management.service.js";
 
 import {
@@ -45,7 +48,6 @@ export const userHealthCheck = async (
       data: result
     });
   } catch (error) {
-    // El middleware global se encargará del error.
     next(error);
   }
 };
@@ -61,28 +63,16 @@ export const createAdmin = async (
 ) => {
   try {
     const validation =
-      createAdminSchema.safeParse(
-        req.body
-      );
+      createAdminSchema.safeParse(req.body);
 
     if (!validation.success) {
       return res.status(400).json({
         success: false,
-        message:
-          "Datos del administrador inválidos",
-        errors:
-          validation.error.flatten()
-            .fieldErrors
+        message: "Datos del administrador inválidos",
+        errors: validation.error.flatten().fieldErrors
       });
     }
 
-    /**
-     * El service coordina:
-     *
-     * - creación del usuario
-     * - relación con salita
-     * - token de email
-     */
     const result =
       await createAdminWithVerification(
         validation.data,
@@ -100,30 +90,22 @@ export const createAdmin = async (
       };
     } = {
       success: true,
-
-      message:
-        "Administrador creado correctamente",
-
+      message: "Administrador creado correctamente",
       data: {
         user: result.user
       }
     };
 
-    if (
-      env.NODE_ENV === "development"
-    ) {
+    if (env.NODE_ENV === "development") {
       response.data.verificationToken =
         result.verificationToken;
     }
 
-    return res.status(201).json(
-      response
-    );
+    return res.status(201).json(response);
   } catch (error) {
     next(error);
   }
 };
-
 
 /**
  * Crea una cuenta con rol PACIENTE.
@@ -135,9 +117,7 @@ export const createPatient = async (
 ) => {
   try {
     const validation =
-      createPatientAccountSchema.safeParse(
-        req.body
-      );
+      createPatientAccountSchema.safeParse(req.body);
 
     if (!validation.success) {
       return res.status(400).json({
@@ -155,8 +135,7 @@ export const createPatient = async (
 
     return res.status(201).json({
       success: true,
-      message:
-        "Cuenta de paciente creada correctamente",
+      message: "Cuenta de paciente creada correctamente",
       data: {
         user
       }
@@ -166,3 +145,42 @@ export const createPatient = async (
   }
 };
 
+/**
+ * Crea una cuenta con rol PROFESIONAL.
+ */
+export const createProfessional = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const validation =
+      createProfessionalAccountSchema.safeParse(
+        req.body
+      );
+
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Datos inválidos",
+        errors:
+          validation.error.flatten().fieldErrors
+      });
+    }
+
+    const user =
+      await createProfessionalAccount(
+        validation.data
+      );
+
+    return res.status(201).json({
+      success: true,
+      message: "Cuenta de profesional creada correctamente",
+      data: {
+        user
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};

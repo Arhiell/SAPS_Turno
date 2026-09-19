@@ -12,7 +12,6 @@ export const countUsers = async (): Promise<number> => {
       head: true
     });
 
-  // Si Supabase devuelve un error, detenemos la operación.
   if (error) {
     throw new Error(
       `Error consultando usuarios: ${error.message}`
@@ -58,8 +57,12 @@ export interface UserAccount {
 
 /**
  * Datos necesarios para insertar una cuenta.
+ *
+ * id_persona es opcional porque no todas las
+ * cuentas necesitan estar asociadas a una persona.
  */
 export interface CreateUserData {
+  id_persona?: string | null;
   id_rol: string;
   nombre_usuario: string;
   email: string;
@@ -139,6 +142,9 @@ export const findRoleByCode = async (
 /**
  * Inserta una nueva cuenta.
  *
+ * Puede asociarse opcionalmente a una persona
+ * mediante id_persona.
+ *
  * Importante:
  * password_hash se envía a PostgreSQL,
  * pero nunca se devuelve al cliente.
@@ -149,6 +155,7 @@ export const createUser = async (
   const { data, error } = await supabase
     .from("usuarios")
     .insert({
+      id_persona: userData.id_persona ?? null,
       id_rol: userData.id_rol,
       nombre_usuario: userData.nombre_usuario,
       email: userData.email,
@@ -170,8 +177,6 @@ export const createUser = async (
     );
   }
 
-  
-
   return data;
 };
 
@@ -189,6 +194,7 @@ export const findUserForLogin = async (
     .select(`
       id_usuario,
       id_rol,
+      id_persona,
       nombre_usuario,
       email,
       password_hash,
@@ -246,6 +252,7 @@ export const findUserById = async (
     .select(`
       id_usuario,
       id_rol,
+      id_persona,
       nombre_usuario,
       email,
       activo
