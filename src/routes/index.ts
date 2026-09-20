@@ -19,6 +19,7 @@ import profesionalRoutes from "./profesional.routes.js";
 import profesionalEspecialidadRoutes from "./profesional-especialidad.routes.js";
 import profesionalSalitaRoutes from "./profesional-salita.routes.js";
 import horarioAtencionRoutes from "./horario-atencion.routes.js";
+import bloqueoAgendaRoutes from "./bloqueo-agenda.routes.js";
 
 const router = Router();
 
@@ -70,5 +71,8 @@ router.use("/profesionales", profesionalSalitaRoutes);
 
 // Horarios de atención.
 router.use("/horarios-atencion", horarioAtencionRoutes);
+
+// Bloqueos de agenda.
+router.use("/bloqueos-agenda", bloqueoAgendaRoutes);
 
 export default router;
