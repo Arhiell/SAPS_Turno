@@ -18,6 +18,7 @@ import salitaBarrioRoutes from "./salita-barrio.routes.js";
 import profesionalRoutes from "./profesional.routes.js";
 import profesionalEspecialidadRoutes from "./profesional-especialidad.routes.js";
 import profesionalSalitaRoutes from "./profesional-salita.routes.js";
+import horarioAtencionRoutes from "./horario-atencion.routes.js";
 
 const router = Router();
 
@@ -66,5 +67,8 @@ router.use("/profesionales", profesionalEspecialidadRoutes);
 
 // Profesionales-Salitas.
 router.use("/profesionales", profesionalSalitaRoutes);
+
+// Horarios de atención.
+router.use("/horarios-atencion", horarioAtencionRoutes);
 
 export default router;
