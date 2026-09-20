@@ -33,6 +33,12 @@ import type {
   TurnoStatusInput 
 } from "../validators/turno-update.validator.js";
 
+import {
+  notifyTurnoReprogramado,
+  notifyTurnoCancelado,
+  notifyCambioProfesional,
+} from "./notificacion-turno.service.js";
+
 const assertEditable = (turno: TurnoRow) => {
   // Respeta el indicador real del catálogo; no se reabren estados finales.
   if (turno.estado.es_estado_final) throw new AppError(
@@ -89,7 +95,7 @@ export const updateTurno = async (
   // Reprogramar revalida toda la agenda, excluyendo solamente este mismo turno.
   const agenda = await validateTurnoAgenda(candidate, id);
 
-  return requireUpdated(
+  const updated = requireUpdated(
     await patchTurno(
       id, 
       current.version, 
@@ -99,6 +105,20 @@ export const updateTurno = async (
       }
     )
   );
+
+  // Notifica después de guardar; compara instantes para evitar avisos por formato de fecha.
+  if (
+    Date.parse(current.fecha_hora_inicio) !== Date.parse(updated.fecha_hora_inicio) ||
+    Date.parse(current.fecha_hora_fin) !== Date.parse(updated.fecha_hora_fin)
+  ) {
+    await notifyTurnoReprogramado(updated.id_turno);
+  }
+
+  if (current.id_profesional !== updated.id_profesional) {
+    await notifyCambioProfesional(updated.id_turno);
+  }
+
+  return updated;
 };
 
 export const changeTurnoStatus = async (
@@ -144,7 +164,7 @@ export const changeTurnoStatus = async (
   }
 
   // Cancelación lógica: mantiene fecha, paciente, profesional e historial del trigger.
-  return requireUpdated(
+  const updated = requireUpdated(
     await patchTurno(
       id, 
       current.version, 
@@ -157,4 +177,11 @@ export const changeTurnoStatus = async (
         } : {}
       )
   }));
+
+  // El código del catálogo identifica la cancelación; los UUID cambian entre bases.
+  if (current.estado.codigo !== "CANCELADO" && state.codigo === "CANCELADO") {
+    await notifyTurnoCancelado(updated.id_turno);
+  }
+
+  return updated;
 };

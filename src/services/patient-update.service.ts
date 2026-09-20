@@ -1,10 +1,32 @@
-import type { UpdatePatientInput } from "../validators/patient-update.validator.js";
-import { findPatientById } from "../repositories/patient-read.repository.js";
-import { updatePatient, updatePatientStatus } from "../repositories/patient-update.repository.js";
-import { editPerson, validatePersonUpdate } from "./person.service.js";
-import { splitPatientInput } from "./patient-data.js";
-import { AppError } from "../utils/app-error.js";
-import { rethrowPatientError } from "../utils/profile-error.js";
+import type { 
+  UpdatePatientInput 
+} from "../validators/patient-update.validator.js";
+
+import { 
+  findPatientById 
+} from "../repositories/patient-read.repository.js";
+
+import { 
+  updatePatient, updatePatientStatus 
+} from "../repositories/patient-update.repository.js";
+
+import { 
+  editPerson, 
+  validatePersonUpdate 
+} from "./person.service.js";
+
+import { 
+  splitPatientInput 
+} from "./patient-data.js";
+
+import { 
+  AppError 
+} from "../utils/app-error.js";
+
+import { 
+  rethrowPatientError 
+} from "../utils/profile-error.js";
+
 
 export const editPatient = async (idPatient: string, input: UpdatePatientInput) => {
   const current = await findPatientById(idPatient);
@@ -33,3 +55,4 @@ export const changePatientStatus = async (idPatient: string, active: boolean) =>
   }
   return updatePatientStatus(idPatient, active);
 };
+

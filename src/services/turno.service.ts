@@ -31,6 +31,10 @@ import type {
   AuthenticatedUser 
 } from "../types/auth.types.js";
 
+import { 
+    notifyTurnoCreado 
+} from "./notificacion-turno.service.js";
+
 export const createTurno = async (
   input: CreateTurnoInput, 
   user: AuthenticatedUser
@@ -48,7 +52,7 @@ export const createTurno = async (
 
   const agenda = await validateTurnoAgenda(input);
   // Código público sin datos personales, dentro del VARCHAR(30) del SQL.
-  return insertTurno(
+  const turno = await insertTurno(
     { 
       ...input, 
       ...agenda, 
@@ -57,4 +61,9 @@ export const createTurno = async (
       creado_por: user.id_usuario 
     }
   );
+
+  // La notificación no forma parte de la validación de agenda.
+  await notifyTurnoCreado(turno.id_turno);
+
+  return turno;
 };

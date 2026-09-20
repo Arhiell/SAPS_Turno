@@ -26,6 +26,7 @@ import disponibilidadRoutes from "./disponibilidad.routes.js";
 
 import historialTurnoRoutes from "./historial-turno.routes.js";
 import sancionRoutes from "./sancion.routes.js";
+import notificacionRoutes from "./notificacion.routes.js";
 
 const router = Router();
 
@@ -93,5 +94,8 @@ router.use("/turnos", turnoRoutes);
 
 // Disponibilidad.
 router.use("/disponibilidad", disponibilidadRoutes);
+
+// Notificaciones internas del usuario.
+router.use("/notificaciones", notificacionRoutes);
 
 export default router;
