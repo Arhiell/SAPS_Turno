@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { esReporteSecciones } from "../types/reporte-agenda.types.js";
 
 // Convierte objetos en filas de Excel.
 const normalizeRows = (data: unknown) => {
@@ -15,6 +16,30 @@ export const generateExcel = async (
   titulo: string,
 ) => {
   const workbook = new ExcelJS.Workbook();
+  if (esReporteSecciones(data)) {
+    // Cada profesional tiene una hoja independiente y encabezados al imprimir.
+    data.secciones.forEach((section, index) => {
+      const sheet = workbook.addWorksheet(`Lista ${index + 1}`, { pageSetup: {
+        paperSize: 9, orientation: "portrait", fitToPage: true, fitToWidth: 1, fitToHeight: 0,
+      } });
+      const addHeading = (line: string) => {
+        const row = sheet.addRow([line]);
+        sheet.mergeCells(row.number, 1, row.number, 6);
+        row.height = 24;
+      };
+      for (const line of section.cabecera) addHeading(line);
+      sheet.addRow([]);
+      const header = sheet.addRow(section.columnas);
+      header.font = { bold: true };
+      for (const row of section.filas) sheet.addRow(row);
+      sheet.addRow([]);
+      for (const line of section.pie) addHeading(line);
+      [6, 10, 30, 16, 20, 40].forEach((width, i) => { sheet.getColumn(i + 1).width = width; });
+      sheet.eachRow(row => { row.alignment = { vertical: "top", wrapText: true }; });
+      sheet.pageSetup.printTitlesRow = `1:${header.number}`;
+    });
+    return Buffer.from(await workbook.xlsx.writeBuffer());
+  }
   const sheet = workbook.addWorksheet("Reporte");
 
   sheet.addRow([titulo]);

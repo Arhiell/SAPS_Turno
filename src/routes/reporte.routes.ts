@@ -15,6 +15,14 @@ import {
 
 const router = Router();
 
+import { getAgendaDiariaController, exportAgendaDiariaController, printAgendaDiariaController }
+  from "../controllers/reporte-agenda.controller.js";
+
+// La agenda nominal se restringe a administración, a diferencia de las estadísticas.
+router.get("/agenda-diaria", authenticate, requireRole("SUPER_ADMIN", "ADMIN_SALITA"), getAgendaDiariaController);
+router.get("/agenda-diaria/exportar", authenticate, requireRole("SUPER_ADMIN", "ADMIN_SALITA"), exportAgendaDiariaController);
+router.get("/agenda-diaria/imprimir", authenticate, requireRole("SUPER_ADMIN", "ADMIN_SALITA"), printAgendaDiariaController);
+
 const rolesReporte = [
   "SUPER_ADMIN",
   "ADMIN_SALITA",

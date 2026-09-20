@@ -29,17 +29,24 @@ export const findTurnoById = async (id: string) => {
 
 export const findTurnoState = async (code: string) => {
   const { data, error } = await supabase.from("estados_turno")
-    .select("id_estado,codigo,nombre,ocupa_agenda,impide_otro_misma_especialidad,es_estado_final,activo")
+    .select(
+      "id_estado,codigo,nombre,ocupa_agenda,impide_otro_misma_especialidad,es_estado_final,activo"
+    )
     .eq("codigo", code).eq("activo", true).returns<TurnoState[]>().maybeSingle();
   if (error) throw error;
   return data;
 };
 
 // El alcance se aplica en la consulta, antes de contar o paginar.
-export const findTurnos = async (filters: TurnoQuery, scope: string[] | null, stateId?: string) => {
+export const findTurnos = async (filters: TurnoQuery, scope: string[] | null, stateId?: string,
+  agenda?: { id_especialidad?: string | undefined }) => {
 
   let query = supabase.from("turnos").select(
-    turnoSelect, 
+    agenda ? turnoSelect.replace("estado:estados_turno(", "estado:estados_turno!inner(")
+      .replace(
+        "salita:salitas(id_salita,nombre)",
+        "salita:salitas(id_salita,nombre,direccion)"
+      ) : turnoSelect,
     { 
       count: "exact" 
     }
@@ -52,6 +59,13 @@ export const findTurnos = async (filters: TurnoQuery, scope: string[] | null, st
   }
 
   if (stateId) query = query.eq("id_estado", stateId);
+
+  // La lista de atención incluye solo estados no finales del catálogo.
+  if (agenda) {
+    query = query.eq("estado.es_estado_final", false)
+      .not("estado.codigo", "in", "(CANCELADO,REPROGRAMADO)");
+    if (agenda.id_especialidad) query = query.eq("id_especialidad", agenda.id_especialidad);
+  }
 
   if (filters.fecha) {
     const bounds = agendaDayBounds(filters.fecha);

@@ -43,10 +43,20 @@ export const exportReporte = async (
   const data =
     await getReporteExportData(filters);
 
-  const titulo =
-    `Reporte SAPS - ${filters.tipo}`;
+  return generateReporteFile(
+    data, 
+    `Reporte SAPS - ${filters.tipo}`,
+     filters.formato
+    );
+};
 
-  if (filters.formato === "xlsx") {
+// Un solo punto de selección de formato para reportes estadísticos y agenda diaria.
+export const generateReporteFile = async (
+  data: unknown, 
+  titulo: string,
+   formato: "pdf" | "xlsx" | "docx") => {
+
+  if (formato === "xlsx") {
     return {
       buffer: await generateExcel(
         data,
@@ -58,7 +68,7 @@ export const exportReporte = async (
     };
   }
 
-  if (filters.formato === "docx") {
+  if (formato === "docx") {
     return {
       buffer: await generateWord(
         data,

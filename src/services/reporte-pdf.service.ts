@@ -1,5 +1,13 @@
 import PDFDocument from "pdfkit";
 
+import { 
+  esReporteSecciones 
+} from "../types/reporte-agenda.types.js";
+
+import { 
+  drawReporteSections 
+} from "./reporte-pdf-tabla.js";
+
 // Convierte valores complejos a texto.
 const textValue = (value: unknown) => {
   if (
@@ -17,12 +25,14 @@ export const generatePdf = (
   data: unknown,
   titulo: string,
 ): Promise<Buffer> => {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
       margin: 40,
+      ...(esReporteSecciones(data) ? { size: "A4" } : {}),
     });
 
     const chunks: Buffer[] = [];
+    doc.on("error", reject);
 
     // Guarda cada fragmento generado.
     doc.on("data", (chunk) => {
@@ -32,6 +42,12 @@ export const generatePdf = (
     doc.on("end", () => {
       resolve(Buffer.concat(chunks));
     });
+
+    if (esReporteSecciones(data)) {
+      drawReporteSections(doc, data);
+      doc.end();
+      return;
+    }
 
     doc
       .fontSize(18)

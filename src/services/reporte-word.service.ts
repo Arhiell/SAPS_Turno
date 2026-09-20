@@ -8,6 +8,10 @@ import {
   TextRun,
 } from "docx";
 
+import {
+   esReporteSecciones 
+  } from "../types/reporte-agenda.types.js";
+
 // Convierte valores a texto.
 const textValue = (value: unknown) => {
   if (
@@ -25,6 +29,31 @@ export const generateWord = async (
   data: unknown,
   titulo: string,
 ) => {
+  if (esReporteSecciones(data)) {
+
+    const document = new Document({ 
+      sections: data.secciones.map(section => ({
+        
+      // A4 en unidades twip; cada lista comienza en una sección nueva.
+      properties: { page: { size: { width: 11906, height: 16838 },
+        margin: { top: 850, bottom: 850, left: 850, right: 850 } } },
+      children: [
+        ...section.cabecera.map((text, i) => new Paragraph({ keepNext: true,
+          children: [new TextRun({ text, bold: i < 2, size: i === 0 ? 30 : 22 })] })),
+        ...(section.columnas.length ? [new Table({
+          width: { size: 100, type: "pct" },
+          rows: [section.columnas, ...section.filas].map((row, index) => new TableRow({
+            tableHeader: index === 0, cantSplit: true,
+            children: row.map(text => new TableCell({ children: [new Paragraph({
+              children: [new TextRun({ text, size: 20, bold: index === 0 })],
+            })] })),
+          })),
+        })] : []),
+        ...section.pie.map(text => new Paragraph({ text, spacing: { before: 200 } })),
+      ],
+    })) });
+    return Packer.toBuffer(document);
+  }
   const rows = Array.isArray(data)
     ? data
     : [data];
