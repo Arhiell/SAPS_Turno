@@ -24,6 +24,8 @@ import patientTutorRoutes from "./patient-tutor.routes.js";
 import turnoRoutes from "./turno.routes.js";
 import disponibilidadRoutes from "./disponibilidad.routes.js";
 
+import historialTurnoRoutes from "./historial-turno.routes.js";
+
 const router = Router();
 
 // Estado general.
@@ -78,6 +80,9 @@ router.use("/horarios-atencion", horarioAtencionRoutes);
 
 // Bloqueos de agenda.
 router.use("/bloqueos-agenda", bloqueoAgendaRoutes);
+
+// Historial automático de cambios de los turnos.
+router.use("/", historialTurnoRoutes);
 
 // Reservas y validación de agenda.
 router.use("/turnos", turnoRoutes);
