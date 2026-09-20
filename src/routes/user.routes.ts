@@ -13,7 +13,7 @@ import {
 
 import {
   requireRole
-} from "../middlewares/role.middlewares.js";
+} from "../middlewares/role.middleware.js";
 
 const router = Router();
 

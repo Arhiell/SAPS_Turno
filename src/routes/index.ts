@@ -20,6 +20,8 @@ import profesionalEspecialidadRoutes from "./profesional-especialidad.routes.js"
 import profesionalSalitaRoutes from "./profesional-salita.routes.js";
 import horarioAtencionRoutes from "./horario-atencion.routes.js";
 import bloqueoAgendaRoutes from "./bloqueo-agenda.routes.js";
+import patientTutorRoutes from "./patient-tutor.routes.js";
+import turnoRoutes from "./turno.routes.js";
 
 const router = Router();
 
@@ -56,6 +58,7 @@ router.use("/zonas", zonaRoutes);
 // Pacientes.
 router.use("/patients", patientRoutes);
 router.use("/tutors", tutorRoutes);
+router.use("/", patientTutorRoutes);
 
 // Salitas-Barrios.
 router.use("/salita-barrios", salitaBarrioRoutes);
@@ -74,5 +77,8 @@ router.use("/horarios-atencion", horarioAtencionRoutes);
 
 // Bloqueos de agenda.
 router.use("/bloqueos-agenda", bloqueoAgendaRoutes);
+
+// Reservas y validación de agenda.
+router.use("/turnos", turnoRoutes);
 
 export default router;

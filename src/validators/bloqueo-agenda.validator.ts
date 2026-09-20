@@ -1,3 +1,4 @@
+import { timeToSeconds } from "../utils/time.js";
 import { z } from "zod";
 
 const horaSchema = z
@@ -66,7 +67,7 @@ export const createBloqueoAgendaSchema = z
     if (
       data.hora_inicio &&
       data.hora_fin &&
-      data.hora_inicio >= data.hora_fin
+      timeToSeconds(data.hora_inicio) >= timeToSeconds(data.hora_fin)
     ) {
       ctx.addIssue({
         code: "custom",

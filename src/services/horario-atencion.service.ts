@@ -1,3 +1,4 @@
+import { timeToSeconds } from "../utils/time.js";
 import {
   createHorario,
   deleteHorario,
@@ -27,7 +28,7 @@ const validarHorario = (
   vigenciaDesde?: string,
   vigenciaHasta?: string | null
 ) => {
-  if (horaInicio >= horaFin) {
+  if (timeToSeconds(horaInicio) >= timeToSeconds(horaFin)) {
     throw new Error("La hora de inicio debe ser menor que la hora de fin");
   }
 

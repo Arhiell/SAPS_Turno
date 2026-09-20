@@ -1,3 +1,4 @@
+import { timeToSeconds } from "../utils/time.js";
 import {
   createBloqueo,
   deleteBloqueo,
@@ -110,7 +111,7 @@ export const actualizarBloqueo = async (
       );
     }
 
-    if (horaInicio >= horaFin) {
+    if (timeToSeconds(horaInicio) >= timeToSeconds(horaFin)) {
       throw new Error(
         "La hora de inicio debe ser menor que la hora de fin"
       );

@@ -41,6 +41,18 @@ export const getHorarioById = async (id: string) => {
   return data;
 };
 
+// Busca solo los horarios candidatos; Turnos valida la franja y su duración.
+export const findHorariosParaTurno = async (
+  profesional: string, especialidad: string, salita: string, dia: number, fecha: string
+) => {
+  const { data, error } = await supabase.from("horarios_atencion").select(horarioSelect)
+    .eq("id_profesional", profesional).eq("id_especialidad", especialidad)
+    .eq("id_salita", salita).eq("dia_semana", dia).eq("activo", true)
+    .lte("vigencia_desde", fecha).or(`vigencia_hasta.is.null,vigencia_hasta.gte.${fecha}`);
+  if (error) throw error;
+  return data ?? [];
+};
+
 export const createHorario = async (
   input: {
     id_profesional: string;

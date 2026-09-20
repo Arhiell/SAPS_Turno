@@ -39,6 +39,21 @@ export const getBloqueoById = async (id: string) => {
   return data;
 };
 
+// Un bloqueo sin profesional o especialidad afecta a toda la salita en ese ámbito.
+export const findBloqueoParaTurno = async (
+  profesional: string, especialidad: string, salita: string,
+  fecha: string, inicio: string, fin: string
+) => {
+  const { data, error } = await supabase.from("bloqueos_agenda").select("id_bloqueo")
+    .eq("activo", true).eq("id_salita", salita).eq("fecha", fecha)
+    .or(`and(or(id_profesional.is.null,id_profesional.eq.${profesional}),` +
+      `or(id_especialidad.is.null,id_especialidad.eq.${especialidad}),` +
+      `or(dia_completo.eq.true,and(hora_inicio.lt.${fin},hora_fin.gt.${inicio})))`)
+    .limit(1).maybeSingle();
+  if (error) throw error;
+  return data;
+};
+
 export const createBloqueo = async (input: {
   id_profesional?: string | null;
   id_salita: string;
