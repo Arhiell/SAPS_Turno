@@ -1,4 +1,5 @@
 import { Router } from "express";
+import configuracionRoutes from "./configuracion.routes.js";
 
 import healthRoutes from "./health.routes.js";
 import userRoutes from "./user.routes.js";
@@ -31,6 +32,9 @@ import auditoriaRoutes from "./auditoria.routes.js";
 import reporteRoutes from "./reporte.routes.js";
 
 const router = Router();
+
+// Parámetros globales y por salita.
+router.use("/configuracion", configuracionRoutes);
 
 // Estado general.
 router.use("/health", healthRoutes);
