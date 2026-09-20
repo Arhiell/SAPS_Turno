@@ -27,6 +27,7 @@ import disponibilidadRoutes from "./disponibilidad.routes.js";
 import historialTurnoRoutes from "./historial-turno.routes.js";
 import sancionRoutes from "./sancion.routes.js";
 import notificacionRoutes from "./notificacion.routes.js";
+import auditoriaRoutes from "./auditoria.routes.js";
 
 const router = Router();
 
@@ -97,5 +98,8 @@ router.use("/disponibilidad", disponibilidadRoutes);
 
 // Notificaciones internas del usuario.
 router.use("/notificaciones", notificacionRoutes);
+
+// Consulta del registro general de cambios.
+router.use("/auditoria", auditoriaRoutes);
 
 export default router;
