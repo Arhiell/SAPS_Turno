@@ -25,6 +25,7 @@ import turnoRoutes from "./turno.routes.js";
 import disponibilidadRoutes from "./disponibilidad.routes.js";
 
 import historialTurnoRoutes from "./historial-turno.routes.js";
+import sancionRoutes from "./sancion.routes.js";
 
 const router = Router();
 
@@ -83,6 +84,9 @@ router.use("/bloqueos-agenda", bloqueoAgendaRoutes);
 
 // Historial automático de cambios de los turnos.
 router.use("/", historialTurnoRoutes);
+
+// Sanciones por inasistencia.
+router.use("/sanciones", sancionRoutes);
 
 // Reservas y validación de agenda.
 router.use("/turnos", turnoRoutes);
