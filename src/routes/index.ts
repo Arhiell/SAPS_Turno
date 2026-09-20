@@ -22,6 +22,7 @@ import horarioAtencionRoutes from "./horario-atencion.routes.js";
 import bloqueoAgendaRoutes from "./bloqueo-agenda.routes.js";
 import patientTutorRoutes from "./patient-tutor.routes.js";
 import turnoRoutes from "./turno.routes.js";
+import disponibilidadRoutes from "./disponibilidad.routes.js";
 
 const router = Router();
 
@@ -80,5 +81,8 @@ router.use("/bloqueos-agenda", bloqueoAgendaRoutes);
 
 // Reservas y validación de agenda.
 router.use("/turnos", turnoRoutes);
+
+// Disponibilidad.
+router.use("/disponibilidad", disponibilidadRoutes);
 
 export default router;
