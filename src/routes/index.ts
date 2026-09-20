@@ -28,6 +28,7 @@ import historialTurnoRoutes from "./historial-turno.routes.js";
 import sancionRoutes from "./sancion.routes.js";
 import notificacionRoutes from "./notificacion.routes.js";
 import auditoriaRoutes from "./auditoria.routes.js";
+import reporteRoutes from "./reporte.routes.js";
 
 const router = Router();
 
@@ -101,5 +102,8 @@ router.use("/notificaciones", notificacionRoutes);
 
 // Consulta del registro general de cambios.
 router.use("/auditoria", auditoriaRoutes);
+
+// Reportes y estadísticas.
+router.use("/reportes", reporteRoutes);
 
 export default router;
