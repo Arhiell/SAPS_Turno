@@ -18,6 +18,7 @@ import salitaBarrioRoutes from "./salita-barrio.routes.js";
 import profesionalRoutes from "./profesional.routes.js";
 import profesionalEspecialidadRoutes from "./profesional-especialidad.routes.js";
 import profesionalSalitaRoutes from "./profesional-salita.routes.js";
+import patientTutorRoutes from "./patient-tutor.routes.js";
 
 const router = Router();
 
@@ -54,6 +55,7 @@ router.use("/zonas", zonaRoutes);
 // Pacientes.
 router.use("/patients", patientRoutes);
 router.use("/tutors", tutorRoutes);
+router.use("/", patientTutorRoutes);
 
 // Salitas-Barrios.
 router.use("/salita-barrios", salitaBarrioRoutes);
