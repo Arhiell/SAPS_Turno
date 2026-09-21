@@ -87,6 +87,16 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z
     .string()
     .min(1, "Falta GOOGLE_CLIENT_ID"),
+
+    MAIL_HOST: z.string().min(1),
+    MAIL_PORT: z.coerce.number().int().positive(),
+    MAIL_SECURE: z
+      .string()
+      .transform((value) => value === "true"),
+    MAIL_USER: z.string().email(),
+    MAIL_PASSWORD: z.string().min(1),
+    MAIL_FROM_NAME: z.string().min(1),
+    MAIL_FROM_EMAIL: z.string().email(),
 });
 
 const result = envSchema.safeParse(process.env);

@@ -52,3 +52,115 @@ export const findUsuarioByTurno = async (
 
   return usuario?.id_usuario ?? null;
 };
+
+export const findTurnoEmailContextById = async (
+  idTurno: string,
+) => {
+  const { data, error } = await supabase
+    .from("turnos")
+    .select(`
+      id_turno,
+      codigo_turno,
+      fecha_hora_inicio,
+      fecha_hora_fin,
+
+      paciente:pacientes(
+        id_paciente,
+        persona:personas(
+          nombres,
+          apellidos,
+          email
+        )
+      ),
+
+      profesional:profesionales(
+        id_profesional,
+        matricula,
+        persona:personas(
+          nombres,
+          apellidos
+        )
+      ),
+
+      especialidad:especialidades(
+        id_especialidad,
+        nombre
+      ),
+
+      salita:salitas(
+        id_salita,
+        nombre,
+        direccion,
+        telefono,
+        id_barrio
+      )
+    `)
+    .eq("id_turno", idTurno)
+    .maybeSingle();
+
+  if (error) {
+    throw new AppError(
+      "No se pudo obtener el contexto del turno para la notificación",
+      500,
+    );
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  const salita = Array.isArray(data.salita)
+    ? data.salita[0]
+    : data.salita;
+
+  if (!salita?.id_barrio) {
+    return {
+      ...data,
+      zona: null,
+    };
+  }
+
+  const { data: barrio, error: barrioError } = await supabase
+    .from("barrios")
+    .select(`
+      id_barrio,
+      id_zona
+    `)
+    .eq("id_barrio", salita.id_barrio)
+    .maybeSingle();
+
+  if (barrioError) {
+    throw new AppError(
+      "No se pudo obtener el barrio de la salita",
+      500,
+    );
+  }
+
+  if (!barrio?.id_zona) {
+    return {
+      ...data,
+      zona: null,
+    };
+  }
+
+  const { data: zona, error: zonaError } = await supabase
+    .from("zonas")
+    .select(`
+      id_zona,
+      nombre
+    `)
+    .eq("id_zona", barrio.id_zona)
+    .maybeSingle();
+
+  if (zonaError) {
+    throw new AppError(
+      "No se pudo obtener la zona de la salita",
+      500,
+    );
+  }
+
+  return {
+    ...data,
+    zona,
+  };
+};
