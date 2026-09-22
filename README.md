@@ -1,2 +1,17 @@
-# SAPS_Turno_API
-API REST para la gestión y reserva de turnos en salas de atención primaria de la salud (SAPS) de Goya Corrientes. Facilita la consulta de disponibilidad, asignación de turnos y administración de especialidades médicas para optimizar la atención de los ciudadanos a nivel Municipal.
+# SAPS Turno
+
+Sistema integral para la gestión de turnos de las Salas de Atención
+Primaria de la Salud (SAPS) de Goya, Corrientes.
+
+## Objetivo
+
+Centralizar la gestión de pacientes, profesionales, especialidades,
+salitas, agendas y turnos mediante una plataforma web.
+
+## Estructura
+
+```text
+SAPS_Turno/
+├── backend/    API REST y lógica de negocio
+├── frontend/   Aplicación web
+└── README.md
