@@ -197,23 +197,22 @@ const notifyTurno = async (
 export const notifyTurnoCreado = async (
   idTurno: string,
 ) => {
-  const [systemNotification] = await Promise.all([
-    safeNotify(() =>
-      notifyTurno(
-        idTurno,
-        "TURNO_CREADO",
-        "Turno confirmado",
-        "Se registró correctamente un nuevo turno.",
-      ),
+  const systemNotification = await safeNotify(() =>
+    notifyTurno(
+      idTurno,
+      "TURNO_CREADO",
+      "Turno confirmado",
+      "Se registró correctamente un nuevo turno.",
     ),
+  );
 
-    safeNotify(() =>
-      sendTurnoEmail(
-        idTurno,
-        "TURNO_CREADO",
-      ),
+  // El envío de correo no debe bloquear la operación principal del turno.
+  void safeNotify(() =>
+    sendTurnoEmail(
+      idTurno,
+      "TURNO_CREADO",
     ),
-  ]);
+  );
 
   return systemNotification;
 };
@@ -221,23 +220,22 @@ export const notifyTurnoCreado = async (
 export const notifyTurnoReprogramado = async (
   idTurno: string,
 ) => {
-  const [systemNotification] = await Promise.all([
-    safeNotify(() =>
-      notifyTurno(
-        idTurno,
-        "TURNO_REPROGRAMADO",
-        "Turno reprogramado",
-        "La fecha u horario de tu turno fue modificado.",
-      ),
+  const systemNotification = await safeNotify(() =>
+    notifyTurno(
+      idTurno,
+      "TURNO_REPROGRAMADO",
+      "Turno reprogramado",
+      "La fecha u horario de tu turno fue modificado.",
     ),
+  );
 
-    safeNotify(() =>
-      sendTurnoEmail(
-        idTurno,
-        "TURNO_REPROGRAMADO",
-      ),
+  // El correo se procesa en segundo plano para no hacer esperar la respuesta HTTP.
+  void safeNotify(() =>
+    sendTurnoEmail(
+      idTurno,
+      "TURNO_REPROGRAMADO",
     ),
-  ]);
+  );
 
   return systemNotification;
 };
@@ -245,23 +243,22 @@ export const notifyTurnoReprogramado = async (
 export const notifyTurnoCancelado = async (
   idTurno: string,
 ) => {
-  const [systemNotification] = await Promise.all([
-    safeNotify(() =>
-      notifyTurno(
-        idTurno,
-        "TURNO_CANCELADO",
-        "Turno cancelado",
-        "Tu turno fue cancelado.",
-      ),
+  const systemNotification = await safeNotify(() =>
+    notifyTurno(
+      idTurno,
+      "TURNO_CANCELADO",
+      "Turno cancelado",
+      "Tu turno fue cancelado.",
     ),
+  );
 
-    safeNotify(() =>
-      sendTurnoEmail(
-        idTurno,
-        "TURNO_CANCELADO",
-      ),
+  // El correo se procesa en segundo plano para no bloquear la cancelación.
+  void safeNotify(() =>
+    sendTurnoEmail(
+      idTurno,
+      "TURNO_CANCELADO",
     ),
-  ]);
+  );
 
   return systemNotification;
 };
@@ -269,23 +266,22 @@ export const notifyTurnoCancelado = async (
 export const notifyCambioProfesional = async (
   idTurno: string,
 ) => {
-  const [systemNotification] = await Promise.all([
-    safeNotify(() =>
-      notifyTurno(
-        idTurno,
-        "CAMBIO_PROFESIONAL",
-        "Cambio de profesional",
-        "El profesional asignado a tu turno fue modificado.",
-      ),
+  const systemNotification = await safeNotify(() =>
+    notifyTurno(
+      idTurno,
+      "CAMBIO_PROFESIONAL",
+      "Cambio de profesional",
+      "El profesional asignado a tu turno fue modificado.",
     ),
+  );
 
-    safeNotify(() =>
-      sendTurnoEmail(
-        idTurno,
-        "CAMBIO_PROFESIONAL",
-      ),
+  // El correo se procesa en segundo plano para no bloquear la reprogramación.
+  void safeNotify(() =>
+    sendTurnoEmail(
+      idTurno,
+      "CAMBIO_PROFESIONAL",
     ),
-  ]);
+  );
 
   return systemNotification;
 };

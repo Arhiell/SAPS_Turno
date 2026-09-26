@@ -1,0 +1,59 @@
+:root {
+  /* =========================================
+     IDENTIDAD SAPS
+     ========================================= */
+
+  --saps-verde: #0b7a3b;
+  --saps-verde-oscuro: #075c2c;
+  --saps-verde-hover: #096b34;
+  --saps-verde-claro: #e8f5ed;
+
+  --saps-azul: #123f9c;
+  --saps-azul-oscuro: #0d2f78;
+  --saps-azul-claro: #eaf0fc;
+
+  --saps-amarillo: #f4d03f;
+  --saps-amarillo-claro: #fff8d8;
+
+  /* =========================================
+     COLORES BASE
+     ========================================= */
+
+  --saps-blanco: #ffffff;
+  --saps-fondo: #f4f7f6;
+  --saps-superficie: #ffffff;
+
+  --saps-texto: #17212b;
+  --saps-texto-secundario: #667085;
+
+  --saps-borde: #e2e8e5;
+
+  /* =========================================
+     ESTADOS
+     ========================================= */
+
+  --saps-exito: #198754;
+  --saps-peligro: #dc3545;
+  --saps-advertencia: #ffc107;
+  --saps-info: #0d6efd;
+
+  /* =========================================
+     LAYOUT
+     ========================================= */
+
+  --saps-sidebar-width: 260px;
+  --saps-navbar-height: 72px;
+
+  /* =========================================
+     BORDES Y SOMBRAS
+     ========================================= */
+
+  --saps-radio: 12px;
+  --saps-radio-pequeno: 8px;
+
+  --saps-sombra:
+    0 2px 12px rgba(16, 24, 40, 0.06);
+
+  --saps-sombra-hover:
+    0 6px 20px rgba(16, 24, 40, 0.10);
+}
