@@ -58,6 +58,17 @@ export const findUserByGoogleEmail = async (email: string) => {
   return data;
 };
 
+export const markGoogleEmailAsVerified = async (idUsuario: string) => {
+  const { error } = await supabase
+    .from("usuarios")
+    .update({ email_verificado: true })
+    .eq("id_usuario", idUsuario);
+
+  if (error) {
+    throw new Error(`Error verificando correo de Google: ${error.message}`);
+  }
+};
+
 interface CreateGoogleUserData {
   idRol: string;
   username: string;

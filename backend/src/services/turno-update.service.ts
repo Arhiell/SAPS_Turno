@@ -61,6 +61,7 @@ export const updateTurno = async (
   input: UpdateTurnoInput, 
   user: AuthenticatedUser
 ) => {
+  if (["PACIENTE", "PROFESIONAL"].includes(user.rol)) throw new AppError("No tiene permisos para reprogramar turnos", 403);
   const current = await getTurno(id, user);
 
   assertEditable(current);
@@ -126,6 +127,10 @@ export const changeTurnoStatus = async (
   input: TurnoStatusInput, 
   user: AuthenticatedUser
 ) => {
+  if (user.rol === "PROFESIONAL" && !["ATENDIDO", "NO_ASISTIO"].includes(input.estado)) {
+    throw new AppError("Solo puede marcar ATENDIDO o NO_ASISTIO", 403);
+  }
+  if (user.rol === "PACIENTE") throw new AppError("Solicitá la cancelación en tu salita", 403);
   const current = await getTurno(id, user);
 
   assertEditable(current);

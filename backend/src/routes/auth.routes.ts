@@ -1,4 +1,19 @@
-import { Router } from "express";
+import { 
+  Router 
+} from "express";
+
+import { 
+  authenticate 
+} from "../middlewares/auth.middleware.js";
+
+import { 
+  requireRole 
+} from "../middlewares/role.middleware.js";
+
+import { 
+  ownProfile, 
+  completeProfile 
+} from "../controllers/auth-profile.controller.js";
 
 import {
   login,
@@ -8,6 +23,13 @@ import {
 } from "../controllers/auth.controller.js";
 
 const router = Router();
+router.get("/me", authenticate, ownProfile);
+router.post(
+  "/profile", 
+  authenticate, 
+  requireRole("PACIENTE"), 
+  completeProfile
+);
 
 // Registro público.
 router.post("/register", register);

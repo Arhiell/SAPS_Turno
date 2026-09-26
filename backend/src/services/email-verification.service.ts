@@ -1,20 +1,27 @@
 import {
   env
 } from "../config/env.js";
+import { sendAuthEmail } from "./email.service.js";
+import { sendEmailVerificationCode } from "./email.service.js";
 
 import {
   createEmailVerificationToken,
   findEmailVerificationToken,
+  findLatestPendingEmailToken,
   findUserForEmailVerification,
   invalidatePreviousEmailTokens,
   markEmailAsVerified,
-  markEmailTokenAsUsed
+  markEmailTokenAsUsed,
+  registerEmailCodeAttempt
 } from "../repositories/email-verification.repository.js";
 
 import {
   generateEmailVerificationToken,
-  hashEmailVerificationToken
+  hashEmailVerificationToken,
+  generateEmailVerificationCode,
+  hashEmailVerificationCode
 } from "./email-verification-token.service.js";
+import { timingSafeEqual } from "node:crypto";
 
 import {
   AppError
@@ -22,8 +29,48 @@ import {
 
 import type {
   RequestEmailVerificationInput,
-  VerifyEmailInput
+  VerifyEmailInput,
+  VerifyEmailCodeInput
 } from "../validators/email-verification.validators.js";
+
+const EMAIL_CODE_TTL_SECONDS = 10 * 60;
+const EMAIL_CODE_RESEND_COOLDOWN_SECONDS = 60;
+const EMAIL_CODE_MAX_ATTEMPTS = 5;
+
+const createEmailCode = async (
+  idUsuario: string,
+  email: string,
+  ip: string | null
+) => {
+  // Invalida el código anterior antes de emitir uno nuevo.
+  await invalidatePreviousEmailTokens(idUsuario);
+
+  const code = generateEmailVerificationCode();
+  const codeHash = hashEmailVerificationCode(idUsuario, code);
+  const expiresAt = new Date(Date.now() + EMAIL_CODE_TTL_SECONDS * 1000);
+
+  await createEmailVerificationToken(
+    idUsuario,
+    codeHash,
+    expiresAt.toISOString(),
+    ip
+  );
+
+  try {
+    await sendEmailVerificationCode(email, code);
+  } catch {
+    await invalidatePreviousEmailTokens(idUsuario);
+    throw new AppError("No pudimos enviar el código. Volvé a intentarlo.", 503);
+  }
+
+  return expiresAt.toISOString();
+};
+
+export const createVerificationCodeForNewUser = async (
+  idUsuario: string,
+  email: string,
+  ip: string | null
+) => createEmailCode(idUsuario, email, ip);
 
 // Genera un nuevo token para verificar email.
 export const requestEmailVerification =
@@ -40,46 +87,39 @@ export const requestEmailVerification =
       );
 
     // No revelamos si el correo existe.
-    if (
-      !user ||
-      !user.activo ||
-      user.email_verificado
-    ) {
+    if (!user || !user.activo || user.email_verificado) {
       return null;
     }
 
-    await invalidatePreviousEmailTokens(
-      user.id_usuario
-    );
+    const pending = await findLatestPendingEmailToken(user.id_usuario);
+    const now = Date.now();
+    if (pending && new Date(pending.fecha_expiracion).getTime() > now) {
+      const resendAvailableAt = new Date(
+        new Date(pending.fecha_creacion).getTime() +
+          EMAIL_CODE_RESEND_COOLDOWN_SECONDS * 1000
+      );
+      if (now < resendAvailableAt.getTime()) {
+        return {
+          verificationExpiresAt: pending.fecha_expiracion,
+          resendAvailableAt: resendAvailableAt.toISOString(),
+        };
+      }
+    }
 
-    const token =
-      generateEmailVerificationToken();
-
-    const tokenHash =
-      hashEmailVerificationToken(token);
-
-    const expiration = new Date(
-      Date.now() +
-        env.EMAIL_VERIFICATION_HOURS *
-          60 *
-          60 *
-          1000
-    );
-
-    await createEmailVerificationToken(
-      user.id_usuario,
-      tokenHash,
-      expiration.toISOString(),
-      ip
-    );
-
-   
-    return token;
+    const verificationExpiresAt = await createEmailCode(user.id_usuario, email, ip);
+    return {
+      verificationExpiresAt,
+      resendAvailableAt: new Date(
+        Date.parse(verificationExpiresAt) -
+          EMAIL_CODE_TTL_SECONDS * 1000 +
+          EMAIL_CODE_RESEND_COOLDOWN_SECONDS * 1000
+      ).toISOString(),
+    };
   };
 
 // Confirma la dirección de correo.
 export const verifyUserEmail = async (
-  input: VerifyEmailInput
+  input: Extract<VerifyEmailInput, { token: string }>
 ) => {
   const tokenHash =
     hashEmailVerificationToken(
@@ -109,13 +149,65 @@ export const verifyUserEmail = async (
     );
   }
 
+  // Consume el token primero para impedir reutilización concurrente.
+  const consumed = await markEmailTokenAsUsed(verification.id_token);
+  if (!consumed) {
+    throw new AppError(
+      "Token de verificación inválido o utilizado",
+      400
+    );
+  }
+
   await markEmailAsVerified(
     verification.id_usuario
   );
+};
 
-  await markEmailTokenAsUsed(
-    verification.id_token
+export const verifyEmailCode = async (input: VerifyEmailCodeInput) => {
+  const email = input.email.trim().toLowerCase();
+  const user = await findUserForEmailVerification(email);
+  if (!user || !user.activo || user.email_verificado) {
+    throw new AppError("Código incorrecto.", 400);
+  }
+
+  const pending = await findLatestPendingEmailToken(user.id_usuario);
+  if (!pending) {
+    throw new AppError("Código incorrecto.", 400);
+  }
+  if (new Date(pending.fecha_expiracion) <= new Date()) {
+    throw new AppError("El código expiró. Solicitá uno nuevo.", 400);
+  }
+
+  const attempts = pending.intentos ?? 0;
+  if (attempts >= EMAIL_CODE_MAX_ATTEMPTS) {
+    throw new AppError("Superaste los intentos. Solicitá un nuevo código.", 429);
+  }
+
+  const submittedHash = Buffer.from(
+    hashEmailVerificationCode(user.id_usuario, input.code),
+    "hex"
   );
+  const storedHash = Buffer.from(pending.token_hash, "hex");
+  const valid = timingSafeEqual(storedHash, submittedHash);
+
+  if (!valid) {
+    const nextAttempts = attempts + 1;
+    await registerEmailCodeAttempt(
+      pending.id_token,
+      nextAttempts,
+      nextAttempts >= EMAIL_CODE_MAX_ATTEMPTS
+    );
+    if (nextAttempts >= EMAIL_CODE_MAX_ATTEMPTS) {
+      throw new AppError("Superaste los intentos. Solicitá un nuevo código.", 429);
+    }
+    throw new AppError("Código incorrecto.", 400);
+  }
+
+  const consumed = await markEmailTokenAsUsed(pending.id_token);
+  if (!consumed) {
+    throw new AppError("Código incorrecto.", 400);
+  }
+  await markEmailAsVerified(user.id_usuario);
 };
 
 /**

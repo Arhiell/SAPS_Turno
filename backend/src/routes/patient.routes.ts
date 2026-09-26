@@ -1,3 +1,4 @@
+import { patientScope } from "../middlewares/profile-scope.middleware.js";
 import {
   Router
 } from "express";
@@ -39,6 +40,7 @@ router.get(
     "ADMIN_SALITA",
     "RECEPCION"
   ),
+  patientScope,
   listPatientsController
 );
 
@@ -52,6 +54,7 @@ router.get(
     "ADMIN_SALITA",
     "RECEPCION"
   ),
+  patientScope,
   getPatientByDniController
 );
 
@@ -65,6 +68,7 @@ router.patch(
     "ADMIN_SALITA",
     "RECEPCION"
   ),
+  patientScope,
   updatePatientStatusController
 );
 
@@ -78,6 +82,7 @@ router.get(
     "ADMIN_SALITA",
     "RECEPCION"
   ),
+  patientScope,
   getPatientController
 );
 
@@ -91,6 +96,7 @@ router.patch(
     "ADMIN_SALITA",
     "RECEPCION"
   ),
+  patientScope,
   updatePatientController
 );
 
@@ -104,6 +110,7 @@ router.post(
     "ADMIN_SALITA",
     "RECEPCION"
   ),
+  patientScope,
   createPatientController
 );
 

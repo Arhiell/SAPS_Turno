@@ -16,7 +16,7 @@ import {
  * Obtiene listado paginado.
  */
 export const getPatients = async (
-  query: PatientListQuery
+  query: PatientListQuery, scope: string[] | null = null
 ) => {
   const {
     page,
@@ -32,7 +32,7 @@ export const getPatients = async (
   const result =
     await findPatients(
       from,
-      to
+      to, scope
     );
 
   const totalPages =

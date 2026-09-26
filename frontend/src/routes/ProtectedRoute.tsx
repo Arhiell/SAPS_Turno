@@ -1,9 +1,11 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import type { UserRole } from '../types/auth.types';
 
 import { useAuth } from '../context/AuthContext';
 
-const ProtectedRoute = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+const ProtectedRoute = ({ roles }: { roles?: UserRole[] }) => {
+  const { isAuthenticated, isLoading, user, patient } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -29,6 +31,10 @@ const ProtectedRoute = () => {
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
+  if (user?.rol === 'PACIENTE' && !patient && location.pathname !== '/completar-perfil') {
+    return <Navigate to="/completar-perfil" replace />;
+  }
+  if (roles && !roles.some(role => role === user?.rol)) return <Navigate to="/" replace />;
 
   return <Outlet />;
 };

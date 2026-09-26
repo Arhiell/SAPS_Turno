@@ -36,6 +36,7 @@ import type {
 } from "../validators/reporte.validator.js";
 
 type Persona = { nombres: string; apellidos: string; dni?: string };
+import { getOwnEntity } from "./auth-profile.service.js";
 
 type Relacion<T> = T | T[] | null;
 
@@ -55,7 +56,7 @@ export const getAgendaDiaria = async (
   filters: ReporteAgendaQuery, user: AuthenticatedUser
 ) => {
    // También se protege el servicio para llamadas que no pasen por las rutas HTTP.
-  if (!["SUPER_ADMIN", "ADMIN_SALITA"].includes(
+  if (!["SUPER_ADMIN", "ADMIN_SALITA", "PROFESIONAL"].includes(
     user.rol
   )
 ) throw new AppError(
@@ -63,7 +64,9 @@ export const getAgendaDiaria = async (
   403
 );
 
-  const scope = await getTurnoScope(user);
+  const own = user.rol === "PROFESIONAL" ? await getOwnEntity(user) : null;
+  const scope = own ? null : await getTurnoScope(user);
+  if (own) filters = { ...filters, id_profesional: own.id };
 
   if (filters.id_salita) assertTurnoScope(scope, filters.id_salita);
 

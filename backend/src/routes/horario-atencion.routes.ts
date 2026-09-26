@@ -1,3 +1,4 @@
+import { scheduleScope } from "../middlewares/profile-scope.middleware.js";
 import { Router } from "express";
 
 import {
@@ -16,10 +17,10 @@ const router = Router();
 router.use(authenticate);
 router.use(requireRole("SUPER_ADMIN", "ADMIN_SALITA", "RECEPCION"));
 
-router.get("/", obtenerHorarios);
-router.get("/:id", obtenerHorario);
-router.post("/", crearHorarioController);
-router.put("/:id", actualizarHorarioController);
-router.delete("/:id", eliminarHorarioController);
+router.get("/", scheduleScope("horarios_atencion"), obtenerHorarios);
+router.get("/:id", scheduleScope("horarios_atencion"), obtenerHorario);
+router.post("/", scheduleScope("horarios_atencion"), crearHorarioController);
+router.put("/:id", scheduleScope("horarios_atencion"), actualizarHorarioController);
+router.delete("/:id", scheduleScope("horarios_atencion"), eliminarHorarioController);
 
 export default router;

@@ -14,7 +14,8 @@ import {
   createGoogleIdentity,
   createGoogleUser,
   findGoogleIdentity,
-  findUserByGoogleEmail
+  findUserByGoogleEmail,
+  markGoogleEmailAsVerified
 } from "../repositories/google-auth.repository.js";
 
 import {
@@ -93,21 +94,17 @@ export const loginWithGoogle = async (
         googleUser.email
       );
 
-    /**
-     * Por seguridad no vinculamos
-     * automáticamente Google con una
-     * cuenta local existente.
-     *
-     * El linking de cuentas lo haremos
-     * mediante un endpoint autenticado.
-     */
     if (existingEmail) {
-      throw new AppError(
-        "Este correo ya está registrado. Inicie sesión con su método actual antes de vincular Google.",
-        409
-      );
-    }
-
+      const existingRole = await findRoleById(existingEmail.id_rol);
+      if (!existingEmail.activo || existingRole?.codigo !== "PACIENTE" || !existingRole.activo) {
+        throw new AppError("Esta cuenta no puede acceder mediante Google", 403);
+      }
+      // Google ya validó este email.
+      if (!existingEmail.email_verificado) {
+        await markGoogleEmailAsVerified(existingEmail.id_usuario);
+      }
+      user = existingEmail;
+    } else {
     const patientRole =
       await findRoleByCode(
         "PACIENTE"
@@ -138,6 +135,8 @@ export const loginWithGoogle = async (
         googleUser.email
     });
 
+    }
+
     /**
      * Y posteriormente asociamos
      * el Google "sub".
@@ -163,7 +162,7 @@ export const loginWithGoogle = async (
       user.id_rol
     );
 
-  if (!role || !role.activo) {
+  if (!role || !role.activo || role.codigo !== "PACIENTE") {
     throw new AppError(
       "Rol no autorizado",
       403

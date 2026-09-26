@@ -58,11 +58,21 @@ test("curl: fecha, UUID, estado y formato inválidos devuelven 400", async () =>
 test("curl: JWT obligatorio y roles no administrativos rechazados", async () => {
   for (const path of [date, `/exportar${date}&formato=pdf`, `/imprimir${date}`]) {
     assert.equal((await call(path, false)).status, 401);
-    for (const role of ["PACIENTE", "PROFESIONAL", "RECEPCION"]) {
+    for (const role of ["PACIENTE", "RECEPCION"]) {
       queue(...auth(role)); assert.equal((await call(path)).status, 403);
     }
   }
   await assert.rejects(getAgendaDiaria({ fecha: "2026-09-21" }, { ...user, rol: "RECEPCION" }), { statusCode: 403 });
+});
+
+test("Profesional consulta y exporta exclusivamente su agenda aunque cambie el filtro", async () => {
+  for (const path of [`${date}&id_profesional=${other}`, `/exportar${date}&id_profesional=${other}&formato=pdf`]) {
+    queue(...auth("PROFESIONAL"),
+      { table: "usuarios", data: [{ ...user, id_persona: id }] },
+      { table: "profesionales", data: [{ id_profesional: id }] },
+      data([row], url => assert.equal(url.searchParams.get("id_profesional"), "eq." + id)));
+    assert.equal((await call(path)).status, 200);
+  }
 });
 test("curl: estados finales nunca se presentan como pacientes a atender", async () => {
   for (const codigo of ["CANCELADO", "REPROGRAMADO", "ATENDIDO", "NO_ASISTIO"]) {

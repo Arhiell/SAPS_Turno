@@ -12,9 +12,10 @@ import {
 import {
   requestEmailVerification,
   verifyUserEmail,
+  verifyEmailCode,
 } from "../services/email-verification.service.js";
 
-import { env } from "../config/env.js";
+
 
 // Solicita verificación de correo.
 export const requestVerification = async (
@@ -30,20 +31,19 @@ export const requestVerification = async (
         });
       }
 
-      const token = await requestEmailVerification(validation.data, req.ip ?? null);
-
       const response: {
         success: boolean;
         message: string;
-        verificationToken?: string;
+        verificationExpiresAt?: string | null;
+        resendAvailableAt?: string | null;
       } = {
         success: true,
-        message: "Si corresponde, se enviarán instrucciones para verificar el correo",
+        message: "Si corresponde, te enviaremos un código de verificación.",
       };
+      const result = await requestEmailVerification(validation.data, req.ip ?? null);
+      response.verificationExpiresAt = result?.verificationExpiresAt ?? null;
+      response.resendAvailableAt = result?.resendAvailableAt ?? null;
 
-      if (env.NODE_ENV === "development" && token) {
-        response.verificationToken = token;
-      }
 
       return res.status(200).json(response);
     } catch (error) {
@@ -64,11 +64,15 @@ export const verifyEmail = async (
         });
       }
 
-      await verifyUserEmail(validation.data);
+      if ("token" in validation.data) {
+        await verifyUserEmail(validation.data);
+      } else {
+        await verifyEmailCode(validation.data);
+      }
 
       return res.status(200).json({
         success: true,
-        message: "Correo electrónico verificado correctamente",
+        message: "Correo verificado correctamente.",
       });
     } catch (error) {
       next(error);

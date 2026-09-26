@@ -23,13 +23,14 @@ const profesionalSalitaSelect = `
 `;
 
 export const getSalitasByProfesional = async (
-  idProfesional: string
+  idProfesional: string, scope: string[] | null = null
 ) => {
-  const { data, error } = await supabase
+  let query = supabase
     .from("profesional_salita")
     .select(profesionalSalitaSelect)
     .eq("id_profesional", idProfesional)
-    .order("fecha_desde", { ascending: false });
+  if (scope !== null) query = query.in("id_salita", scope);
+  const { data, error } = await query.order("fecha_desde", { ascending: false });
 
   if (error) {
     throw new Error(

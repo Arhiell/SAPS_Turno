@@ -7,10 +7,10 @@ import type {
 
 // Genera las métricas generales del período.
 export const getReporteResumen = async (
-  filters: ReporteQuery,
+  filters: ReporteQuery, scope: string[] | null = null,
 ) => {
   const turnos =
-    await findTurnosReporte(filters);
+    await findTurnosReporte(filters, scope);
 
   let atendidos = 0;
   let cancelados = 0;
@@ -54,10 +54,10 @@ export const getReporteResumen = async (
 
 // Agrupa la cantidad de turnos por especialidad.
 export const getReporteEspecialidades = async (
-  filters: ReporteQuery,
+  filters: ReporteQuery, scope: string[] | null = null,
 ) => {
   const turnos =
-    await findTurnosReporte(filters);
+    await findTurnosReporte(filters, scope);
 
   const resultado = new Map<
     string,

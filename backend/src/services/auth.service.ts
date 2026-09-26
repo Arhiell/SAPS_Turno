@@ -1,4 +1,7 @@
-import { env } from "../config/env.js"; 
+import { env } from "../config/env.js";
+import { 
+  generateUsernameFromEmail 
+} from "../utils/username-generator.js";
 
 import type {
   RegisterInput
@@ -45,16 +48,9 @@ import {
 import { access } from "node:fs";
 
 import {
-  createVerificationForUser
-} from "./email-verification.service.js";
-
-import {
   validateLoginAccess
 } from "./login-access.service.js";
-
-import {
-  createVerificationForNewUser
-} from "./email-verification.service.js";
+import { createVerificationCodeForNewUser } from "./email-verification.service.js";
 
 import type {
   RequestMetadata
@@ -69,7 +65,7 @@ export const registerUser = async (
 ) => {
   // Normalizamos datos antes de utilizarlos.
   const email = input.email.trim().toLowerCase();
-  const username = input.nombre_usuario.trim();
+  const username = input.nombre_usuario?.trim() ?? generateUsernameFromEmail(email);
 
   // Comprobamos primero si el email está ocupado.
   const existingEmail = await findUserByEmail(email);
@@ -119,12 +115,12 @@ export const registerUser = async (
   * Después de crear correctamente la cuenta,
   * generamos su token de verificación.
   */
-  const verificationToken =
-    await createVerificationForNewUser(
+  const verificationExpiresAt =
+    await createVerificationCodeForNewUser(
       user.id_usuario,
+      email,
       metadata.ip
     );
-
 
   return {
     user: {
@@ -134,7 +130,7 @@ export const registerUser = async (
        nombre: patientRole.nombre
        }
     },
-    verificationToken
+    verificationExpiresAt
   };
 };
 

@@ -18,8 +18,8 @@ import {
   type UpdateProfesionalInput
 } from "../validators/profesional.validator.js";
 
-export const getProfesionales = async () => {
-  return await getAllProfesionales();
+export const getProfesionales = async (scope: string[] | null = null) => {
+  return await getAllProfesionales(scope);
 };
 
 export const getProfesional = async (id: string) => {

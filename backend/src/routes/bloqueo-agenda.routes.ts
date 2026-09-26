@@ -1,3 +1,4 @@
+import { scheduleScope } from "../middlewares/profile-scope.middleware.js";
 import { Router } from "express";
 
 import {
@@ -16,10 +17,10 @@ const router = Router();
 router.use(authenticate);
 router.use(requireRole("SUPER_ADMIN", "ADMIN_SALITA", "RECEPCION"));
 
-router.get("/", obtenerBloqueos);
-router.get("/:id", obtenerBloqueo);
-router.post("/", crearBloqueoController);
-router.put("/:id", actualizarBloqueoController);
-router.delete("/:id", eliminarBloqueoController);
+router.get("/", scheduleScope("bloqueos_agenda"), obtenerBloqueos);
+router.get("/:id", scheduleScope("bloqueos_agenda"), obtenerBloqueo);
+router.post("/", scheduleScope("bloqueos_agenda"), crearBloqueoController);
+router.put("/:id", scheduleScope("bloqueos_agenda"), actualizarBloqueoController);
+router.delete("/:id", scheduleScope("bloqueos_agenda"), eliminarBloqueoController);
 
 export default router;

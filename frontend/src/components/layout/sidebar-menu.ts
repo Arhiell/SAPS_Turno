@@ -8,17 +8,22 @@ export interface SidebarMenuItem {
 }
 
 export const sidebarMenu: SidebarMenuItem[] = [
+  { label: "Cuentas de acceso", path: "/administracion", icon: "bi-person-lock", roles: ["SUPER_ADMIN", "ADMIN_SALITA"] },
+  { label: "Mi agenda", path: "/mi-agenda", icon: "bi-calendar-check", roles: ["PROFESIONAL"] },
+  { label: "Pacientes del día", path: "/mis-pacientes", icon: "bi-people", roles: ["PROFESIONAL"] },
+  { label: "Mis turnos", path: "/mis-turnos", icon: "bi-calendar-check", roles: ["PACIENTE"] },
+  { label: "Mi perfil", path: "/mi-perfil", icon: "bi-person", roles: ["PACIENTE"] },
   {
     label: "Inicio",
     path: "/",
     icon: "bi-house",
-    roles: ["SUPER_ADMIN", "ADMIN_SALITA", "PACIENTE"],
+    roles: ["SUPER_ADMIN", "ADMIN_SALITA", "PACIENTE", "PROFESIONAL"],
   },
   {
     label: "Turnos",
     path: "/turnos",
     icon: "bi-calendar-check",
-    roles: ["SUPER_ADMIN", "ADMIN_SALITA", "PACIENTE"],
+    roles: ["SUPER_ADMIN", "ADMIN_SALITA"],
   },
   {
     label: "Pacientes",

@@ -28,10 +28,10 @@ const router = Router();
 // Primera etapa administrativa; el servicio también restringe el 
 // alcance por salita.
 router.use(authenticate);
-router.use(requireRole("SUPER_ADMIN", "ADMIN_SALITA", "RECEPCION"));
-router.post("/", createTurnoController);
+router.use(requireRole("SUPER_ADMIN", "ADMIN_SALITA", "RECEPCION", "PROFESIONAL", "PACIENTE"));
+router.post("/", requireRole("SUPER_ADMIN", "ADMIN_SALITA", "RECEPCION"), createTurnoController);
 router.get("/", listTurnosController);
 router.get("/:id", getTurnoController);
-router.patch("/:id", updateTurnoController);
-router.patch("/:id/status", changeTurnoStatusController);
+router.patch("/:id", requireRole("SUPER_ADMIN", "ADMIN_SALITA", "RECEPCION"), updateTurnoController);
+router.patch("/:id/status", requireRole("SUPER_ADMIN", "ADMIN_SALITA", "RECEPCION", "PROFESIONAL"), changeTurnoStatusController);
 export default router;

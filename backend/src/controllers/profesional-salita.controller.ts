@@ -18,7 +18,7 @@ export const getSalitas = async (
 ) => {
   try {
     const salitas = await getSalitasProfesional(
-      String(req.params.id)
+      String(req.params.id), res.locals.salitaScope
     );
 
     return res.status(200).json({

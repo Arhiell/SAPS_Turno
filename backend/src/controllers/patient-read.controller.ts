@@ -1,4 +1,8 @@
-import type { Request, Response, NextFunction } from "express";
+import type { 
+  Request, 
+  Response, 
+  NextFunction 
+} from "express";
 
 import {
   patientDniSchema,
@@ -28,7 +32,11 @@ export const listPatientsController = async (
         });
       }
 
-      const result = await getPatients(validation.data);
+      const result = await getPatients
+      (
+        validation.data, 
+        res.locals.salitaScope
+      );
 
       return res.status(200).json({
         success: true,

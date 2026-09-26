@@ -15,11 +15,12 @@ const bloqueoSelect = `
   fecha_creacion
 `;
 
-export const getAllBloqueos = async () => {
-  const { data, error } = await supabase
+export const getAllBloqueos = async (scope: string[] | null = null) => {
+  let query = supabase
     .from("bloqueos_agenda")
     .select(bloqueoSelect)
-    .order("fecha", { ascending: true })
+  if (scope !== null) query = query.in("id_salita", scope);
+  const { data, error } = await query.order("fecha", { ascending: true })
     .order("hora_inicio", { ascending: true, nullsFirst: true });
 
   if (error) throw error;

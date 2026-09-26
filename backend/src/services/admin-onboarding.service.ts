@@ -1,3 +1,4 @@
+import { sendAuthEmail } from "./email.service.js";
 import type {
   CreateAdminInput
 } from "../validators/user.validator.js";
@@ -56,6 +57,7 @@ export const createAdminWithVerification =
         metadata.ip
       );
 
+    await sendAuthEmail(input.email, "verificar-email", verificationToken);
     return {
       user,
       verificationToken

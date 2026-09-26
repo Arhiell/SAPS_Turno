@@ -1,5 +1,10 @@
-import { supabase } from "../config/supabase.js";
-import { AppError } from "../utils/app-error.js";
+import { 
+  supabase 
+} from "../config/supabase.js";
+
+import { 
+  AppError 
+} from "../utils/app-error.js";
 
 import type {
   ReporteQuery,
@@ -7,7 +12,7 @@ import type {
 
 // Trae los turnos necesarios para generar reportes.
 export const findTurnosReporte = async (
-  filters: ReporteQuery,
+  filters: ReporteQuery, scope: string[] | null = null,
 ) => {
   const desde =
     `${filters.fecha_desde}T00:00:00-03:00`;
@@ -59,6 +64,7 @@ export const findTurnosReporte = async (
     );
   }
 
+  if (scope !== null) query = query.in("id_salita", scope);
   const { data, error } = await query;
 
   if (error) {

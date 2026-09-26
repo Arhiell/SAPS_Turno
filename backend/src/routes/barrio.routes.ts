@@ -1,3 +1,5 @@
+import { authenticate } from "../middlewares/auth.middleware.js";
+import { requireRole } from "../middlewares/role.middleware.js";
 import { Router } from "express";
 
 import {
@@ -12,8 +14,8 @@ const router = Router();
 
 router.get("/", getAllBarrios);
 router.get("/:id", getBarrioById);
-router.post("/", createBarrio);
-router.put("/:id", updateBarrio);
-router.delete("/:id", deleteBarrio);
+router.post("/", authenticate, requireRole("SUPER_ADMIN"), createBarrio);
+router.put("/:id", authenticate, requireRole("SUPER_ADMIN"), updateBarrio);
+router.delete("/:id", authenticate, requireRole("SUPER_ADMIN"), deleteBarrio);
 
 export default router;

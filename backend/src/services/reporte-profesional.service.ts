@@ -7,10 +7,10 @@ import type {
 
 // Agrupa los turnos por profesional.
 export const getReporteProfesionales = async (
-  filters: ReporteQuery,
+  filters: ReporteQuery, scope: string[] | null = null,
 ) => {
   const turnos =
-    await findTurnosReporte(filters);
+    await findTurnosReporte(filters, scope);
 
   const resultado = new Map<string, {
     id_profesional: string;

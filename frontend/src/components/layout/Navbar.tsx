@@ -6,8 +6,8 @@ const Navbar = () => {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    await logout();
-    navigate("/login");
+    try { await logout(); } catch { /* La sesión local ya fue eliminada por AuthContext. */ }
+    finally { navigate("/login"); }
   };
 
   return (

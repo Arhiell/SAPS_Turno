@@ -54,19 +54,17 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
       message: string;
       data: {
         user: typeof result.user;
-        verificationToken?: string;
+        verificationExpiresAt: string;
       };
     } = {
       success: true,
       message: "Usuario registrado correctamente",
       data: {
         user: result.user,
+        verificationExpiresAt: result.verificationExpiresAt,
       },
     };
 
-    if (env.NODE_ENV === "development") {
-      response.data.verificationToken = result.verificationToken;
-    }
 
     return res.status(201).json(response);
   } catch (error) {

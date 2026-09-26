@@ -1,4 +1,8 @@
-import type { Request, Response, NextFunction } from "express";
+import type { 
+  Request, 
+  Response, 
+  NextFunction 
+} from "express";
 
 import {
   actualizarBloqueo,
@@ -14,7 +18,7 @@ export const obtenerBloqueos = async (
   next: NextFunction
 ) => {
   try {
-    const bloqueos = await getBloqueos();
+    const bloqueos = await getBloqueos(res.locals.salitaScope);
 
     return res.status(200).json(bloqueos);
   } catch (error) {

@@ -11,7 +11,10 @@ import {
   login as loginRequest,
   logout as logoutRequest,
   refreshSession,
+  loginWithGoogle as googleRequest,
+  getProfile,
 } from '../services/auth.service';
+import type { Patient } from '../types/patient.types';
 
 import type {
   AuthUser,
@@ -25,6 +28,7 @@ import {
   getStoredUser,
   saveAuthSession,
   updateAuthTokens,
+  saveStoredUser,
 } from '../utils/auth-storage';
 
 interface AuthContextValue {
@@ -34,6 +38,9 @@ interface AuthContextValue {
   isLoading: boolean;
   login: (data: LoginRequest) => Promise<void>;
   logout: () => Promise<void>;
+  loginWithGoogle: (credential: string) => Promise<void>;
+  patient: Patient | null;
+  reloadProfile: () => Promise<void>;
 }
 
 interface AuthProviderProps {
@@ -56,12 +63,20 @@ export const AuthProvider = ({
   );
 
   const [isLoading, setIsLoading] = useState(true);
+  const [patient, setPatient] = useState<Patient | null>(null);
+  const reloadProfile = async () => {
+    const response = await getProfile();
+    setUser(response.data.user);
+    saveStoredUser(response.data.user);
+    setPatient(response.data.patient);
+  };
 
   useEffect(() => {
     const restoreSession = async () => {
       const storedRefreshToken = getRefreshToken();
 
       if (!storedRefreshToken) {
+        clearAuthSession(); setUser(null); setAccessToken(null);
         setIsLoading(false);
         return;
       }
@@ -77,6 +92,7 @@ export const AuthProvider = ({
         );
 
         setAccessToken(response.data.accessToken);
+        await reloadProfile();
       } catch {
         clearAuthSession();
 
@@ -88,6 +104,16 @@ export const AuthProvider = ({
     };
 
     void restoreSession();
+  }, []);
+
+  useEffect(() => {
+    const sync = () => {
+      setAccessToken(getAccessToken()); setUser(getStoredUser());
+      if (!getAccessToken()) setPatient(null);
+    };
+    window.addEventListener('saps-session', sync);
+    window.addEventListener('storage', sync);
+    return () => { window.removeEventListener('saps-session', sync); window.removeEventListener('storage', sync); };
   }, []);
 
   const login = async (
@@ -103,6 +129,14 @@ export const AuthProvider = ({
 
     setAccessToken(response.data.accessToken);
     setUser(response.data.user);
+    try { await reloadProfile(); } catch (error) { clearAuthSession(); throw error; }
+  };
+
+  const loginWithGoogle = async (credential: string) => {
+    const response = await googleRequest(credential);
+    saveAuthSession(response.data.accessToken, response.data.refreshToken, response.data.user);
+    setAccessToken(response.data.accessToken); setUser(response.data.user);
+    try { await reloadProfile(); } catch (error) { clearAuthSession(); throw error; }
   };
 
   const logout = async (): Promise<void> => {
@@ -119,6 +153,7 @@ export const AuthProvider = ({
 
       setAccessToken(null);
       setUser(null);
+      setPatient(null);
     }
   };
 
@@ -130,8 +165,11 @@ export const AuthProvider = ({
       isLoading,
       login,
       logout,
+      loginWithGoogle,
+      patient,
+      reloadProfile,
     }),
-    [user, accessToken, isLoading],
+    [user, accessToken, isLoading, patient],
   );
 
   return (

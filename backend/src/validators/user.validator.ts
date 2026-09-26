@@ -62,6 +62,7 @@ export const createPatientAccountSchema = z
  */
 export const createProfessionalAccountSchema = z
   .object({
+    id_profesional: z.string().uuid(),
     nombre_usuario: z
       .string()
       .trim()

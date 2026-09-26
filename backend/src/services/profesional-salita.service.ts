@@ -16,9 +16,9 @@ import { hasDatabaseCode } from "../utils/profile-error.js";
 import { AppError } from "../utils/app-error.js";
 
 export const getSalitasProfesional = async (
-  idProfesional: string
+  idProfesional: string, scope: string[] | null = null
 ) => {
-  return await getSalitasByProfesional(idProfesional);
+  return await getSalitasByProfesional(idProfesional, scope);
 };
 
 export const agregarSalitaProfesional = async (

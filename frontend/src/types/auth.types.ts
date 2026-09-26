@@ -1,6 +1,7 @@
 export type UserRole =
   | 'SUPER_ADMIN'
   | 'ADMIN_SALITA'
+  | 'PROFESIONAL'
   | 'PACIENTE';
 
 export interface AuthUser {
@@ -50,4 +51,13 @@ export interface ApiErrorResponse {
   success: false;
   message: string;
   errors?: Record<string, string[]>;
+}
+
+export interface RegisterPatientInput { email: string; password: string }
+export interface PasswordRecoveryInput { email: string }
+export interface ResetPasswordInput { token: string; newPassword: string }
+export type CompletePatientProfileInput = Omit<import('./patient.types').CreatePatientRequest, 'email'>;
+export interface ProfileResponse {
+  success: boolean;
+  data: { user: AuthUser; patient: import('./patient.types').Patient | null };
 }

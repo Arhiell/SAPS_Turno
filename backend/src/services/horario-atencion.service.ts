@@ -14,8 +14,8 @@ import {
   type UpdateHorarioAtencionInput,
 } from "../validators/horario-atencion.validator.js";
 
-export const getHorarios = async () => {
-  return await getAllHorarios();
+export const getHorarios = async (scope: string[] | null = null) => {
+  return await getAllHorarios(scope);
 };
 
 export const getHorario = async (id: string) => {

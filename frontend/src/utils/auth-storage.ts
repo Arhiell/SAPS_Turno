@@ -43,12 +43,14 @@ export const updateAuthTokens = (
 ): void => {
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
   localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  window.dispatchEvent(new Event('saps-session'));
 };
 
 export const clearAuthSession = (): void => {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  window.dispatchEvent(new Event('saps-session'));
 };
 
 export const saveStoredUser = (

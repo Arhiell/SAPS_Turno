@@ -8,7 +8,7 @@ const Sidebar = () => {
   const role = user?.rol;
 
   const menuItems = sidebarMenu.filter((item) =>
-    role ? item.roles.includes(role as never) : false
+    role ? item.roles.some(allowed => allowed === role) : false
   );
 
   return (

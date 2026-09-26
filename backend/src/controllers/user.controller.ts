@@ -178,7 +178,7 @@ export const createProfessional = async (
       });
     }
 
-    const user = await createProfessionalAccount(validation.data);
+    const user = await createProfessionalAccount(validation.data, req.user!);
 
     return res.status(201).json({
       success: true,

@@ -18,3 +18,10 @@ export const findPersonById = async (idPerson: string) => {
   if (error) throw error;
   return data;
 };
+
+export const findPersonsByEmail = async (email: string) => {
+  const { data, error } = await supabase.from("personas").select("id_persona")
+    .ilike("email", email.replace(/[%_]/g, "\\$&"));
+  if (error) throw error;
+  return data ?? [];
+};

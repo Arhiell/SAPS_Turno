@@ -16,8 +16,8 @@ export const hashPassword = async (
  * para comparar contraseña contra hash.
  */
 export const verifyPassword = async (
-  hash: string,
+  hash: string | null,
   password: string
 ): Promise<boolean> => {
-  return argon2.verify(hash, password);
+  return hash ? argon2.verify(hash, password) : false;
 };

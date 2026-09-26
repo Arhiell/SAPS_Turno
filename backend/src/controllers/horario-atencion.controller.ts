@@ -1,4 +1,8 @@
-import type { Request, Response, NextFunction } from "express";
+import type { 
+  Request, 
+  Response, 
+  NextFunction 
+} from "express";
 
 import {
   actualizarHorario,
@@ -14,7 +18,7 @@ export const obtenerHorarios = async (
   next: NextFunction
 ) => {
   try {
-    const horarios = await getHorarios();
+    const horarios = await getHorarios(res.locals.salitaScope);
 
     return res.status(200).json(horarios);
   } catch (error) {

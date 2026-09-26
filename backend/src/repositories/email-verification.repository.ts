@@ -56,6 +56,7 @@ export const createEmailVerificationToken = async (
     token_hash: tokenHash,
     fecha_expiracion: expiration,
     ip_solicitud: ip,
+    intentos: 0,
   });
 
   if (error) {
@@ -102,14 +103,59 @@ export const markEmailAsVerified = async (idUsuario: string) => {
 
 //El token pasa a considerarse utilizado.
 export const markEmailTokenAsUsed = async (idToken: string) => {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("tokens_verificacion_email")
     .update({
       fecha_uso: new Date().toISOString(),
     })
-    .eq("id_token", idToken);
+    .eq("id_token", idToken)
+    .is("fecha_uso", null)
+    .select("id_token")
+    .maybeSingle();
 
   if (error) {
     throw new Error(`Error marcando token como utilizado: ${error.message}`);
   }
+
+  return Boolean(data);
+};
+
+export const findLatestPendingEmailToken = async (idUsuario: string) => {
+  const { data, error } = await supabase
+    .from("tokens_verificacion_email")
+    .select("id_token, token_hash, fecha_expiracion, fecha_creacion, intentos")
+    .eq("id_usuario", idUsuario)
+    .is("fecha_uso", null)
+    .order("fecha_creacion", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Error buscando código de email: ${error.message}`);
+  }
+
+  return data;
+};
+
+export const registerEmailCodeAttempt = async (
+  idToken: string,
+  attempts: number,
+  invalidate: boolean
+) => {
+  const { data, error } = await supabase
+    .from("tokens_verificacion_email")
+    .update({
+      intentos: attempts,
+      ...(invalidate ? { fecha_uso: new Date().toISOString() } : {}),
+    })
+    .eq("id_token", idToken)
+    .is("fecha_uso", null)
+    .select("id_token")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Error registrando intento de email: ${error.message}`);
+  }
+
+  return Boolean(data);
 };

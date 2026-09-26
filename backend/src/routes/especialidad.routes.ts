@@ -1,3 +1,5 @@
+import { authenticate } from "../middlewares/auth.middleware.js";
+import { requireRole } from "../middlewares/role.middleware.js";
 import { Router } from "express";
 
 import {
@@ -12,8 +14,8 @@ const router = Router();
 
 router.get("/", getAllEspecialidades);
 router.get("/:id", getEspecialidadById);
-router.post("/", createEspecialidad);
-router.put("/:id", updateEspecialidad);
-router.delete("/:id", deleteEspecialidad);
+router.post("/", authenticate, requireRole("SUPER_ADMIN"), createEspecialidad);
+router.put("/:id", authenticate, requireRole("SUPER_ADMIN"), updateEspecialidad);
+router.delete("/:id", authenticate, requireRole("SUPER_ADMIN"), deleteEspecialidad);
 
 export default router;

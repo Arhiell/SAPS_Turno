@@ -1,4 +1,12 @@
-import type { Request, Response, NextFunction } from "express";
+import type { 
+  Request, 
+  Response, 
+  NextFunction 
+} from "express";
+
+import { 
+  agregarSalitaProfesional 
+} from "../services/profesional-salita.service.js";
 
 import {
   getProfesionales,
@@ -15,7 +23,7 @@ export const getAllProfesionales = async (
   next: NextFunction
 ) => {
   try {
-    const profesionales = await getProfesionales();
+    const profesionales = await getProfesionales(res.locals.professionalScope);
 
     return res.status(200).json({
       success: true,
@@ -60,7 +68,10 @@ export const createProfesional = async (
   next: NextFunction
 ) => {
   try {
-    const profesional = await crearProfesional(req.body);
+    const { id_salita, ...input } = req.body;
+    const profesional = await crearProfesional(input);
+    const salita = id_salita ?? res.locals.salitaScope?.[0];
+    if (salita) await agregarSalitaProfesional(profesional.id_profesional, { id_salita: salita });
 
     return res.status(201).json({
       success: true,

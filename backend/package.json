@@ -9,6 +9,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
+    "check:email": "tsx src/scripts/check-email.ts",
     "seed:superadmin": "tsx src/scripts/create-super-admin.ts"
   },
   "repository": {

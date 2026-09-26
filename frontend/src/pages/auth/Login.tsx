@@ -1,21 +1,33 @@
-import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+﻿import { useState, type FormEvent } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../../context/AuthContext';
+import { authError } from '../../utils/auth-errors';
+
+import AuthForm from './AuthForm';
+import PasswordInput from './PasswordInput';
+import GoogleButton from './GoogleButton';
 
 const Login = () => {
   const { login, isLoading } = useAuth();
+
   const navigate = useNavigate();
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const busy = isLoading || submitting;
 
   const handleSubmit = async (
-    event: FormEvent<HTMLFormElement>,
+    event: FormEvent<HTMLFormElement>
   ) => {
     event.preventDefault();
 
+    if (busy) return;
+
+    setSubmitting(true);
     setError('');
 
     try {
@@ -24,91 +36,126 @@ const Login = () => {
         password,
       });
 
-      navigate('/', { replace: true });
-    } catch (error) {
-      console.error(error);
-
-      setError(
-        'No se pudo iniciar sesión. Verificá tus datos.',
-      );
+      navigate('/', {
+        replace: true,
+      });
+    } catch (cause) {
+      setError(authError(cause));
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <div className="container py-5">
-      <div className="row justify-content-center">
-        <div className="col-12 col-md-6 col-lg-4">
-          <div className="card shadow-sm">
-            <div className="card-body p-4">
-              <h1 className="h3 text-center mb-4">
-                SAPS Turno
-              </h1>
+    <AuthForm
+      title="Te damos la bienvenida"
+      subtitle="Ingresá a tu cuenta para continuar."
+      footer={
+        <>
+          <p>
+            ¿Sos paciente?{' '}
+            <Link to="/registro">
+              Crear una cuenta
+            </Link>
+          </p>
 
-              <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                  <label
-                    htmlFor="identifier"
-                    className="form-label"
-                  >
-                    Usuario o correo electrónico
-                  </label>
+          <p className="mt-2">
+            <Link to="/verificar-email">
+              Verificar mi correo
+            </Link>
+          </p>
+        </>
+      }
+    >
+      <form
+        onSubmit={handleSubmit}
+        aria-busy={busy}
+      >
+        <fieldset disabled={busy}>
+          <div className="mb-3">
+            <label
+              htmlFor="identifier"
+              className="form-label"
+            >
+              Correo electrónico o usuario
+            </label>
 
-                  <input
-                    id="identifier"
-                    type="text"
-                    className="form-control"
-                    value={identifier}
-                    onChange={(event) =>
-                      setIdentifier(event.target.value)
-                    }
-                    required
-                  />
-                </div>
-
-                <div className="mb-3">
-                  <label
-                    htmlFor="password"
-                    className="form-label"
-                  >
-                    Contraseña
-                  </label>
-
-                  <input
-                    id="password"
-                    type="password"
-                    className="form-control"
-                    value={password}
-                    onChange={(event) =>
-                      setPassword(event.target.value)
-                    }
-                    required
-                  />
-                </div>
-
-                {error && (
-                  <div
-                    className="alert alert-danger"
-                    role="alert"
-                  >
-                    {error}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  className="btn btn-primary w-100"
-                  disabled={isLoading}
-                >
-                  {isLoading
-                    ? 'Ingresando...'
-                    : 'Iniciar sesión'}
-                </button>
-              </form>
-            </div>
+            <input
+              id="identifier"
+              name="username"
+              type="text"
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              className="form-control"
+              value={identifier}
+              onChange={(event) =>
+                setIdentifier(event.target.value)
+              }
+              required
+            />
           </div>
-        </div>
+
+          <PasswordInput
+            id="password"
+            name="password"
+            label="Contraseña"
+            autoComplete="current-password"
+            value={password}
+            onChange={(event) =>
+              setPassword(event.target.value)
+            }
+            required
+          />
+
+          <Link
+            className="auth-recovery-link"
+            to="/recuperar-contrasena"
+          >
+            ¿Olvidaste tu contraseña?
+          </Link>
+
+          {error && (
+            <div
+              className="alert alert-danger"
+              role="alert"
+            >
+              <i
+                className="bi bi-exclamation-circle me-2"
+                aria-hidden="true"
+              />
+
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="btn btn-saps w-100"
+            disabled={busy}
+          >
+            {busy && (
+              <span
+                className="spinner-border spinner-border-sm me-2"
+                aria-hidden="true"
+              />
+            )}
+
+            {isLoading
+              ? 'Verificando sesión…'
+              : submitting
+                ? 'Iniciando sesión…'
+                : 'Iniciar sesión'}
+          </button>
+        </fieldset>
+      </form>
+
+      <div className="auth-divider">
+        o continuá con
       </div>
-    </div>
+
+      <GoogleButton disabled={busy} />
+    </AuthForm>
   );
 };
 

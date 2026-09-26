@@ -6,6 +6,21 @@ import {
 } from 'react-router-dom';
 
 import Login from '../pages/auth/Login';
+import AccountManagementPage from '../pages/auth/AccountManagementPage';
+import RegisterPage from '../pages/auth/RegisterPage';
+import PasswordRecoveryPage from '../pages/auth/PasswordRecoveryPage';
+import VerifyEmailCodePage from '../pages/auth/VerifyEmailCodePage';
+import CompletePatientProfilePage from '../pages/auth/CompletePatientProfilePage';
+import MiPerfilPage from '../pages/pacientes/MiPerfilPage';
+import MisTurnosPage from '../pages/turnos/MisTurnosPage';
+import { useAuth } from '../context/AuthContext';
+const RoleHome = () => {
+ const { user, patient } = useAuth();
+ if (user?.rol === 'PROFESIONAL') return <Navigate to="/mi-agenda" replace />;
+ if (user?.rol === 'PACIENTE') return <Navigate to={patient ? '/mis-turnos' : '/completar-perfil'} replace />;
+ if (['SUPER_ADMIN', 'ADMIN_SALITA'].includes(user?.rol ?? '')) return <Dashboard />;
+ return <p>Tu rol no tiene un panel habilitado. Contactá a la administración.</p>;
+};
 import Dashboard from '../pages/dashboard/Dashboard';
 
 import PacientesPage from '../pages/pacientes/PacientesPage';
@@ -36,6 +51,11 @@ const AppRoutes = () => {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/registro" element={<RegisterPage />} />
+        <Route path="/recuperar-contrasena" element={<PasswordRecoveryPage mode="forgot" />} />
+        <Route path="/restablecer-contrasena" element={<PasswordRecoveryPage mode="reset" />} />
+        <Route path="/verificar-email" element={<PasswordRecoveryPage mode="verify" />} />
+        <Route path="/verificar-codigo" element={<VerifyEmailCodePage />} />
 
         {/* AUTENTICACIÓN */}
         <Route
@@ -47,12 +67,23 @@ const AppRoutes = () => {
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
 
+            <Route element={<ProtectedRoute roles={['PACIENTE']} />}>
+              <Route path="/completar-perfil" element={<CompletePatientProfilePage />} />
+              <Route path="/mi-perfil" element={<MiPerfilPage />} />
+              <Route path="/mis-turnos" element={<MisTurnosPage />} />
+            </Route>
+            <Route element={<ProtectedRoute roles={['PROFESIONAL']} />}>
+              <Route path="/mi-agenda" element={<MisTurnosPage />} />
+              <Route path="/mis-pacientes" element={<MisTurnosPage />} />
+            </Route>
             {/* DASHBOARD */}
             <Route
               path="/"
-              element={<Dashboard />}
+              element={<RoleHome />}
             />
 
+            <Route element={<ProtectedRoute roles={['SUPER_ADMIN', 'ADMIN_SALITA']} />}>
+            <Route path="/administracion" element={<AccountManagementPage />} />
             {/* ========================= */}
             {/* PACIENTES */}
             {/* ========================= */}
@@ -76,6 +107,7 @@ const AppRoutes = () => {
             {/* SALITAS */}
             {/* ========================= */}
 
+            <Route element={<ProtectedRoute roles={['SUPER_ADMIN']} />}>
             <Route
               path="/salitas"
               element={<SalitasPage />}
@@ -97,6 +129,7 @@ const AppRoutes = () => {
             />
 
             {/* ========================= */}
+            </Route>
             {/* PROFESIONALES */}
             {/* ========================= */}
 
@@ -153,6 +186,7 @@ const AppRoutes = () => {
               element={<ReportesPage />}
             />
 
+            </Route>
           </Route>
         </Route>
 

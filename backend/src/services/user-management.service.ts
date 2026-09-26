@@ -3,6 +3,12 @@ import type {
   CreatePatientAccountInput,
   CreateProfessionalAccountInput
 } from "../validators/user.validator.js";
+import type { AuthenticatedUser } from "../types/auth.types.js";
+import { supabase } from "../config/supabase.js";
+import { getProfesionalById } from "../repositories/profesional.repository.js";
+import { getTurnoScope } from "./turno-access.service.js";
+import { createVerificationForUser } from "./email-verification.service.js";
+import { sendAuthEmail } from "./email.service.js";
 
 import {
   assignUserToSalita,
@@ -171,8 +177,21 @@ export const createPatientAccount = async (
  * salita se realizará posteriormente.
  */
 export const createProfessionalAccount = async (
-  input: CreateProfessionalAccountInput
+  input: CreateProfessionalAccountInput, actor: AuthenticatedUser
 ) => {
+  const professional = await getProfesionalById(input.id_profesional);
+  if (!professional?.activo) throw new AppError("Profesional no encontrado o inactivo", 404);
+  const scope = await getTurnoScope(actor);
+  if (scope !== null) {
+    const { data, error } = await supabase.from("profesional_salita").select("id_profesional")
+      .eq("id_profesional", input.id_profesional).in("id_salita", scope).eq("activo", true);
+    if (error) throw error;
+    if (!data?.length) throw new AppError("El profesional no pertenece a tus salitas", 403);
+  }
+  const { data: existingAccount, error: accountError } = await supabase.from("usuarios")
+    .select("id_usuario").eq("id_persona", professional.id_persona).limit(1).maybeSingle();
+  if (accountError) throw accountError;
+  if (existingAccount) throw new AppError("La persona ya tiene una cuenta asociada", 409);
   const email =
     input.email.toLowerCase();
 
@@ -198,12 +217,15 @@ export const createProfessionalAccount = async (
     await hashPassword(input.password);
 
   const user = await createUser({
+    id_persona: professional.id_persona,
     id_rol: role.id_rol,
     nombre_usuario: username,
     email,
     password_hash: passwordHash
   });
 
+  const token = await createVerificationForUser(user.id_usuario, null);
+  await sendAuthEmail(email, "verificar-email", token);
   return {
     ...user,
     rol: role.codigo

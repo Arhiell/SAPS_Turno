@@ -14,7 +14,7 @@ import {
   resetPassword
 } from "../services/password-recovery.service.js";
 
-import { env } from "../config/env.js";
+
 
 // POST /api/auth/password/forgot
 export const forgotPassword = async (
@@ -30,7 +30,7 @@ export const forgotPassword = async (
         });
       }
 
-      const recoveryToken = await requestPasswordRecovery(validation.data, {
+      await requestPasswordRecovery(validation.data, {
         ip: req.ip ?? null,
       });
 
@@ -48,9 +48,6 @@ export const forgotPassword = async (
           "Si el correo está registrado, se enviarán instrucciones para recuperar la contraseña",
       };
 
-      if (env.NODE_ENV === "development" && recoveryToken) {
-        response.recoveryToken = recoveryToken;
-      }
 
       return res.status(200).json(response);
     } catch (error) {

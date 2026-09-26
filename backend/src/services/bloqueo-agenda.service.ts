@@ -1,4 +1,5 @@
 import { timeToSeconds } from "../utils/time.js";
+
 import {
   createBloqueo,
   deleteBloqueo,
@@ -14,8 +15,8 @@ import {
   type UpdateBloqueoAgendaInput,
 } from "../validators/bloqueo-agenda.validator.js";
 
-export const getBloqueos = async () => {
-  return await getAllBloqueos();
+export const getBloqueos = async (scope: string[] | null = null) => {
+  return await getAllBloqueos(scope);
 };
 
 export const getBloqueo = async (id: string) => {

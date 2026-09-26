@@ -1,6 +1,7 @@
 import {
   env
 } from "../config/env.js";
+import { sendAuthEmail } from "./email.service.js";
 
 import {
   createPasswordRecoveryToken,
@@ -92,6 +93,10 @@ export const requestPasswordRecovery =
      * En producción este token será enviado
      * mediante email.
      */
+    // La respuesta pública no cambia si el proveedor de correo falla.
+    await sendAuthEmail(email, "restablecer-contrasena", recoveryToken).catch(() => {
+      console.error("No se pudo enviar el correo de recuperación");
+    });
     return recoveryToken;
   };
 

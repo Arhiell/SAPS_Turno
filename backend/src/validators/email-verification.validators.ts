@@ -12,19 +12,25 @@ export const requestEmailVerificationSchema =
 
 // Confirmación mediante token.
 export const verifyEmailSchema =
-  z.object({
-    token: z
-      .string()
-      .length(
-        64,
-        "El token de verificación no es válido"
-      )
-  }).strict();
+  z.union([
+    z.object({
+      token: z.string().length(64, "El token de verificación no es válido"),
+    }).strict(),
+    z.object({
+      email: z.string().trim().email().max(254),
+      code: z.string().regex(/^\d{4}$/, "El código debe tener 4 dígitos"),
+    }).strict(),
+  ]);
+
+export const verifyEmailCodeSchema = z.object({
+  email: z.string().trim().email().max(254),
+  code: z.string().regex(/^\d{4}$/),
+}).strict();
 
 export type RequestEmailVerificationInput =
   z.infer<
     typeof requestEmailVerificationSchema
   >;
 
-export type VerifyEmailInput =
-  z.infer<typeof verifyEmailSchema>;
+export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
+export type VerifyEmailCodeInput = z.infer<typeof verifyEmailCodeSchema>;

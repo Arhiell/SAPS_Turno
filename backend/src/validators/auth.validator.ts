@@ -13,7 +13,7 @@ export const registerSchema = z.object({
     .regex(
       /^[a-zA-Z0-9._-]+$/,
       "El usuario solo puede contener letras, números, punto, guion y guion bajo"
-    ),
+    ).optional(),
 
   email: z
     .string()

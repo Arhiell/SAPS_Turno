@@ -35,3 +35,24 @@ export const sendEmail = async ({
     html,
   });
 };
+
+export const sendAuthEmail = async (to: string, path: "verificar-email" | "restablecer-contrasena", token: string) => {
+  
+  const url = new URL(path, `${env.FRONTEND_URL.replace(/\/$/, "")}/`);
+  
+  url.searchParams.set("token", token);
+  
+  await sendEmail({ to, subject: path === "verificar-email" ? "Verificá tu correo — SAPS Turno" : "Recuperá tu contraseña — SAPS Turno",
+    text: `Para continuar, abrí este enlace: ${url.toString()}\nSi no solicitaste esta operación, ignorá este mensaje.` });
+};
+
+export const sendEmailVerificationCode = async (to: string, code: string) => {
+  const result = await sendEmail({
+    to,
+    subject: "Verificá tu correo — SAPS Turno",
+    text: `Tu código de verificación es: ${code}\n\nEste código vence en 10 minutos. Si no solicitaste este registro, ignorá este correo.`,
+  });
+  if (result.accepted.length === 0) {
+    throw new Error("El servidor SMTP no aceptó el correo de verificación.");
+  }
+};

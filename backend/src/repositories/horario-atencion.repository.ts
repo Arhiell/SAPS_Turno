@@ -17,11 +17,12 @@ const horarioSelect = `
   fecha_actualizacion
 `;
 
-export const getAllHorarios = async () => {
-  const { data, error } = await supabase
+export const getAllHorarios = async (scope: string[] | null = null) => {
+  let query = supabase
     .from("horarios_atencion")
     .select(horarioSelect)
-    .order("dia_semana", { ascending: true })
+  if (scope !== null) query = query.in("id_salita", scope);
+  const { data, error } = await query.order("dia_semana", { ascending: true })
     .order("hora_inicio", { ascending: true });
 
   if (error) throw error;

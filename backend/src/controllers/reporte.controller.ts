@@ -1,3 +1,8 @@
+import { 
+  getTurnoScope, 
+  assertTurnoScope 
+} from "../services/turno-access.service.js";
+
 import type {
   NextFunction,
   Request,
@@ -33,7 +38,7 @@ export const getReporteResumenController = async (
       reporteQuerySchema.parse(req.query);
 
     const reporte =
-      await getReporteResumen(filters);
+      await getReporteResumen(filters, await reportScope(req, filters.id_salita));
 
     res.status(200).json({
       ok: true,
@@ -56,7 +61,7 @@ export const getReporteEspecialidadesController =
         reporteQuerySchema.parse(req.query);
 
       const reporte =
-        await getReporteEspecialidades(filters);
+        await getReporteEspecialidades(filters, await reportScope(req, filters.id_salita));
 
       res.status(200).json({
         ok: true,
@@ -80,7 +85,7 @@ export const getReporteProfesionalesController =
         reporteQuerySchema.parse(req.query);
 
       const reporte =
-        await getReporteProfesionales(filters);
+        await getReporteProfesionales(filters, await reportScope(req, filters.id_salita));
 
       res.status(200).json({
         ok: true,
@@ -105,7 +110,7 @@ export const exportReporteController = async (
       );
 
     const file =
-      await exportReporte(filters);
+      await exportReporte(filters, await reportScope(req, filters.id_salita));
 
     const filename =
       `reporte-${filters.tipo}-${filters.fecha_desde}-${filters.fecha_hasta}.${file.extension}`;
@@ -127,3 +132,8 @@ export const exportReporteController = async (
     next(error);
   }
 };
+async function reportScope(req: Request, salita?: string) {
+ const scope = await getTurnoScope(req.user!);
+ if (salita) assertTurnoScope(scope, salita);
+ return scope;
+}

@@ -23,25 +23,25 @@ import { generatePdf } from
 
 // Obtiene los datos según el reporte pedido.
 export const getReporteExportData = async (
-  filters: ReporteExportQuery,
+  filters: ReporteExportQuery, scope: string[] | null = null,
 ) => {
   if (filters.tipo === "resumen") {
-    return getReporteResumen(filters);
+    return getReporteResumen(filters, scope);
   }
 
   if (filters.tipo === "especialidades") {
-    return getReporteEspecialidades(filters);
+    return getReporteEspecialidades(filters, scope);
   }
 
-  return getReporteProfesionales(filters);
+  return getReporteProfesionales(filters, scope);
 };
 
 // Genera el archivo solicitado.
 export const exportReporte = async (
-  filters: ReporteExportQuery,
+  filters: ReporteExportQuery, scope: string[] | null = null,
 ) => {
   const data =
-    await getReporteExportData(filters);
+    await getReporteExportData(filters, scope);
 
   return generateReporteFile(
     data, 

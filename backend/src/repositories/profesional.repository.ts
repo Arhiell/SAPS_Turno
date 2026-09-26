@@ -26,11 +26,12 @@ const profesionalSelect = `
 `;
 
 // GET todos
-export const getAllProfesionales = async () => {
-  const { data, error } = await supabase
+export const getAllProfesionales = async (scope: string[] | null = null) => {
+  let query = supabase
     .from("profesionales")
-    .select(profesionalSelect)
-    .order("fecha_alta", { ascending: false });
+    .select(profesionalSelect);
+  if (scope !== null) query = query.in("id_profesional", scope);
+  const { data, error } = await query.order("fecha_alta", { ascending: false });
 
   if (error) {
     throw new Error(

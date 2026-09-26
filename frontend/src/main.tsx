@@ -7,6 +7,7 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 import "./styles/variables.css";
 import "./index.css";
 import "./App.css";
+import "./components/layout/patient-mobile.css";
 
 import App from "./App";
 import { AuthProvider } from "./context/AuthContext";
