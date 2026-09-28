@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { roleLabels } from './sidebar-menu';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -19,7 +20,7 @@ const Navbar = () => {
       <div className="navbar-user">
         <div className="text-end">
           <strong>{user?.nombre_usuario}</strong>
-          <small>{user?.rol}</small>
+          <small>{roleLabels[user?.rol ?? ''] ?? user?.rol}</small>
         </div>
 
         <button

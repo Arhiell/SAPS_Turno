@@ -1,3 +1,4 @@
+import { getEstadoClass } from '../../utils/turno-status';
 import { useEffect, useState } from 'react';
 
 import { useAuth } from '../../context/AuthContext';
@@ -131,7 +132,7 @@ export default function MisTurnosPage() {
       </h1>
 
       {professional ? (
-        <div className="d-flex gap-3 my-3 align-items-end">
+        <div className="d-flex flex-wrap gap-3 my-3 align-items-end">
           <label>
             Fecha
 
@@ -188,25 +189,25 @@ export default function MisTurnosPage() {
         </p>
       ) : (
         <div className="table-responsive">
-          <table className="table table-striped align-middle">
+          <table className="table saps-responsive-table table-striped align-middle">
             <thead>
               <tr>
-                <th>Fecha y hora</th>
+                <th scope="col">Fecha y hora</th>
 
                 {professional && (
                   <>
-                    <th>Paciente</th>
-                    <th>DNI</th>
+                    <th scope="col">Paciente</th>
+                    <th scope="col">DNI</th>
                   </>
                 )}
 
-                <th>Salita</th>
-                <th>Especialidad</th>
-                <th>Estado</th>
-                <th>Motivo</th>
+                <th scope="col">Profesional</th><th scope="col">Salita</th>
+                <th scope="col">Especialidad</th>
+                <th scope="col">Estado</th>
+                <th scope="col">Motivo</th>
 
                 {professional && (
-                  <th>Acciones</th>
+                  <th scope="col">Acciones</th>
                 )}
               </tr>
             </thead>
@@ -214,7 +215,7 @@ export default function MisTurnosPage() {
             <tbody>
               {turnos.map((t) => (
                 <tr key={t.id_turno}>
-                  <td>
+                  <td data-label="Fecha y hora">
                     {new Date(
                       t.fecha_hora_inicio
                     ).toLocaleString(
@@ -228,37 +229,37 @@ export default function MisTurnosPage() {
 
                   {professional && (
                     <>
-                      <td>
+                      <td data-label="Paciente">
                         {t.paciente?.persona?.apellidos}{' '}
                         {t.paciente?.persona?.nombres}
                       </td>
 
-                      <td>
+                      <td data-label="DNI">
                         {t.paciente?.persona?.dni}
                       </td>
                     </>
                   )}
 
-                  <td>
+                  <td data-label="Profesional">{t.profesional?.persona?.apellidos} {t.profesional?.persona?.nombres}</td><td data-label="Salita">
                     {t.salita?.nombre}
                   </td>
 
-                  <td>
+                  <td data-label="Especialidad">
                     {t.especialidad?.nombre}
                   </td>
 
-                  <td>
-                    {t.estado.nombre}
+                  <td data-label="Estado">
+                    <span className={getEstadoClass(t.estado.codigo)}>{t.estado.nombre}</span>
                   </td>
 
-                  <td>
+                  <td data-label="Motivo">
                     {t.motivo_consulta || '—'}
                   </td>
 
                   {professional && (
-                    <td>
+                    <td data-label="Acciones">
                       {!t.estado.es_estado_final && (
-                        <div className="d-flex gap-2">
+                        <div className="d-flex flex-wrap gap-2">
                           <button
                             className="btn btn-sm btn-success"
                             disabled={busy}
@@ -301,7 +302,7 @@ export default function MisTurnosPage() {
         </div>
       )}
 
-      <div className="d-flex gap-3 align-items-center">
+      <div className="d-flex flex-wrap gap-3 align-items-center">
         <button
           className="btn btn-outline-secondary"
           disabled={

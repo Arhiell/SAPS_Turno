@@ -6,6 +6,7 @@ export default function MiPerfilPage() {
     <div className="card-body">
       <h1 className="h3">Mi perfil</h1>
 
+    {!patient && <dl><dt>Usuario</dt><dd>{user?.nombre_usuario}</dd><dt>Correo</dt><dd>{user?.email}</dd></dl>}
     {patient && <dl className="row">
       {
       Object.entries(

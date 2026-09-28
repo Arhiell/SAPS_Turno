@@ -9,6 +9,8 @@ const SidebarItem = ({ item }: SidebarItemProps) => {
   return (
     <NavLink
       to={item.path}
+      end={item.path === '/'}
+      title={item.label}
       className={({ isActive }) =>
         `sidebar-item ${isActive ? "active" : ""}`
       }

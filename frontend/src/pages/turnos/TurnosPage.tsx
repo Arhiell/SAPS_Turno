@@ -1,3 +1,4 @@
+import { getEstadoClass } from '../../utils/turno-status';
 import {
   useEffect,
   useState,
@@ -71,35 +72,6 @@ const estadoOptions = [
   },
 ];
 
-const getEstadoClass = (
-  estado: string,
-) => {
-  switch (estado) {
-    case 'CONFIRMADO':
-      return 'turno-badge turno-badge-confirmado';
-
-    case 'SOLICITADO':
-      return 'turno-badge turno-badge-solicitado';
-
-    case 'EN_ESPERA':
-      return 'turno-badge turno-badge-espera';
-
-    case 'ATENDIDO':
-      return 'turno-badge turno-badge-atendido';
-
-    case 'CANCELADO':
-      return 'turno-badge turno-badge-cancelado';
-
-    case 'NO_ASISTIO':
-      return 'turno-badge turno-badge-no-asistio';
-
-    case 'REPROGRAMADO':
-      return 'turno-badge turno-badge-reprogramado';
-
-    default:
-      return 'turno-badge';
-  }
-};
 
 const formatDateTime = (
   value: string,
@@ -641,16 +613,16 @@ const TurnosPage = () => {
             </div>
           ) : (
             <div className="table-responsive">
-              <table className="table table-hover align-middle mb-0">
+              <table className="table saps-responsive-table table-hover align-middle mb-0">
                 <thead>
                   <tr>
-                    <th>Fecha y hora</th>
-                    <th>Paciente</th>
-                    <th>Profesional</th>
-                    <th>Especialidad</th>
-                    <th>Salita</th>
-                    <th>Estado</th>
-                    <th className="text-end">
+                    <th scope="col">Fecha y hora</th>
+                    <th scope="col">Paciente</th>
+                    <th scope="col">Profesional</th>
+                    <th scope="col">Especialidad</th>
+                    <th scope="col">Salita</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col" className="text-end">
                       Acción
                     </th>
                   </tr>
@@ -664,7 +636,7 @@ const TurnosPage = () => {
                           turno.id_turno
                         }
                       >
-                        <td>
+                        <td data-label="Fecha y hora">
                           <strong>
                             {formatDateTime(
                               turno.fecha_hora_inicio,
@@ -676,7 +648,7 @@ const TurnosPage = () => {
                           </small>
                         </td>
 
-                        <td>
+                        <td data-label="Paciente">
                           <strong>
                             {
                               turno
@@ -704,7 +676,7 @@ const TurnosPage = () => {
                           </small>
                         </td>
 
-                        <td>
+                        <td data-label="Profesional">
                           {
                             turno
                               .profesional
@@ -720,7 +692,7 @@ const TurnosPage = () => {
                           }
                         </td>
 
-                        <td>
+                        <td data-label="Especialidad">
                           {
                             turno
                               .especialidad
@@ -728,7 +700,7 @@ const TurnosPage = () => {
                           }
                         </td>
 
-                        <td>
+                        <td data-label="Salita">
                           {
                             turno
                               .salita
@@ -736,7 +708,7 @@ const TurnosPage = () => {
                           }
                         </td>
 
-                        <td>
+                        <td data-label="Estado">
                           <span
                             className={getEstadoClass(
                               turno.estado
@@ -750,7 +722,7 @@ const TurnosPage = () => {
                           </span>
                         </td>
 
-                        <td className="text-end">
+                        <td data-label="Acción" className="text-end">
                           <button
                             type="button"
                             className="btn btn-sm btn-outline-success"

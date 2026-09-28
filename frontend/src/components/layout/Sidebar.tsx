@@ -1,15 +1,13 @@
 import { useAuth } from "../../context/AuthContext";
 import SidebarItem from "./SidebarItem";
-import { sidebarMenu } from "./sidebar-menu";
+import { getMenuForRole } from "./sidebar-menu";
 
 const Sidebar = () => {
   const { user } = useAuth();
 
   const role = user?.rol;
 
-  const menuItems = sidebarMenu.filter((item) =>
-    role ? item.roles.some(allowed => allowed === role) : false
-  );
+  const menuItems = getMenuForRole(role);
 
   return (
     <aside className="sidebar">
@@ -18,7 +16,7 @@ const Sidebar = () => {
         <p>Sistema de gestión</p>
       </div>
 
-      <nav className="sidebar-nav">
+      <nav className="sidebar-nav" aria-label="Navegación principal">
         {menuItems.map((item) => (
           <SidebarItem
             key={item.path}

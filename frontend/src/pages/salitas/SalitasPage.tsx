@@ -213,15 +213,15 @@ const SalitasPage = () => {
             </div>
           ) : (
             <div className="table-responsive">
-              <table className="table table-hover align-middle mb-0">
+              <table className="table saps-responsive-table table-hover align-middle mb-0">
                 <thead>
                   <tr>
-                    <th>Código</th>
-                    <th>Salita</th>
-                    <th>Dirección</th>
-                    <th>Teléfono</th>
-                    <th>Estado</th>
-                    <th className="text-end">
+                    <th scope="col">Código</th>
+                    <th scope="col">Salita</th>
+                    <th scope="col">Dirección</th>
+                    <th scope="col">Teléfono</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col" className="text-end">
                       Acciones
                     </th>
                   </tr>
@@ -233,13 +233,13 @@ const SalitasPage = () => {
                       <tr
                         key={salita.id_salita}
                       >
-                        <td>
+                        <td data-label="Código">
                           <span className="fw-semibold">
                             {salita.codigo}
                           </span>
                         </td>
 
-                        <td>
+                        <td data-label="Salita">
                           <div className="d-flex align-items-center gap-3">
                             <div
                               className="dashboard-stat-icon"
@@ -258,23 +258,23 @@ const SalitasPage = () => {
                           </div>
                         </td>
 
-                        <td>
+                        <td data-label="Dirección">
                           {salita.direccion ||
                             '-'}
                         </td>
 
-                        <td>
+                        <td data-label="Teléfono">
                           {salita.telefono ||
                             '-'}
                         </td>
 
-                        <td>
+                        <td data-label="Estado">
                           <span className="badge text-bg-success">
                             Activa
                           </span>
                         </td>
 
-                        <td className="text-end">
+                        <td data-label="Acciones" className="text-end">
                           <div className="d-flex justify-content-end gap-2">
                             <button
                               type="button"

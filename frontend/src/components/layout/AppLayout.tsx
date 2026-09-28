@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
-import PatientBottomNavigation from './PatientBottomNavigation';
+import MobileBottomNav from './MobileBottomNav';
 
 const AppLayout = () => {
   const { user } = useAuth();
@@ -16,11 +16,11 @@ const AppLayout = () => {
       <div className="app-content">
         <Navbar />
 
-        <main className="app-main">
+        <main className="app-main" id="contenido">
           <Outlet />
         </main>
       </div>
-      {isPatient && <PatientBottomNavigation />}
+      <MobileBottomNav />
     </div>
   );
 };

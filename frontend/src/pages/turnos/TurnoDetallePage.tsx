@@ -1,3 +1,4 @@
+import { getEstadoClass } from '../../utils/turno-status';
 import {
   useEffect,
   useState,
@@ -31,35 +32,6 @@ const formatDateTime = (
   );
 };
 
-const getEstadoClass = (
-  estado: string,
-) => {
-  switch (estado) {
-    case 'CONFIRMADO':
-      return 'turno-badge turno-badge-confirmado';
-
-    case 'SOLICITADO':
-      return 'turno-badge turno-badge-solicitado';
-
-    case 'EN_ESPERA':
-      return 'turno-badge turno-badge-espera';
-
-    case 'ATENDIDO':
-      return 'turno-badge turno-badge-atendido';
-
-    case 'CANCELADO':
-      return 'turno-badge turno-badge-cancelado';
-
-    case 'NO_ASISTIO':
-      return 'turno-badge turno-badge-no-asistio';
-
-    case 'REPROGRAMADO':
-      return 'turno-badge turno-badge-reprogramado';
-
-    default:
-      return 'turno-badge';
-  }
-};
 
 const TurnoDetallePage = () => {
   const navigate =

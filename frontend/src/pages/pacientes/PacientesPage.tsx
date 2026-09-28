@@ -232,15 +232,15 @@ const PacientesPage = () => {
             </div>
           ) : (
             <div className="table-responsive">
-              <table className="table table-hover align-middle mb-0">
+              <table className="table saps-responsive-table table-hover align-middle mb-0">
                 <thead>
                   <tr>
-                    <th>DNI</th>
-                    <th>Paciente</th>
-                    <th>Teléfono</th>
-                    <th>Obra social</th>
-                    <th>Estado</th>
-                    <th className="text-end">
+                    <th scope="col">DNI</th>
+                    <th scope="col">Paciente</th>
+                    <th scope="col">Teléfono</th>
+                    <th scope="col">Obra social</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col" className="text-end">
                       Acciones
                     </th>
                   </tr>
@@ -251,26 +251,26 @@ const PacientesPage = () => {
                     <tr
                       key={patient.id_paciente}
                     >
-                      <td>
+                      <td data-label="DNI">
                         {patient.dni}
                       </td>
 
-                      <td>
+                      <td data-label="Paciente">
                         <strong>
                           {patient.apellidos},{' '}
                           {patient.nombres}
                         </strong>
                       </td>
 
-                      <td>
+                      <td data-label="Teléfono">
                         {patient.telefono || '-'}
                       </td>
 
-                      <td>
+                      <td data-label="Obra social">
                         {patient.obra_social || '-'}
                       </td>
 
-                      <td>
+                      <td data-label="Estado">
                         <span
                           className={`badge ${
                             patient.activo
@@ -284,7 +284,7 @@ const PacientesPage = () => {
                         </span>
                       </td>
 
-                      <td className="text-end">
+                      <td data-label="Acciones" className="text-end">
                         <div className="d-flex justify-content-end gap-2">
 
                           {/* VER */}

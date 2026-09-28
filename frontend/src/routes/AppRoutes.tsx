@@ -1,3 +1,5 @@
+import SolicitarTurnoPage from '../pages/turnos/SolicitarTurnoPage';
+import ConfiguracionPage from '../pages/dashboard/ConfiguracionPage';
 import {
   BrowserRouter,
   Navigate,
@@ -16,8 +18,8 @@ import MisTurnosPage from '../pages/turnos/MisTurnosPage';
 import { useAuth } from '../context/AuthContext';
 const RoleHome = () => {
  const { user, patient } = useAuth();
- if (user?.rol === 'PROFESIONAL') return <Navigate to="/mi-agenda" replace />;
- if (user?.rol === 'PACIENTE') return <Navigate to={patient ? '/mis-turnos' : '/completar-perfil'} replace />;
+ if (user?.rol === 'PROFESIONAL') return <Dashboard />;
+ if (user?.rol === 'PACIENTE') return patient ? <Dashboard /> : <Navigate to="/completar-perfil" replace />;
  if (['SUPER_ADMIN', 'ADMIN_SALITA'].includes(user?.rol ?? '')) return <Dashboard />;
  return <p>Tu rol no tiene un panel habilitado. Contactá a la administración.</p>;
 };
@@ -69,13 +71,14 @@ const AppRoutes = () => {
 
             <Route element={<ProtectedRoute roles={['PACIENTE']} />}>
               <Route path="/completar-perfil" element={<CompletePatientProfilePage />} />
-              <Route path="/mi-perfil" element={<MiPerfilPage />} />
+              <Route path="/solicitar-turno" element={<SolicitarTurnoPage />} />
               <Route path="/mis-turnos" element={<MisTurnosPage />} />
             </Route>
             <Route element={<ProtectedRoute roles={['PROFESIONAL']} />}>
               <Route path="/mi-agenda" element={<MisTurnosPage />} />
               <Route path="/mis-pacientes" element={<MisTurnosPage />} />
             </Route>
+            <Route element={<ProtectedRoute roles={['PACIENTE', 'PROFESIONAL']} />}><Route path="/mi-perfil" element={<MiPerfilPage />} /></Route>
             {/* DASHBOARD */}
             <Route
               path="/"
@@ -83,6 +86,7 @@ const AppRoutes = () => {
             />
 
             <Route element={<ProtectedRoute roles={['SUPER_ADMIN', 'ADMIN_SALITA']} />}>
+            <Route path="/configuracion" element={<ConfiguracionPage />} />
             <Route path="/administracion" element={<AccountManagementPage />} />
             {/* ========================= */}
             {/* PACIENTES */}

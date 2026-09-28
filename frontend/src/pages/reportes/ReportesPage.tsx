@@ -1105,22 +1105,22 @@ const ReportesPage = () => {
           {especialidades.length >
           0 ? (
             <div className="table-responsive">
-              <table className="table reportes-table mb-0">
+              <table className="table saps-responsive-table reportes-table mb-0">
                 <thead>
                   <tr>
-                    <th>
+                    <th scope="col">
                       Especialidad
                     </th>
-                    <th>
+                    <th scope="col">
                       Total
                     </th>
-                    <th>
+                    <th scope="col">
                       Atendidos
                     </th>
-                    <th>
+                    <th scope="col">
                       Inasistencias
                     </th>
-                    <th>
+                    <th scope="col">
                       Cancelados
                     </th>
                   </tr>
@@ -1136,7 +1136,7 @@ const ReportesPage = () => {
                           item.id_especialidad
                         }
                       >
-                        <td>
+                        <td data-label="Especialidad">
                           <strong>
                             {
                               item.nombre
@@ -1144,25 +1144,25 @@ const ReportesPage = () => {
                           </strong>
                         </td>
 
-                        <td>
+                        <td data-label="Total">
                           {
                             item.total_turnos
                           }
                         </td>
 
-                        <td>
+                        <td data-label="Atendidos">
                           {
                             item.atendidos
                           }
                         </td>
 
-                        <td>
+                        <td data-label="Inasistencias">
                           {
                             item.inasistencias
                           }
                         </td>
 
-                        <td>
+                        <td data-label="Cancelados">
                           {
                             item.cancelados
                           }
@@ -1244,22 +1244,22 @@ const ReportesPage = () => {
           {profesionales.length >
           0 ? (
             <div className="table-responsive">
-              <table className="table reportes-table mb-0">
+              <table className="table saps-responsive-table reportes-table mb-0">
                 <thead>
                   <tr>
-                    <th>
+                    <th scope="col">
                       Profesional
                     </th>
-                    <th>
+                    <th scope="col">
                       Total
                     </th>
-                    <th>
+                    <th scope="col">
                       Atendidos
                     </th>
-                    <th>
+                    <th scope="col">
                       Inasistencias
                     </th>
-                    <th>
+                    <th scope="col">
                       Cancelados
                     </th>
                   </tr>
@@ -1275,7 +1275,7 @@ const ReportesPage = () => {
                           item.id_profesional
                         }
                       >
-                        <td>
+                        <td data-label="Profesional">
                           <strong>
                             {
                               item.profesional
@@ -1283,25 +1283,25 @@ const ReportesPage = () => {
                           </strong>
                         </td>
 
-                        <td>
+                        <td data-label="Total">
                           {
                             item.total_turnos
                           }
                         </td>
 
-                        <td>
+                        <td data-label="Atendidos">
                           {
                             item.atendidos
                           }
                         </td>
 
-                        <td>
+                        <td data-label="Inasistencias">
                           {
                             item.inasistencias
                           }
                         </td>
 
-                        <td>
+                        <td data-label="Cancelados">
                           {
                             item.cancelados
                           }
@@ -1446,22 +1446,22 @@ const ReportesPage = () => {
                         </div>
 
                         <div className="table-responsive">
-                          <table className="table reportes-table mb-0">
+                          <table className="table saps-responsive-table reportes-table mb-0">
                             <thead>
                               <tr>
-                                <th>
+                                <th scope="col">
                                   Hora
                                 </th>
-                                <th>
+                                <th scope="col">
                                   Paciente
                                 </th>
-                                <th>
+                                <th scope="col">
                                   DNI
                                 </th>
-                                <th>
+                                <th scope="col">
                                   Estado
                                 </th>
-                                <th>
+                                <th scope="col">
                                   Motivo
                                 </th>
                               </tr>
@@ -1477,7 +1477,7 @@ const ReportesPage = () => {
                                       paciente.id_turno
                                     }
                                   >
-                                    <td>
+                                    <td data-label="Hora">
                                       <strong>
                                         {
                                           paciente.hora
@@ -1485,25 +1485,25 @@ const ReportesPage = () => {
                                       </strong>
                                     </td>
 
-                                    <td>
+                                    <td data-label="Paciente">
                                       {
                                         paciente.apellido_nombre
                                       }
                                     </td>
 
-                                    <td>
+                                    <td data-label="DNI">
                                       {
                                         paciente.dni
                                       }
                                     </td>
 
-                                    <td>
+                                    <td data-label="Estado">
                                       {
                                         paciente.estado
                                       }
                                     </td>
 
-                                    <td>
+                                    <td data-label="Motivo">
                                       {
                                         paciente.motivo_consulta ||
                                         '-'

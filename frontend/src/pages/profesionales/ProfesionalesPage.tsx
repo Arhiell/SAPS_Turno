@@ -311,15 +311,15 @@ const ProfesionalesPage = () => {
             </div>
           ) : (
             <div className="table-responsive">
-              <table className="table table-hover align-middle mb-0">
+              <table className="table saps-responsive-table table-hover align-middle mb-0">
                 <thead>
                   <tr>
-                    <th>Profesional</th>
-                    <th>DNI</th>
-                    <th>Matrícula</th>
-                    <th>Teléfono</th>
-                    <th>Estado</th>
-                    <th className="text-end">
+                    <th scope="col">Profesional</th>
+                    <th scope="col">DNI</th>
+                    <th scope="col">Matrícula</th>
+                    <th scope="col">Teléfono</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col" className="text-end">
                       Acciones
                     </th>
                   </tr>
@@ -333,7 +333,7 @@ const ProfesionalesPage = () => {
                           professional.id_profesional
                         }
                       >
-                        <td>
+                        <td data-label="Profesional">
                           <div className="professional-name-cell">
                             <div className="professional-avatar">
                               <i className="bi bi-person" />
@@ -365,26 +365,26 @@ const ProfesionalesPage = () => {
                           </div>
                         </td>
 
-                        <td>
+                        <td data-label="DNI">
                           {
                             professional.persona
                               .dni
                           }
                         </td>
 
-                        <td>
+                        <td data-label="Matrícula">
                           <span className="professional-license">
                             {professional.matricula}
                           </span>
                         </td>
 
-                        <td>
+                        <td data-label="Teléfono">
                           {professional.persona
                             .telefono ||
                             '—'}
                         </td>
 
-                        <td>
+                        <td data-label="Estado">
                           {professional.activo ? (
                             <span className="badge bg-success-subtle text-success">
                               Activo
@@ -396,7 +396,7 @@ const ProfesionalesPage = () => {
                           )}
                         </td>
 
-                        <td>
+                        <td data-label="Acciones">
                           <div className="d-flex justify-content-end gap-1">
                             <button
                               type="button"
