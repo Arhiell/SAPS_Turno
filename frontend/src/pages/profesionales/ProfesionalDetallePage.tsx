@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import AsignacionVigencia from '../../components/profesionales/AsignacionVigencia';
 import {
   useNavigate,
   useParams,
+  Link,
 } from 'react-router-dom';
 
 import {
@@ -347,6 +349,9 @@ const ProfesionalDetallePage = () => {
 
   return (
     <div className="professional-detail">
+      <Link className="btn btn-saps mb-3" to={`/configuracion/horarios?profesional=${id}`}>
+        <i className="bi bi-calendar-week me-2" />Horarios y disponibilidad
+      </Link>
       <div className="d-flex justify-content-between align-items-start mb-4 gap-3">
         <div>
           <button
@@ -602,6 +607,7 @@ const ProfesionalDetallePage = () => {
                               specialty.fecha_desde
                             }
                           </small>
+                          <AsignacionVigencia profesional={professional.id_profesional} relacion={specialty.id_especialidad} tipo="especialidad" desde={specialty.fecha_desde} hasta={specialty.fecha_hasta} activo={specialty.activo} onSaved={loadData} />
                         </div>
 
                         <button
@@ -716,6 +722,7 @@ const ProfesionalDetallePage = () => {
                             Desde{' '}
                             {clinic.fecha_desde}
                           </small>
+                          <AsignacionVigencia profesional={professional.id_profesional} relacion={clinic.id_salita} tipo="salita" desde={clinic.fecha_desde} hasta={clinic.fecha_hasta} activo={clinic.activo} onSaved={loadData} />
                         </div>
 
                         <button

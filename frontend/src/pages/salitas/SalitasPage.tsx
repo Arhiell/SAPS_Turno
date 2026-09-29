@@ -91,7 +91,7 @@ const SalitasPage = () => {
           type="button"
           className="btn btn-saps"
           onClick={() =>
-            navigate('/salitas/nuevo')
+            navigate('/salitas/nueva')
           }
         >
           <i className="bi bi-plus-lg me-2" />

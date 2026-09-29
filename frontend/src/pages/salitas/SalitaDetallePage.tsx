@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import {
   useNavigate,
   useParams,
+  Link,
 } from 'react-router-dom';
 
 import {
@@ -210,6 +211,9 @@ const SalitaDetallePage = () => {
         </div>
 
         <div className="salitas-detail-actions">
+          <Link className="btn btn-saps" to={`/configuracion/cobertura?salita=${salita.id_salita}`}>
+            <i className="bi bi-geo-alt me-2" />Barrios de cobertura
+          </Link>
 
           <button
             type="button"

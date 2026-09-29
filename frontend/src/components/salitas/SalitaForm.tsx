@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { authError } from '../../utils/auth-errors';
 
 import { getBarrios } from '../../services/barrios.service';
 
@@ -36,6 +38,8 @@ const SalitaForm = ({
     useState(true);
 
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [barriosRevision, setBarriosRevision] = useState(0);
 
   const [form, setForm] =
     useState<CreateSalitaRequest>({
@@ -99,7 +103,7 @@ const SalitaForm = ({
     };
 
     void loadBarrios();
-  }, []);
+  }, [barriosRevision]);
 
   const handleChange = (
     event: React.ChangeEvent<
@@ -134,6 +138,7 @@ const SalitaForm = ({
     event: React.FormEvent,
   ) => {
     event.preventDefault();
+    if (saving || loading || loadingBarrios) return;
 
     setError('');
 
@@ -186,6 +191,11 @@ const SalitaForm = ({
       return;
     }
 
+    if (Boolean(form.horario_apertura) !== Boolean(form.horario_cierre)) {
+      setError('Completá ambos horarios de apertura y cierre, o dejá ambos vacíos.');
+      return;
+    }
+
     if (
       form.horario_apertura &&
       form.horario_cierre &&
@@ -232,13 +242,14 @@ const SalitaForm = ({
     };
 
     try {
+      setSaving(true);
       await onSubmit(data);
     } catch (error) {
       console.error(error);
 
-      setError(
-        'No se pudo guardar la salita.',
-      );
+      setError(authError(error));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -381,6 +392,11 @@ const SalitaForm = ({
                         ),
                       )}
                     </select>
+                    <div className="d-flex flex-wrap gap-2 mt-2">
+                      <Link to="/configuracion/barrios" target="_blank" rel="noopener noreferrer">Administrar barrios (otra pestaña)</Link>
+                      <button type="button" className="btn btn-sm btn-outline-success" disabled={loadingBarrios || saving} onClick={() => setBarriosRevision((v) => v + 1)}>Actualizar listado</button>
+                    </div>
+                    {!loadingBarrios && !barrios.length && <p className="small text-muted mt-2">Primero cargá una zona y un barrio activo en Configuración.</p>}
                   </div>
 
                   <div className="col-md-6">
@@ -618,7 +634,7 @@ const SalitaForm = ({
             type="button"
             className="btn btn-outline-secondary"
             onClick={onCancel}
-            disabled={loading}
+            disabled={loading || saving}
           >
             Cancelar
           </button>
@@ -628,10 +644,11 @@ const SalitaForm = ({
             className="btn btn-saps"
             disabled={
               loading ||
+              saving ||
               loadingBarrios
             }
           >
-            {loading ? (
+            {loading || saving ? (
               <>
                 <span
                   className="spinner-border spinner-border-sm me-2"
