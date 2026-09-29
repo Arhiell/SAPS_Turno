@@ -29,9 +29,9 @@ const router = Router();
 // alcance por salita.
 router.use(authenticate);
 router.use(requireRole("SUPER_ADMIN", "ADMIN_SALITA", "RECEPCION", "PROFESIONAL", "PACIENTE"));
-router.post("/", requireRole("SUPER_ADMIN", "ADMIN_SALITA", "RECEPCION"), createTurnoController);
+router.post("/", requireRole("SUPER_ADMIN", "ADMIN_SALITA", "RECEPCION", "PACIENTE"), createTurnoController);
 router.get("/", listTurnosController);
 router.get("/:id", getTurnoController);
 router.patch("/:id", requireRole("SUPER_ADMIN", "ADMIN_SALITA", "RECEPCION"), updateTurnoController);
-router.patch("/:id/status", requireRole("SUPER_ADMIN", "ADMIN_SALITA", "RECEPCION", "PROFESIONAL"), changeTurnoStatusController);
+router.patch("/:id/status", requireRole("SUPER_ADMIN", "ADMIN_SALITA", "RECEPCION", "PROFESIONAL", "PACIENTE"), changeTurnoStatusController);
 export default router;

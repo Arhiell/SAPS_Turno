@@ -1,0 +1,214 @@
+/* ========================================
+   BIENVENIDA DEL PACIENTE
+   ======================================== */
+
+/* Mantiene el panel dentro de la pantalla,
+   incluso a 320 px. */
+.patient-welcome h1 {
+  font-size: clamp(1.35rem, 2.5vw, 2rem);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  margin-bottom: 6px;
+}
+
+/* Nombre completo mostrado debajo del saludo. */
+.patient-welcome .patient-welcome-name {
+  color: var(--saps-verde-oscuro);
+  font-size: clamp(1rem, 1.8vw, 1.25rem);
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+/* Nombre de usuario del paciente. */
+.patient-username {
+  overflow-wrap: anywhere;
+  font-weight: 600;
+  color: var(--saps-azul);
+}
+
+
+/* ========================================
+   NOTIFICACIONES
+   ======================================== */
+
+/* Contenedor de la campana de notificaciones. */
+.notification-bell {
+  position: relative;
+}
+
+/* Contador de notificaciones pendientes. */
+.notification-count {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  padding: 2px 5px;
+  border-radius: 12px;
+  background: var(--saps-amarillo);
+  color: var(--saps-texto);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Panel desplegable de notificaciones. */
+.notification-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 12px);
+
+  width: min(400px, calc(100vw - 24px));
+  max-height: min(70dvh, 650px);
+
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+
+  padding: 16px;
+
+  border: 1px solid var(--saps-borde);
+  border-top: 3px solid var(--saps-verde);
+  border-radius: var(--saps-radio);
+
+  background: var(--saps-superficie);
+  color: var(--saps-texto);
+
+  box-shadow: var(--saps-sombra-hover);
+
+  z-index: 1050;
+}
+
+/* Notificación individual. */
+.notification-item {
+  display: grid;
+  gap: 8px;
+
+  width: 100%;
+  padding: 12px;
+
+  border: 1px solid var(--saps-borde);
+  border-radius: var(--saps-radio-pequeno);
+
+  background: var(--saps-superficie);
+  color: var(--saps-texto);
+
+  overflow-wrap: anywhere;
+}
+
+/* Notificación todavía no leída. */
+.notification-item.is-unread {
+  background: var(--saps-verde-claro);
+  border-left: 4px solid var(--saps-verde);
+}
+
+/* Información secundaria de la notificación. */
+.notification-item small {
+  color: var(--saps-texto-secundario);
+}
+
+
+/* ========================================
+   SECCIONES DEL PACIENTE
+   ======================================== */
+
+/* Tarjeta general utilizada en las
+   distintas secciones del paciente. */
+.patient-section {
+  padding: 24px;
+
+  border: 1px solid var(--saps-borde);
+  border-radius: var(--saps-radio);
+
+  background: var(--saps-superficie);
+
+  box-shadow: var(--saps-sombra);
+}
+
+/* Títulos de las secciones. */
+.patient-section h2 {
+  color: var(--saps-verde-oscuro);
+}
+
+/* Valores mostrados en listas de descripción. */
+.patient-section dd {
+  overflow-wrap: anywhere;
+  margin-bottom: 16px;
+}
+
+/* Etiquetas de los datos del paciente. */
+.patient-section dt {
+  color: var(--saps-texto-secundario);
+  font-size: 0.875rem;
+}
+
+
+/* ========================================
+   HISTORIAL DEL PACIENTE
+   ======================================== */
+
+/* Línea visual utilizada para representar
+   el historial de cambios del turno. */
+.patient-history {
+  padding-left: 20px;
+
+  border-left: 3px solid var(--saps-verde-claro);
+
+  list-style: none;
+}
+
+/* Separación entre eventos del historial. */
+.patient-history li {
+  margin-bottom: 20px;
+}
+
+
+/* ========================================
+   ACCESIBILIDAD
+   ======================================== */
+
+/* Resalta botones utilizados como etiquetas
+   cuando algún elemento interno recibe foco. */
+.patient-section label.btn:focus-within {
+  outline: 3px solid var(--saps-azul);
+  outline-offset: 3px;
+}
+
+
+/* ========================================
+   RESPONSIVE - MÓVILES
+   ======================================== */
+
+@media (max-width: 767.98px) {
+  /* El panel de notificaciones ocupa el ancho
+     disponible de la pantalla móvil. */
+  .notification-panel {
+    position: fixed;
+
+    top: 76px;
+    right: 12px;
+    left: 12px;
+
+    width: auto;
+    max-height: calc(100dvh - 180px);
+  }
+
+  /* Reduce el espacio del navbar cuando
+     contiene la campana de notificaciones. */
+  .navbar-saps:has(.notification-bell) {
+    gap: 8px;
+  }
+
+  /* Reduce el título para evitar desbordamientos. */
+  .navbar-saps:has(.notification-bell) h1 {
+    font-size: 19px;
+  }
+
+  /* Reduce el espacio entre los elementos
+     del usuario dentro del navbar. */
+  .navbar-saps:has(.notification-bell) .navbar-user {
+    gap: 8px;
+  }
+
+  /* Reduce el espacio interno de las tarjetas
+     en dispositivos pequeños. */
+  .patient-section {
+    padding: 16px;
+  }
+}

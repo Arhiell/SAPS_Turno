@@ -1,4 +1,9 @@
 import api from './api';
+import type { OwnPatientUpdate } from '../types/patient.types';
+import type { ProfileResponse } from '../types/auth.types';
+
+export const updateOwnPatient = async (data: OwnPatientUpdate) =>
+  (await api.patch<ProfileResponse>('/auth/profile', data)).data;
 
 import type {
   CreatePatientRequest,

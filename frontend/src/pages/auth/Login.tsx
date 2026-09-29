@@ -1,5 +1,5 @@
 ﻿import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 import { useAuth } from '../../context/AuthContext';
 import { authError } from '../../utils/auth-errors';
@@ -12,6 +12,7 @@ const Login = () => {
   const { login, isLoading } = useAuth();
 
   const navigate = useNavigate();
+  const { state } = useLocation();
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -67,6 +68,7 @@ const Login = () => {
         </>
       }
     >
+      {state?.passwordChanged === true && <div className="alert alert-success" role="status">Contraseña actualizada. Ingresá con tu nueva contraseña.</div>}
       <form
         onSubmit={handleSubmit}
         aria-busy={busy}

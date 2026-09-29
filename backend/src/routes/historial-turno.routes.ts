@@ -34,6 +34,7 @@ router.get(
   "/turnos/:idTurno/historial",
   authenticate,
   requireRole(
+    "PACIENTE",
     "SUPER_ADMIN",
     "ADMIN_SALITA",
     "RECEPCION",

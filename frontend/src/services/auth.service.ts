@@ -61,6 +61,17 @@ export const requestEmailVerification = async (email: string) => (await authApi.
   resendAvailableAt?: string | null;
 }>('/auth/email/request', { email })).data;
 export const getProfile = async (): Promise<ProfileResponse> => (await api.get<ProfileResponse>('/auth/me')).data;
+export const changeUsername = async (nombre_usuario: string) => {
+  await api.patch('/auth/username', { nombre_usuario });
+};
+export const changePassword = async (currentPassword: string, newPassword: string) => {
+  await api.patch('/auth/password', { currentPassword, newPassword });
+};
+export const requestEmailChange = async (email: string) =>
+  (await api.post<{ data: { verificationExpiresAt: string } }>('/auth/email/change/request', { email })).data.data;
+export const confirmEmailChange = async (email: string, code: string) => {
+  await api.post('/auth/email/change/verify', { email, code });
+};
 export const completePatientProfile = async (data: CompletePatientProfileInput): Promise<ProfileResponse> =>
   (await api.post<ProfileResponse>('/auth/profile', data)).data;
 

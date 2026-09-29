@@ -38,6 +38,6 @@ export const turnoSelect = `
   matricula,
   persona:personas(nombres,apellidos)
   ),
-  salita:salitas(id_salita,nombre), 
+  salita:salitas(id_salita,nombre,direccion),
   especialidad:especialidades(id_especialidad,nombre)
 `;

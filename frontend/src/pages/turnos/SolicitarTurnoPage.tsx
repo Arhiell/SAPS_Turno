@@ -1,45 +1,134 @@
-import { Link } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { getSalitaById } from '../../services/salitas.service';
-import type { Salita } from '../../types/salita.types';
-import { authError } from '../../utils/auth-errors';
+﻿import {
+  Link,
+} from 'react-router-dom';
+
+import {
+  useAuth,
+} from '../../context/AuthContext';
+
+import usePatientCoverage, {
+  coveredClinics,
+} from '../../context/usePatientCoverage';
+
+import PatientCoverageCard from '../../components/ui/PatientCoverageCard';
+import PatientBookingForm from '../../components/ui/PatientBookingForm';
 
 export default function SolicitarTurnoPage() {
-  const { patient } = useAuth();
-  const [clinic, setClinic] = useState<Salita | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [revision, setRevision] = useState(0);
-  useEffect(() => {
-    let active = true;
-    setClinic(null); setError(''); setLoading(true);
-    if (!patient?.id_salita_asignada) { setLoading(false); return; }
-    // Muestra el contacto real de la salita asignada, sin simular una reserva.
-    void getSalitaById(patient.id_salita_asignada).then((response) => { if (active) setClinic(response.data); })
-      .catch((cause) => { if (active) setError(authError(cause)); }).finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [patient?.id_salita_asignada, revision]);
-  return <section className="dashboard-panel">
-    <div className="dashboard-panel-header"><h1 className="h3 mb-0">Solicitar turno</h1></div>
-    <div className="p-4">
-      <p>Para solicitar un turno, contactá a tu salita o acercate a recepción.</p>
-      <p className="text-muted">Tené a mano tu DNI e indicá la especialidad que necesitás. La solicitud en línea todavía no está disponible.</p>
-      {loading && <p role="status">Cargando tu salita…</p>}
-      {error && <div className="alert alert-danger" role="alert">{error}<button className="btn btn-outline-danger ms-2" onClick={() => setRevision((v) => v + 1)}>Reintentar</button></div>}
-      {clinic && <div className="turno-preview mb-4">
-        <h2 className="h5"><i className="bi bi-hospital me-2 text-success" />{clinic.nombre}</h2>
-        <p>{clinic.direccion}</p>
-        {!clinic.activo && <p className="text-muted">Esta salita figura inactiva. Consultá con administración para actualizar tu asignación.</p>}
-        {clinic.horario_apertura && clinic.horario_cierre && <p>Horario institucional: {clinic.horario_apertura.slice(0, 5)} a {clinic.horario_cierre.slice(0, 5)}</p>}
-        <div className="d-flex flex-wrap gap-2">
-          {clinic.telefono && <a className="btn btn-saps" href={`tel:${clinic.telefono.replace(/[^+\d]/g, '')}`}><i className="bi bi-telephone me-2" />{clinic.telefono}</a>}
-          {clinic.email && <a className="btn btn-outline-success" href={`mailto:${clinic.email}`}><i className="bi bi-envelope me-2" />Enviar correo</a>}
+  // Obtiene el perfil del paciente autenticado.
+  const {
+    patient,
+  } = useAuth();
+
+  // Obtiene barrios, salitas y relaciones
+  // necesarias para validar la cobertura.
+  const coverage = usePatientCoverage();
+
+  // ========================================
+  // PERFIL INCOMPLETO
+  // ========================================
+
+  // Si todavía no completó su perfil,
+  // debe hacerlo antes de solicitar un turno.
+  if (!patient) {
+    return (
+      <section className="patient-section">
+        <h1 className="h3">
+          Solicitar turno
+        </h1>
+
+        <p>
+          Completá tu perfil para conocer tu cobertura.
+        </p>
+
+        <Link
+          className="btn btn-saps"
+          to="/completar-perfil"
+        >
+          Completar perfil
+        </Link>
+      </section>
+    );
+  }
+
+  // ========================================
+  // VALIDACIÓN DE COBERTURA
+  // ========================================
+
+  // Verifica que la salita asignada al paciente
+  // tenga cobertura vigente para su barrio.
+  const valid = coveredClinics(
+    patient.id_barrio,
+    coverage.clinics,
+    coverage.relations
+  ).some(
+    (c) =>
+      c.id_salita ===
+      patient.id_salita_asignada
+  );
+
+  // ========================================
+  // INTERFAZ
+  // ========================================
+
+  return (
+    <section>
+      <h1 className="h3">
+        Solicitar turno
+      </h1>
+
+      <p className="text-muted mb-4">
+        Elegí una fecha, especialidad y profesional
+        de tu salita.
+      </p>
+
+      <div className="row g-4">
+        {/* Información de cobertura del paciente. */}
+        <div className="col-12 col-lg-5">
+          <PatientCoverageCard
+            patient={patient}
+            coverage={coverage}
+          />
         </div>
-        {!clinic.telefono && !clinic.email && <p className="text-muted mb-0">No hay teléfono ni correo registrados. Acercate a recepción.</p>}
-      </div>}
-      {!loading && !error && !clinic && <p className="text-muted">No hay una salita asignada disponible en tu perfil. Consultá con administración.</p>}
-      <Link className="btn btn-saps" to="/mis-turnos">Ver mis turnos</Link>
-    </div>
-  </section>;
+
+        {/* =====================================
+            RESERVA DEL TURNO
+            ===================================== */}
+
+        <div className="col-12 col-lg-7">
+          {/* Si la cobertura es válida,
+              permite solicitar el turno. */}
+          {!coverage.loading &&
+            !coverage.error &&
+            valid && (
+              <PatientBookingForm
+                clinic={
+                  patient.id_salita_asignada
+                }
+              />
+            )}
+
+          {/* Si la salita asignada no tiene
+              cobertura vigente, bloquea la reserva. */}
+          {!coverage.loading &&
+            !coverage.error &&
+            !valid && (
+              <div className="patient-section">
+                <p>
+                  Necesitamos revisar tu cobertura
+                  antes de reservar. Actualizá tu
+                  barrio o contactá a tu salita.
+                </p>
+
+                <Link
+                  className="btn btn-outline-success"
+                  to="/mi-perfil"
+                >
+                  Revisar mi perfil
+                </Link>
+              </div>
+            )}
+        </div>
+      </div>
+    </section>
+  );
 }

@@ -1,4 +1,11 @@
 import api from './api';
+import type { AppointmentHistory } from '../types/turno.types';
+
+export const getTurnoHistory = async (id: string) =>
+  (await api.get<{ historial: AppointmentHistory[] }>(`/turnos/${id}/historial`)).data.historial;
+
+export const createOwnTurno = async (data: Omit<CreateTurnoRequest, 'id_paciente' | 'observaciones'>) =>
+  (await api.post<TurnoResponse>('/turnos', data)).data;
 
 import type {
   ChangeTurnoStatusRequest,

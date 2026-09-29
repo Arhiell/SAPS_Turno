@@ -38,7 +38,8 @@ export const getTurno = async (id: string, user: AuthenticatedUser) => {
     throw new AppError("No tiene permisos sobre este turno", 403);
   }
 
-  return turno;
+  // Las notas internas no tienen una política de publicación al paciente.
+  return user.rol === 'PACIENTE' ? { ...turno, observaciones: null, cancelado_por: null } : turno;
 };
 
 
@@ -72,7 +73,8 @@ export const getTurnos = async (
 );
 
   return { 
-    turnos: result.turnos, 
+    turnos: user.rol === 'PACIENTE'
+      ? result.turnos.map(turno => ({ ...turno, observaciones: null, cancelado_por: null })) : result.turnos,
     pagination: { 
       page: filters.page, 
       limit: filters.limit,

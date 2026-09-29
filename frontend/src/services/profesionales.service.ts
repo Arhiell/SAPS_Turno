@@ -1,3 +1,4 @@
+import type { PatientProfessional } from '../types/profesional.types';
 import api from './api';
 
 import type {
@@ -181,3 +182,7 @@ export const deleteProfessionalClinic =
 
     return response.data;
   };
+
+
+export const getPatientProfessionals = async (fecha: string) =>
+  (await api.get<{ data: PatientProfessional[] }>('/profesionales', { params: { fecha } })).data.data;

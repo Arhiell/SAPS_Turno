@@ -1,6 +1,8 @@
 import { 
   randomUUID 
 } from "node:crypto";
+import { assertOwnCoverage } from './patient-coverage.service.js';
+import { agendaDateTime } from '../utils/turno-time.js';
 
 import { 
   insertTurno 
@@ -39,7 +41,10 @@ export const createTurno = async (
   input: CreateTurnoInput, 
   user: AuthenticatedUser
 ) => {
-  assertTurnoScope(await getTurnoScope(user), input.id_salita);
+  if (user.rol === 'PACIENTE') {
+    const patient = await assertOwnCoverage(user, input.id_salita, agendaDateTime(input.fecha_hora_inicio).date);
+    if (patient.id_paciente !== input.id_paciente) throw new AppError('Paciente inválido', 403);
+  } else assertTurnoScope(await getTurnoScope(user), input.id_salita);
 
   const state = await getTurnoState("SOLICITADO");
 

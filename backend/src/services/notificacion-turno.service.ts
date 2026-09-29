@@ -201,7 +201,7 @@ export const notifyTurnoCreado = async (
     notifyTurno(
       idTurno,
       "TURNO_CREADO",
-      "Turno confirmado",
+      "Turno registrado",
       "Se registró correctamente un nuevo turno.",
     ),
   );

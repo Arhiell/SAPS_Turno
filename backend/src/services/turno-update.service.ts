@@ -130,8 +130,14 @@ export const changeTurnoStatus = async (
   if (user.rol === "PROFESIONAL" && !["ATENDIDO", "NO_ASISTIO"].includes(input.estado)) {
     throw new AppError("Solo puede marcar ATENDIDO o NO_ASISTIO", 403);
   }
-  if (user.rol === "PACIENTE") throw new AppError("Solicitá la cancelación en tu salita", 403);
+  if (user.rol === "PACIENTE" && input.estado !== 'CANCELADO') {
+    throw new AppError('Solo podés cancelar tus turnos', 403);
+  }
   const current = await getTurno(id, user);
+
+  if (user.rol === 'PACIENTE' && Date.parse(current.fecha_hora_inicio) <= Date.now()) {
+    throw new AppError('El turno ya comenzó. Contactá a tu salita.', 409);
+  }
 
   assertEditable(current);
 
@@ -188,5 +194,5 @@ export const changeTurnoStatus = async (
     await notifyTurnoCancelado(updated.id_turno);
   }
 
-  return updated;
+  return user.rol === 'PACIENTE' ? { ...updated, observaciones: null, cancelado_por: null } : updated;
 };

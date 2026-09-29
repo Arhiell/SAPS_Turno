@@ -44,6 +44,8 @@ import TurnoDetallePage from '../pages/turnos/TurnoDetallePage';
 import ReprogramarTurnoPage from '../pages/turnos/ReprogramarTurnoPage';
 import SolicitarTurnoPage from '../pages/turnos/SolicitarTurnoPage';
 import MisTurnosPage from '../pages/turnos/MisTurnosPage';
+import PatientAppointmentsPage from '../pages/turnos/PatientAppointmentsPage';
+import PatientAppointmentDetailPage from '../pages/turnos/PatientAppointmentDetailPage';
 
 // Configuración
 import CatalogoPage from '../pages/configuracion/CatalogoPage';
@@ -182,8 +184,9 @@ const AppRoutes = () => {
 
               <Route
                 path="/mis-turnos"
-                element={<MisTurnosPage />}
+                element={<PatientAppointmentsPage />}
               />
+              <Route path="/mis-turnos/:id" element={<PatientAppointmentDetailPage />} />
             </Route>
 
             {/* ==================================== */}

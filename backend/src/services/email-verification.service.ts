@@ -1,8 +1,10 @@
 import {
-  env
-} from "../config/env.js";
-import { sendAuthEmail } from "./email.service.js";
-import { sendEmailVerificationCode } from "./email.service.js";
+  env,
+} from '../config/env.js';
+
+import {
+  sendEmailVerificationCode,
+} from './email.service.js';
 
 import {
   createEmailVerificationToken,
@@ -12,120 +14,224 @@ import {
   invalidatePreviousEmailTokens,
   markEmailAsVerified,
   markEmailTokenAsUsed,
-  registerEmailCodeAttempt
-} from "../repositories/email-verification.repository.js";
+  issueEmailCode,
+  invalidateEmailCode,
+} from '../repositories/email-verification.repository.js';
 
 import {
   generateEmailVerificationToken,
   hashEmailVerificationToken,
   generateEmailVerificationCode,
-  hashEmailVerificationCode
-} from "./email-verification-token.service.js";
-import { timingSafeEqual } from "node:crypto";
+  hashEmailVerificationCode,
+} from './email-verification-token.service.js';
 
 import {
-  AppError
-} from "../utils/app-error.js";
+  consumeVerificationCode,
+} from './email-code.service.js';
+
+import {
+  AppError,
+} from '../utils/app-error.js';
 
 import type {
   RequestEmailVerificationInput,
   VerifyEmailInput,
-  VerifyEmailCodeInput
-} from "../validators/email-verification.validators.js";
+  VerifyEmailCodeInput,
+} from '../validators/email-verification.validators.js';
 
+// Tiempo de validez del código: 10 minutos.
 const EMAIL_CODE_TTL_SECONDS = 10 * 60;
-const EMAIL_CODE_RESEND_COOLDOWN_SECONDS = 60;
-const EMAIL_CODE_MAX_ATTEMPTS = 5;
 
-const createEmailCode = async (
+// Tiempo mínimo antes de poder reenviar otro código: 1 minuto.
+const EMAIL_CODE_RESEND_COOLDOWN_SECONDS = 60;
+
+// ========================================
+// CREACIÓN DE CÓDIGO DE VERIFICACIÓN
+// ========================================
+
+// Genera, almacena y envía un código de verificación por email.
+export const createEmailCode = async (
   idUsuario: string,
   email: string,
-  ip: string | null
+  ip: string | null,
+  change?: {
+    nuevo_email: string;
+    email_anterior: string;
+  }
 ) => {
-  // Invalida el código anterior antes de emitir uno nuevo.
-  await invalidatePreviousEmailTokens(idUsuario);
+  // Genera el código y su hash.
+  const code =
+    generateEmailVerificationCode();
 
-  const code = generateEmailVerificationCode();
-  const codeHash = hashEmailVerificationCode(idUsuario, code);
-  const expiresAt = new Date(Date.now() + EMAIL_CODE_TTL_SECONDS * 1000);
+  const codeHash =
+    hashEmailVerificationCode(
+      idUsuario,
+      code
+    );
 
-  await createEmailVerificationToken(
+  // Calcula la fecha de expiración.
+  const expiresAt = new Date(
+    Date.now() +
+      EMAIL_CODE_TTL_SECONDS * 1000
+  );
+
+  // Registra el código mediante la operación atómica.
+  const tokenId = await issueEmailCode(
     idUsuario,
     codeHash,
     expiresAt.toISOString(),
-    ip
+    ip,
+    change?.nuevo_email ?? null
   );
 
+  // Impide generar códigos antes del tiempo permitido.
+  if (!tokenId) {
+    throw new AppError(
+      'Esperá un minuto antes de solicitar otro código.',
+      429
+    );
+  }
+
   try {
-    await sendEmailVerificationCode(email, code);
+    // Envía el código al correo indicado.
+    await sendEmailVerificationCode(
+      email,
+      code
+    );
   } catch {
-    await invalidatePreviousEmailTokens(idUsuario);
-    throw new AppError("No pudimos enviar el código. Volvé a intentarlo.", 503);
+    // Si el envío falla, invalida el código generado.
+    await invalidateEmailCode(
+      tokenId
+    );
+
+    throw new AppError(
+      'No pudimos enviar el código. Volvé a intentarlo.',
+      503
+    );
   }
 
   return expiresAt.toISOString();
 };
 
+// Genera un código de verificación para un usuario nuevo.
 export const createVerificationCodeForNewUser = async (
   idUsuario: string,
   email: string,
   ip: string | null
-) => createEmailCode(idUsuario, email, ip);
+) =>
+  createEmailCode(
+    idUsuario,
+    email,
+    ip
+  );
 
-// Genera un nuevo token para verificar email.
-export const requestEmailVerification =
-  async (
-    input: RequestEmailVerificationInput,
-    ip: string | null
-  ) => {
-    const email =
-      input.email.trim().toLowerCase();
+// ========================================
+// SOLICITUD DE VERIFICACIÓN DE EMAIL
+// ========================================
 
-    const user =
-      await findUserForEmailVerification(
-        email
-      );
-
-    // No revelamos si el correo existe.
-    if (!user || !user.activo || user.email_verificado) {
-      return null;
-    }
-
-    const pending = await findLatestPendingEmailToken(user.id_usuario);
-    const now = Date.now();
-    if (pending && new Date(pending.fecha_expiracion).getTime() > now) {
-      const resendAvailableAt = new Date(
-        new Date(pending.fecha_creacion).getTime() +
-          EMAIL_CODE_RESEND_COOLDOWN_SECONDS * 1000
-      );
-      if (now < resendAvailableAt.getTime()) {
-        return {
-          verificationExpiresAt: pending.fecha_expiracion,
-          resendAvailableAt: resendAvailableAt.toISOString(),
-        };
-      }
-    }
-
-    const verificationExpiresAt = await createEmailCode(user.id_usuario, email, ip);
-    return {
-      verificationExpiresAt,
-      resendAvailableAt: new Date(
-        Date.parse(verificationExpiresAt) -
-          EMAIL_CODE_TTL_SECONDS * 1000 +
-          EMAIL_CODE_RESEND_COOLDOWN_SECONDS * 1000
-      ).toISOString(),
-    };
-  };
-
-// Confirma la dirección de correo.
-export const verifyUserEmail = async (
-  input: Extract<VerifyEmailInput, { token: string }>
+// Solicita un código para verificar el correo del usuario.
+export const requestEmailVerification = async (
+  input: RequestEmailVerificationInput,
+  ip: string | null
 ) => {
+  // Normaliza el correo recibido.
+  const email =
+    input.email.trim().toLowerCase();
+
+  // Busca la cuenta asociada al correo.
+  const user =
+    await findUserForEmailVerification(
+      email
+    );
+
+  // No revelamos si el correo existe.
+  if (
+    !user ||
+    !user.activo ||
+    user.email_verificado
+  ) {
+    return null;
+  }
+
+  // Busca un código pendiente del usuario.
+  const pending =
+    await findLatestPendingEmailToken(
+      user.id_usuario
+    );
+
+  const now = Date.now();
+
+  // Si existe un código vigente, controla
+  // el tiempo mínimo antes de permitir otro envío.
+  if (
+    pending &&
+    new Date(
+      pending.fecha_expiracion
+    ).getTime() > now
+  ) {
+    const resendAvailableAt = new Date(
+      new Date(
+        pending.fecha_creacion
+      ).getTime() +
+        EMAIL_CODE_RESEND_COOLDOWN_SECONDS *
+          1000
+    );
+
+    if (
+      now < resendAvailableAt.getTime()
+    ) {
+      return {
+        verificationExpiresAt:
+          pending.fecha_expiracion,
+        resendAvailableAt:
+          resendAvailableAt.toISOString(),
+      };
+    }
+  }
+
+  // Genera y envía un nuevo código.
+  const verificationExpiresAt =
+    await createEmailCode(
+      user.id_usuario,
+      email,
+      ip
+    );
+
+  return {
+    verificationExpiresAt,
+
+    // Calcula cuándo podrá solicitarse otro código.
+    resendAvailableAt: new Date(
+      Date.parse(
+        verificationExpiresAt
+      ) -
+        EMAIL_CODE_TTL_SECONDS * 1000 +
+        EMAIL_CODE_RESEND_COOLDOWN_SECONDS *
+          1000
+    ).toISOString(),
+  };
+};
+
+// ========================================
+// VERIFICACIÓN MEDIANTE TOKEN
+// ========================================
+
+// Confirma la dirección de correo mediante un token.
+export const verifyUserEmail = async (
+  input: Extract<
+    VerifyEmailInput,
+    {
+      token: string;
+    }
+  >
+) => {
+  // Genera el hash del token recibido.
   const tokenHash =
     hashEmailVerificationToken(
       input.token
     );
 
+  // Busca un token pendiente con ese hash.
   const verification =
     await findEmailVerificationToken(
       tokenHash
@@ -133,82 +239,84 @@ export const verifyUserEmail = async (
 
   if (!verification) {
     throw new AppError(
-      "Token de verificación inválido o utilizado",
+      'Token de verificación inválido o utilizado',
       400
     );
   }
 
+  // Verifica que el token no haya expirado.
   if (
     new Date(
       verification.fecha_expiracion
     ) <= new Date()
   ) {
     throw new AppError(
-      "El token de verificación ha expirado",
+      'El token de verificación ha expirado',
       400
     );
   }
 
-  // Consume el token primero para impedir reutilización concurrente.
-  const consumed = await markEmailTokenAsUsed(verification.id_token);
+  // Consume el token primero para impedir
+  // su reutilización de manera concurrente.
+  const consumed =
+    await markEmailTokenAsUsed(
+      verification.id_token
+    );
+
   if (!consumed) {
     throw new AppError(
-      "Token de verificación inválido o utilizado",
+      'Token de verificación inválido o utilizado',
       400
     );
   }
 
+  // Marca el correo del usuario como verificado.
   await markEmailAsVerified(
     verification.id_usuario
   );
 };
 
-export const verifyEmailCode = async (input: VerifyEmailCodeInput) => {
-  const email = input.email.trim().toLowerCase();
-  const user = await findUserForEmailVerification(email);
-  if (!user || !user.activo || user.email_verificado) {
-    throw new AppError("Código incorrecto.", 400);
-  }
+// ========================================
+// VERIFICACIÓN MEDIANTE CÓDIGO
+// ========================================
 
-  const pending = await findLatestPendingEmailToken(user.id_usuario);
-  if (!pending) {
-    throw new AppError("Código incorrecto.", 400);
-  }
-  if (new Date(pending.fecha_expiracion) <= new Date()) {
-    throw new AppError("El código expiró. Solicitá uno nuevo.", 400);
-  }
+// Confirma el correo utilizando el código recibido.
+export const verifyEmailCode = async (
+  input: VerifyEmailCodeInput
+) => {
+  // Normaliza el correo.
+  const email =
+    input.email.trim().toLowerCase();
 
-  const attempts = pending.intentos ?? 0;
-  if (attempts >= EMAIL_CODE_MAX_ATTEMPTS) {
-    throw new AppError("Superaste los intentos. Solicitá un nuevo código.", 429);
-  }
-
-  const submittedHash = Buffer.from(
-    hashEmailVerificationCode(user.id_usuario, input.code),
-    "hex"
-  );
-  const storedHash = Buffer.from(pending.token_hash, "hex");
-  const valid = timingSafeEqual(storedHash, submittedHash);
-
-  if (!valid) {
-    const nextAttempts = attempts + 1;
-    await registerEmailCodeAttempt(
-      pending.id_token,
-      nextAttempts,
-      nextAttempts >= EMAIL_CODE_MAX_ATTEMPTS
+  // Busca el usuario asociado.
+  const user =
+    await findUserForEmailVerification(
+      email
     );
-    if (nextAttempts >= EMAIL_CODE_MAX_ATTEMPTS) {
-      throw new AppError("Superaste los intentos. Solicitá un nuevo código.", 429);
-    }
-    throw new AppError("Código incorrecto.", 400);
+
+  // Rechaza cuentas inexistentes, inactivas
+  // o que ya tienen el correo verificado.
+  if (
+    !user ||
+    !user.activo ||
+    user.email_verificado
+  ) {
+    throw new AppError(
+      'Código incorrecto.',
+      400
+    );
   }
 
-  const consumed = await markEmailTokenAsUsed(pending.id_token);
-  if (!consumed) {
-    throw new AppError("Código incorrecto.", 400);
-  }
-  await markEmailAsVerified(user.id_usuario);
+  // Consume el código de forma atómica.
+  await consumeVerificationCode(
+    user.id_usuario,
+    input.code
+  );
 };
+
+// ========================================
+// TOKEN PARA USUARIO RECIÉN CREADO
+// ========================================
 
 /**
  * Genera un token de verificación directamente
@@ -220,24 +328,23 @@ export const createVerificationForUser = async (
   idUsuario: string,
   ip: string | null
 ) => {
-  /**
-   * Invalidamos cualquier token anterior
-   * pendiente para ese mismo usuario.
-   */
+  // Invalida cualquier token anterior
+  // pendiente para ese mismo usuario.
   await invalidatePreviousEmailTokens(
     idUsuario
   );
 
-  /// Generamos el token original.
-   
+  // Genera el token original.
   const token =
     generateEmailVerificationToken();
 
-  //    Solo almacenaremos su hash.
+  // Solo se almacena el hash del token.
   const tokenHash =
-    hashEmailVerificationToken(token);
+    hashEmailVerificationToken(
+      token
+    );
 
-  // Calculamos cuándo vence.
+  // Calcula la fecha de expiración.
   const expiration = new Date(
     Date.now() +
       env.EMAIL_VERIFICATION_HOURS *
@@ -246,6 +353,7 @@ export const createVerificationForUser = async (
         1000
   );
 
+  // Guarda el hash del token en la base de datos.
   await createEmailVerificationToken(
     idUsuario,
     tokenHash,
@@ -253,7 +361,8 @@ export const createVerificationForUser = async (
     ip
   );
 
-  // Devolvemos el token original. Nunca está almacenado en la DB.
+  // Devuelve el token original.
+  // El valor original nunca se almacena en la DB.
   return token;
 };
 
@@ -265,46 +374,43 @@ export const createVerificationForUser = async (
  * por lo que no necesitamos volver a buscar
  * el usuario mediante email.
  */
-export const createVerificationForNewUser =
-  async (
-    idUsuario: string,
-    ip: string | null
-  ) => {
-    /**
-     * Invalidamos cualquier token anterior.
-     *
-     * Normalmente un usuario recién creado
-     * no tendrá ninguno, pero mantenemos
-     * una única regla de seguridad.
-     */
-    await invalidatePreviousEmailTokens(
-      idUsuario
+export const createVerificationForNewUser = async (
+  idUsuario: string,
+  ip: string | null
+) => {
+  // Invalida cualquier token anterior.
+  // Mantiene una única regla de seguridad.
+  await invalidatePreviousEmailTokens(
+    idUsuario
+  );
+
+  // Genera el token original.
+  const token =
+    generateEmailVerificationToken();
+
+  // Genera el hash que será almacenado.
+  const tokenHash =
+    hashEmailVerificationToken(
+      token
     );
 
-    const token =
-      generateEmailVerificationToken();
+  // Calcula la fecha de expiración.
+  const expiration = new Date(
+    Date.now() +
+      env.EMAIL_VERIFICATION_HOURS *
+        60 *
+        60 *
+        1000
+  );
 
-    const tokenHash =
-      hashEmailVerificationToken(token);
+  // En PostgreSQL se almacena solamente
+  // el hash del token original.
+  await createEmailVerificationToken(
+    idUsuario,
+    tokenHash,
+    expiration.toISOString(),
+    ip
+  );
 
-    const expiration = new Date(
-      Date.now() +
-        env.EMAIL_VERIFICATION_HOURS *
-          60 *
-          60 *
-          1000
-    );
-
-    /**
-     * En PostgreSQL almacenamos solamente
-     * el hash del token original.
-     */
-    await createEmailVerificationToken(
-      idUsuario,
-      tokenHash,
-      expiration.toISOString(),
-      ip
-    );
-
-    return token;
-  };
+  return token;
+};

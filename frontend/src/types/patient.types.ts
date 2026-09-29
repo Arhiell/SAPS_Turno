@@ -4,6 +4,10 @@ export type PatientSex =
   | 'X'
   | 'NO_INFORMA';
 
+export type OwnPatientUpdate = Pick<UpdatePatientRequest,
+  'nombres' | 'apellidos' | 'telefono' | 'direccion' | 'id_barrio' |
+  'obra_social' | 'numero_afiliado' | 'contacto_emergencia_nombre' | 'contacto_emergencia_telefono'>;
+
 export interface Patient {
   id_paciente: string;
   id_persona: string;

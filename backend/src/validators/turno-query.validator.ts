@@ -1,23 +1,106 @@
-import { z } from "zod";
+import {
+  z,
+} from 'zod';
 
-export const turnoIdSchema = z.object(
-  { 
-    id: z.string().uuid() 
-  }
-).strict();
+// ========================================
+// IDENTIFICADOR DEL TURNO
+// ========================================
 
-// Los códigos son configurables: el servicio verifica que existan en estados_turno.
-export const turnoEstadoSchema = z.string().regex(
-  /^[A-Z][A-Z0-9_]*$/).max(40);
+// Valida que el ID recibido corresponda a un UUID.
+export const turnoIdSchema = z
+  .object({
+    id: z.string().uuid(),
+  })
+  .strict();
 
-export const turnoQuerySchema = z.object({
-  fecha: z.iso.date().optional(),
-  id_profesional: z.string().uuid().optional(),
-  id_paciente: z.string().uuid().optional(),
-  id_salita: z.string().uuid().optional(),
-  estado: turnoEstadoSchema.optional(),
-  page: z.coerce.number().int().positive().max(1000000).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(20)
-}).strict();
+// ========================================
+// ESTADO DEL TURNO
+// ========================================
 
-export type TurnoQuery = z.infer<typeof turnoQuerySchema>;
+// Los códigos son configurables:
+// el servicio verifica que existan en estados_turno.
+export const turnoEstadoSchema = z
+  .string()
+  .regex(
+    /^[A-Z][A-Z0-9_]*$/
+  )
+  .max(40);
+
+// ========================================
+// FILTROS DE TURNOS
+// ========================================
+
+// Valida los parámetros permitidos
+// para consultar y filtrar turnos.
+export const turnoQuerySchema = z
+  .object({
+    // Filtra los turnos por una fecha específica.
+    fecha: z.iso
+      .date()
+      .optional(),
+
+    // Permite consultar turnos próximos o anteriores.
+    periodo: z
+      .enum([
+        'proximos',
+        'anteriores',
+      ])
+      .optional(),
+
+    // Define el orden de los resultados.
+    orden: z
+      .enum([
+        'asc',
+        'desc',
+      ])
+      .optional(),
+
+    // Permite filtrar los turnos reprogramados.
+    reprogramados: z
+      .enum([
+        'true',
+        'false',
+      ])
+      .optional(),
+
+    // Filtros por entidades relacionadas.
+    id_profesional: z
+      .string()
+      .uuid()
+      .optional(),
+
+    id_paciente: z
+      .string()
+      .uuid()
+      .optional(),
+
+    id_salita: z
+      .string()
+      .uuid()
+      .optional(),
+
+    // Filtra por código de estado.
+    estado:
+      turnoEstadoSchema.optional(),
+
+    // Configuración de paginación.
+    page: z.coerce
+      .number()
+      .int()
+      .positive()
+      .max(1000000)
+      .default(1),
+
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(100)
+      .default(20),
+  })
+  .strict();
+
+// Tipo generado a partir del esquema de consulta.
+export type TurnoQuery = z.infer<
+  typeof turnoQuerySchema
+>;
