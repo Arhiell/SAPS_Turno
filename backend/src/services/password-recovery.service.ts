@@ -1,13 +1,16 @@
 import {
   env
 } from "../config/env.js";
-import { sendAuthEmail } from "./email.service.js";
+import { sendPasswordRecoveryCode } from "./email.service.js";
 
 import {
   createPasswordRecoveryToken,
+  consumePasswordRecoveryCode,
   findPasswordRecoveryToken,
   findRecoveryUserByEmail,
+  invalidatePasswordRecoveryCode,
   invalidatePreviousRecoveryTokens,
+  issuePasswordRecoveryCode,
   markRecoveryTokenAsUsed,
   updateRecoveredPassword
 } from "../repositories/password-recovery.repository.js";
@@ -20,6 +23,11 @@ import {
   generateRecoveryToken,
   hashRecoveryToken
 } from "./recovery-token.service.js";
+
+import {
+  generateFourDigitCode,
+  hashUserCode,
+} from "./one-time-code.service.js";
 
 import {
   hashPassword
@@ -60,19 +68,11 @@ export const requestPasswordRecovery =
       return null;
     }
 
-    /**
-     * Invalidamos cualquier recovery token
-     * anterior que todavía estuviera activo.
-     */
-    await invalidatePreviousRecoveryTokens(
-      user.id_usuario
+    const recoveryCode = generateFourDigitCode();
+    const codeHash = hashUserCode(
+      user.id_usuario,
+      recoveryCode
     );
-
-    const recoveryToken =
-      generateRecoveryToken();
-
-    const tokenHash =
-      hashRecoveryToken(recoveryToken);
 
     const expiration =
       new Date(
@@ -82,22 +82,22 @@ export const requestPasswordRecovery =
             1000
       );
 
-    await createPasswordRecoveryToken(
+    const tokenId = await issuePasswordRecoveryCode(
       user.id_usuario,
-      tokenHash,
+      codeHash,
       expiration.toISOString(),
       metadata.ip
     );
 
-    /**
-     * En producción este token será enviado
-     * mediante email.
-     */
-    // La respuesta pública no cambia si el proveedor de correo falla.
-    await sendAuthEmail(email, "restablecer-contrasena", recoveryToken).catch(() => {
+    if (!tokenId) {
+      return null;
+    }
+
+    await sendPasswordRecoveryCode(email, recoveryCode).catch(async () => {
       console.error("No se pudo enviar el correo de recuperación");
+      await invalidatePasswordRecoveryCode(tokenId);
     });
-    return recoveryToken;
+    return null;
   };
 
 /**
@@ -107,6 +107,45 @@ export const requestPasswordRecovery =
 export const resetPassword = async (
   input: ResetPasswordInput
 ) => {
+  if (input.email && input.code) {
+    const email = input.email.trim().toLowerCase();
+    const user = await findRecoveryUserByEmail(email);
+
+    const passwordHash = await hashPassword(input.newPassword);
+    const result = user
+      ? await consumePasswordRecoveryCode(
+          email,
+          hashUserCode(user.id_usuario, input.code),
+          passwordHash
+        )
+      : "INVALIDO";
+
+    if (result === "INTENTOS") {
+      throw new AppError(
+        "Superaste los intentos. Solicitá un nuevo código.",
+        429
+      );
+    }
+
+    if (result === "EXPIRADO") {
+      throw new AppError(
+        "El código expiró. Solicitá uno nuevo.",
+        400
+      );
+    }
+
+    if (result !== "OK" || !user) {
+      throw new AppError("Código incorrecto o utilizado.", 400);
+    }
+
+    await revokeAllUserRefreshSessions(user.id_usuario);
+    return;
+  }
+
+  if (!input.token) {
+    throw new AppError("Datos de recuperación inválidos.", 400);
+  }
+
   const tokenHash =
     hashRecoveryToken(input.token);
 

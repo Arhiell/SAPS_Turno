@@ -1,4 +1,3 @@
-import { sendAuthEmail } from "./email.service.js";
 import type {
   CreateAdminInput
 } from "../validators/user.validator.js";
@@ -8,7 +7,7 @@ import {
 } from "./user-management.service.js";
 
 import {
-  createVerificationForUser
+  createVerificationCodeForNewUser
 } from "./email-verification.service.js";
 
 /**
@@ -23,7 +22,7 @@ interface AdminOnboardingMetadata {
  *
  * 1. Crea la cuenta.
  * 2. La relaciona con su salita.
- * 3. Genera token para verificar su email.
+ * 3. Genera y envía un código para verificar su email.
  */
 export const createAdminWithVerification =
   async (
@@ -49,17 +48,17 @@ export const createAdminWithVerification =
      *
      * email_verificado = false
      *
-     * Por eso generamos su token.
+     * Por eso generamos su código de verificación.
      */
-    const verificationToken =
-      await createVerificationForUser(
+    const verificationExpiresAt =
+      await createVerificationCodeForNewUser(
         user.id_usuario,
+        user.email,
         metadata.ip
       );
 
-    await sendAuthEmail(input.email, "verificar-email", verificationToken);
     return {
       user,
-      verificationToken
+      verificationExpiresAt
     };
   };

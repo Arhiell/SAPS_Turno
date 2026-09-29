@@ -5,20 +5,20 @@ import { supabase } from "../config/supabase.js";
 // Diagnóstico sin enviar correos ni mostrar credenciales o datos de usuarios.
 const { error } = await supabase
   .from("tokens_verificacion_email")
-  .select("intentos")
+  .select("intentos,nuevo_email,email_anterior")
   .limit(0);
 
 if (error) {
-  console.error("Base de datos: no se pudo comprobar tokens_verificacion_email.intentos.");
+  console.error("Base de datos: no se pudo comprobar tokens_verificacion_email (intentos, nuevo_email, email_anterior).");
   console.error("Código de error:", error.code || "sin código");
   if (error.code === "42703" || error.code === "PGRST204") {
-    console.error("Aplicá src/BBDD/20260926_email_verification_attempts.sql en el SQL Editor de Supabase.");
+    console.error("Aplicá src/BBDD/20260929_patient_email_change.sql en el SQL Editor del proyecto de Supabase configurado en backend/.env.");
   } else {
     console.error("Revisá la conexión, los permisos y el proyecto de Supabase configurado.");
   }
   process.exitCode = 1;
 } else {
-  console.log("Base de datos: columna intentos disponible.");
+  console.log("Base de datos: columnas intentos, nuevo_email y email_anterior disponibles.");
 }
 
 const transporter = nodemailer.createTransport({

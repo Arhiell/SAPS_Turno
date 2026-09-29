@@ -1,7 +1,3 @@
-import {
-  env
-} from "../config/env.js";
-
 import type {
   Request,
   Response,
@@ -52,7 +48,7 @@ export const userHealthCheck = async (
 
 /**
  * Crea un ADMIN_SALITA y genera
- * automáticamente su verificación de email.
+ * automáticamente su código de verificación de email.
  */
 export const createAdmin = async (
   req: Request,
@@ -96,25 +92,19 @@ export const createAdmin = async (
       message: string;
       data: {
         user: typeof result.user;
-        verificationToken?: string;
+        verificationExpiresAt: string;
       };
     } = {
       success: true,
 
       message:
-        "Administrador creado correctamente",
+        "Administrador creado. Si corresponde, se envió un código de verificación al correo informado.",
 
       data: {
-        user: result.user
+        user: result.user,
+        verificationExpiresAt: result.verificationExpiresAt
       }
     };
-
-    if (
-      env.NODE_ENV === "development"
-    ) {
-      response.data.verificationToken =
-        result.verificationToken;
-    }
 
     return res.status(201).json(
       response
@@ -178,11 +168,15 @@ export const createProfessional = async (
       });
     }
 
-    const user = await createProfessionalAccount(validation.data, req.user!);
+    const user = await createProfessionalAccount(
+      validation.data,
+      req.user!,
+      req.ip ?? null
+    );
 
     return res.status(201).json({
       success: true,
-      message: "Cuenta de profesional creada correctamente",
+      message: "Cuenta de profesional creada. Si corresponde, se envió un código de verificación al correo informado.",
       data: { user }
     });
   } catch (error) {

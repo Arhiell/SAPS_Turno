@@ -56,3 +56,15 @@ export const sendEmailVerificationCode = async (to: string, code: string) => {
     throw new Error("El servidor SMTP no aceptó el correo de verificación.");
   }
 };
+
+export const sendPasswordRecoveryCode = async (to: string, code: string) => {
+  const result = await sendEmail({
+    to,
+    subject: "Recuperá tu contraseña — SAPS Turno",
+    text: `Tu código para restablecer la contraseña es: ${code}\n\nEste código vence en 15 minutos. Si no solicitaste esta operación, ignorá este correo.`,
+  });
+
+  if (result.accepted.length === 0) {
+    throw new Error("El servidor SMTP no aceptó el correo de recuperación.");
+  }
+};

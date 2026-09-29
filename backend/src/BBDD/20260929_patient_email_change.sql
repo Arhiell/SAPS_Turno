@@ -79,4 +79,20 @@ GRANT EXECUTE ON FUNCTION public.consumir_codigo_email(UUID, TEXT, TEXT) TO serv
 REVOKE ALL ON FUNCTION public.emitir_codigo_email(UUID, TEXT, TIMESTAMPTZ, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.emitir_codigo_email(UUID, TEXT, TIMESTAMPTZ, TEXT, TEXT) TO service_role;
 
+-- Publica las columnas y firmas RPC nuevas en la API al confirmar la transacción.
+NOTIFY pgrst, 'reload schema';
+
 COMMIT;
+
+-- Comprobación sin consultar correos ni tokens de usuarios.
+SELECT
+  EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'tokens_verificacion_email'
+      AND column_name = 'nuevo_email') AS nuevo_email_disponible,
+  EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'tokens_verificacion_email'
+      AND column_name = 'email_anterior') AS email_anterior_disponible,
+  to_regprocedure('public.emitir_codigo_email(uuid,text,timestamp with time zone,text,text)')
+    IS NOT NULL AS emitir_codigo_disponible,
+  to_regprocedure('public.consumir_codigo_email(uuid,text,text)')
+    IS NOT NULL AS consumir_codigo_disponible;

@@ -134,7 +134,7 @@ export default function AccountManagementPage() {
       setConfirmation('');
 
       setSuccess(
-        'Cuenta creada. La persona debe verificar su correo antes de iniciar sesión.'
+        'Cuenta creada. La persona recibió un código de 4 dígitos y debe verificar su correo antes de iniciar sesión.'
       );
     } catch (cause) {
       setError(authError(cause));

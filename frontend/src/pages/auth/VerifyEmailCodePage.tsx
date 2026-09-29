@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 import {
@@ -7,6 +7,7 @@ import {
   verifyEmail,
 } from '../../services/auth.service';
 import AuthForm from './AuthForm';
+import FourDigitCodeInput from './FourDigitCodeInput';
 
 interface VerificationLocationState {
   email?: string;
@@ -14,7 +15,6 @@ interface VerificationLocationState {
   resendAvailableAt?: string;
 }
 
-const CODE_LENGTH = 4;
 const RESEND_COOLDOWN_MS = 60_000;
 
 const formatTime = (totalSeconds: number) =>
@@ -59,14 +59,12 @@ export default function VerifyEmailCodePage() {
     return initialState?.email ? Date.now() + RESEND_COOLDOWN_MS : 0;
   });
   const [now, setNow] = useState(Date.now());
-  const [code, setCode] = useState(['', '', '', '']);
+  const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [verified, setVerified] = useState(false);
   const [resendAfterAttempts, setResendAfterAttempts] = useState(false);
-  const inputs = useRef<Array<HTMLInputElement | null>>([]);
-
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
@@ -80,31 +78,6 @@ export default function VerifyEmailCodePage() {
     : 0;
   const formattedTime = formatTime(secondsLeft);
   const formattedResendTime = formatTime(resendSecondsLeft);
-
-  const handleCodeChange = (index: number, value: string) => {
-    const digit = value.replace(/\D/g, '').slice(-1);
-    setCode((current) => current.map((item, position) =>
-      position === index ? digit : item));
-    setError('');
-    if (digit && index < CODE_LENGTH - 1) inputs.current[index + 1]?.focus();
-  };
-
-  const handlePaste = (event: ClipboardEvent<HTMLInputElement>, index: number) => {
-    const pasted = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, CODE_LENGTH - index);
-    if (!pasted) return;
-    event.preventDefault();
-    setCode((current) => current.map((digit, position) =>
-      position >= index && position < index + pasted.length
-        ? pasted[position - index]
-        : digit));
-    inputs.current[Math.min(index + pasted.length, CODE_LENGTH - 1)]?.focus();
-  };
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>, index: number) => {
-    if (event.key === 'Backspace' && !code[index] && index > 0) {
-      inputs.current[index - 1]?.focus();
-    }
-  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -127,12 +100,12 @@ export default function VerifyEmailCodePage() {
         return;
       }
 
-      if (code.join('').length !== CODE_LENGTH) {
+      if (code.length !== 4) {
         setError('Ingresá los 4 dígitos del código.');
         return;
       }
 
-      await verifyEmail({ email: email.trim(), code: code.join('') });
+      await verifyEmail({ email: email.trim(), code });
       setVerified(true);
       setNotice('Correo verificado correctamente.');
     } catch (cause) {
@@ -160,10 +133,9 @@ export default function VerifyEmailCodePage() {
         ? new Date(result.resendAvailableAt).getTime()
         : Date.now() + RESEND_COOLDOWN_MS);
       setNow(Date.now());
-      setCode(['', '', '', '']);
+      setCode('');
       setResendAfterAttempts(false);
       setNotice('Si corresponde, te enviamos un nuevo código.');
-      inputs.current[0]?.focus();
     } catch (cause) {
       setError(messageForError(cause));
     } finally {
@@ -208,25 +180,15 @@ export default function VerifyEmailCodePage() {
             <>
               <p className="mb-2">Enviamos un código a:</p>
               <p className="fw-semibold text-break">{email}</p>
-              <div className="auth-code-inputs" aria-label="Código de verificación">
-                {code.map((digit, index) => (
-                  <input
-                    key={index}
-                    ref={(element) => { inputs.current[index] = element; }}
-                    className="form-control auth-code-input"
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    autoComplete={index === 0 ? 'one-time-code' : 'off'}
-                    maxLength={1}
-                    aria-label={`Dígito ${index + 1} del código`}
-                    value={digit}
-                    onChange={(event) => handleCodeChange(index, event.target.value)}
-                    onPaste={(event) => handlePaste(event, index)}
-                    onKeyDown={(event) => handleKeyDown(event, index)}
-                  />
-                ))}
-              </div>
+              <FourDigitCodeInput
+                label="Código de verificación"
+                value={code}
+                onChange={(value) => {
+                  setCode(value);
+                  setError('');
+                }}
+                disabled={busy}
+              />
               {secondsLeft > 0 ? (
                 <p className="small text-muted">
                   El código vence en <span className="auth-code-timer">{formattedTime}</span>.

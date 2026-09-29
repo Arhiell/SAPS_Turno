@@ -7,8 +7,7 @@ import type { AuthenticatedUser } from "../types/auth.types.js";
 import { supabase } from "../config/supabase.js";
 import { getProfesionalById } from "../repositories/profesional.repository.js";
 import { getTurnoScope } from "./turno-access.service.js";
-import { createVerificationForUser } from "./email-verification.service.js";
-import { sendAuthEmail } from "./email.service.js";
+import { createVerificationCodeForNewUser } from "./email-verification.service.js";
 
 import {
   assignUserToSalita,
@@ -177,7 +176,9 @@ export const createPatientAccount = async (
  * salita se realizará posteriormente.
  */
 export const createProfessionalAccount = async (
-  input: CreateProfessionalAccountInput, actor: AuthenticatedUser
+  input: CreateProfessionalAccountInput,
+  actor: AuthenticatedUser,
+  ip: string | null = null
 ) => {
   const professional = await getProfesionalById(input.id_profesional);
   if (!professional?.activo) throw new AppError("Profesional no encontrado o inactivo", 404);
@@ -224,10 +225,14 @@ export const createProfessionalAccount = async (
     password_hash: passwordHash
   });
 
-  const token = await createVerificationForUser(user.id_usuario, null);
-  await sendAuthEmail(email, "verificar-email", token);
+  const verificationExpiresAt = await createVerificationCodeForNewUser(
+    user.id_usuario,
+    email,
+    ip
+  );
   return {
     ...user,
-    rol: role.codigo
+    rol: role.codigo,
+    verificationExpiresAt
   };
 };

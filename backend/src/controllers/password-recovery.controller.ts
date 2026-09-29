@@ -41,11 +41,10 @@ export const forgotPassword = async (
       const response: {
         success: boolean;
         message: string;
-        recoveryToken?: string;
       } = {
         success: true,
         message:
-          "Si el correo está registrado, se enviarán instrucciones para recuperar la contraseña",
+          "Si el correo está registrado, recibirás un código para recuperar la contraseña",
       };
 
 

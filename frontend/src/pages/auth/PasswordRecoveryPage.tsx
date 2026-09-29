@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Navigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 
 import {
   requestPasswordRecovery,
@@ -13,6 +13,7 @@ import {
 } from '../../utils/auth-errors';
 
 import AuthForm from './AuthForm';
+import FourDigitCodeInput from './FourDigitCodeInput';
 
 export default function PasswordRecoveryPage({
   mode,
@@ -24,6 +25,9 @@ export default function PasswordRecoveryPage({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
+  const [code, setCode] = useState('');
+  const [requested, setRequested] = useState(false);
+  const [completed, setCompleted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -37,6 +41,19 @@ export default function PasswordRecoveryPage({
 
     setError('');
     setSuccess('');
+
+    if (mode === 'forgot' && requested) {
+      if (code.length !== 4) {
+        setError('Ingresá los 4 dígitos del código.');
+        return;
+      }
+
+      const validation = passwordError(password, confirmation);
+      if (validation) {
+        setError(validation);
+        return;
+      }
+    }
 
     if (mode === 'reset') {
       const validation = passwordError(
@@ -61,13 +78,24 @@ export default function PasswordRecoveryPage({
 
     try {
       if (mode === 'forgot') {
-        await requestPasswordRecovery({
-          email,
-        });
+        if (!requested) {
+          await requestPasswordRecovery({ email });
+          setRequested(true);
+          setSuccess(
+            'Si el correo está registrado, recibirás un código de 4 dígitos. Ingresalo para elegir una nueva contraseña.'
+          );
+          return;
+        }
 
-        setSuccess(
-          'Si el correo está registrado, recibirás instrucciones para recuperar tu contraseña.'
-        );
+        await resetPassword({
+          email,
+          code,
+          newPassword: password,
+        });
+        setPassword('');
+        setConfirmation('');
+        setCompleted(true);
+        setSuccess('Contraseña actualizada. Ya podés iniciar sesión.');
       } else if (mode === 'reset') {
         await resetPassword({
           token,
@@ -76,6 +104,7 @@ export default function PasswordRecoveryPage({
 
         setPassword('');
         setConfirmation('');
+        setCompleted(true);
 
         setSuccess(
           'Contraseña actualizada. Ya podés iniciar sesión.'
@@ -100,7 +129,7 @@ export default function PasswordRecoveryPage({
 
   const title =
     mode === 'forgot'
-      ? 'Recuperar contraseña'
+      ? requested ? 'Restablecer contraseña' : 'Recuperar contraseña'
       : mode === 'reset'
         ? 'Restablecer contraseña'
         : 'Verificar correo';
@@ -108,6 +137,7 @@ export default function PasswordRecoveryPage({
   return (
     <AuthForm title={title}>
       <form onSubmit={submit}>
+        <fieldset disabled={busy || completed}>
         {mode === 'forgot' && (
           <label className="form-label w-100">
             Correo electrónico
@@ -117,6 +147,7 @@ export default function PasswordRecoveryPage({
               type="email"
               autoComplete="email"
               required
+              readOnly={requested}
               value={email}
               onChange={(e) =>
                 setEmail(e.target.value)
@@ -125,7 +156,20 @@ export default function PasswordRecoveryPage({
           </label>
         )}
 
-        {mode === 'reset' && (
+        {mode === 'forgot' && requested && (
+          <>
+            <label className="form-label w-100">Código de recuperación</label>
+            <FourDigitCodeInput
+              label="Código de recuperación"
+              value={code}
+              onChange={setCode}
+              disabled={busy || completed}
+            />
+            <p className="small text-muted">El código vence en 15 minutos.</p>
+          </>
+        )}
+
+        {((mode === 'forgot' && requested) || mode === 'reset') && (
           <>
             <label className="form-label w-100">
               Nueva contraseña
@@ -185,13 +229,19 @@ export default function PasswordRecoveryPage({
 
         <button
           className="btn btn-primary w-100"
-          disabled={busy || Boolean(success)}
+          disabled={busy || completed}
         >
           {busy
             ? 'Enviando…'
-            : title}
+            : mode === 'forgot' && requested ? 'Restablecer contraseña' : title}
         </button>
+        </fieldset>
       </form>
+      {completed && (
+        <Link className="btn btn-outline-secondary w-100 mt-3" to="/login">
+          Iniciar sesión
+        </Link>
+      )}
     </AuthForm>
   );
 }

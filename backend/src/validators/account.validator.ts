@@ -7,7 +7,7 @@ import {
 } from './auth.validator.js';
 
 import {
-  resetPasswordSchema,
+  newPasswordSchema,
 } from './password-recovery.validator.js';
 
 // Comparte las reglas de validación
@@ -33,8 +33,7 @@ export const passwordChangeSchema = z
 
     // Reutiliza las reglas de la contraseña nueva
     // definidas para recuperación de contraseña.
-    newPassword:
-      resetPasswordSchema.shape.newPassword,
+    newPassword: newPasswordSchema,
   })
   .strict()
   .refine(

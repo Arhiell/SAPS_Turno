@@ -63,6 +63,62 @@ export const createPasswordRecoveryToken = async (
   }
 };
 
+export const issuePasswordRecoveryCode = async (
+  idUsuario: string,
+  codeHash: string,
+  expiration: string,
+  ip: string | null,
+) => {
+  const { data, error } = await supabase.rpc(
+    "emitir_codigo_recuperacion",
+    {
+      p_usuario: idUsuario,
+      p_hash: codeHash,
+      p_expiracion: expiration,
+      p_ip: ip,
+    },
+  );
+
+  if (error) {
+    throw new Error(`Error creando código de recuperación: ${error.message}`);
+  }
+
+  return data as string | null;
+};
+
+export const consumePasswordRecoveryCode = async (
+  email: string,
+  codeHash: string,
+  passwordHash: string,
+) => {
+  const { data, error } = await supabase.rpc(
+    "consumir_codigo_recuperacion",
+    {
+      p_email: email,
+      p_hash: codeHash,
+      p_password_hash: passwordHash,
+    },
+  );
+
+  if (error) {
+    throw new Error(`Error verificando código de recuperación: ${error.message}`);
+  }
+
+  return data as string;
+};
+
+export const invalidatePasswordRecoveryCode = async (idToken: string) => {
+  const { error } = await supabase
+    .from("tokens_recuperacion")
+    .update({ fecha_uso: new Date().toISOString() })
+    .eq("id_token", idToken)
+    .is("fecha_uso", null);
+
+  if (error) {
+    throw new Error(`Error invalidando código de recuperación: ${error.message}`);
+  }
+};
+
 // Busca un recovery token mediante su hash.
 // Solamente devuelve tokens que todavía no fueron utilizados.
 export const findPasswordRecoveryToken = async (tokenHash: string) => {

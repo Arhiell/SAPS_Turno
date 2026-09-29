@@ -216,6 +216,8 @@ CREATE TABLE public.tokens_verificacion_email (
     fecha_uso           TIMESTAMPTZ,
     ip_solicitud        INET,
     intentos            SMALLINT NOT NULL DEFAULT 0,
+    nuevo_email         VARCHAR(254),
+    email_anterior      VARCHAR(254),
     CONSTRAINT ck_token_email_expiracion CHECK (fecha_expiracion > fecha_creacion),
     CONSTRAINT ck_token_email_uso CHECK (fecha_uso IS NULL OR fecha_uso >= fecha_creacion),
     CONSTRAINT ck_token_email_intentos CHECK (intentos BETWEEN 0 AND 5)
