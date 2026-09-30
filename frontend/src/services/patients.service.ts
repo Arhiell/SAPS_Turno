@@ -15,6 +15,7 @@ import type {
 export const getPatients = async (
   page = 1,
   limit = 10,
+  search = '',
 ): Promise<PatientsResponse> => {
   const response = await api.get<PatientsResponse>(
     '/patients',
@@ -22,6 +23,7 @@ export const getPatients = async (
       params: {
         page,
         limit,
+        search: search || undefined,
       },
     },
   );

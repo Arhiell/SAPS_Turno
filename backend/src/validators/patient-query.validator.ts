@@ -25,6 +25,7 @@ export const patientDniSchema = z.object({
  * Paginación del listado.
  */
 export const patientListQuerySchema = z.object({
+  search: z.string().trim().max(150).optional(),
   page: z.coerce
     .number()
     .int()

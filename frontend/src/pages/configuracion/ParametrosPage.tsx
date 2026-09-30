@@ -23,6 +23,8 @@ import type {
   Salita,
 } from '../../types/salita.types';
 
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
+
 import { authError } from '../../utils/auth-errors';
 
 // Parámetros disponibles para configurar.
@@ -117,6 +119,7 @@ export default function ParametrosPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [revision, setRevision] = useState(0);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Referencia para volver al formulario al editar.
   const ref = useRef<HTMLFormElement>(null);
@@ -170,8 +173,8 @@ export default function ParametrosPage() {
   };
 
   // Guarda un nuevo parámetro o actualiza uno existente.
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
+  const submit = async (event?: FormEvent) => {
+    event?.preventDefault();
 
     if (busy || !ready) return;
 
@@ -254,6 +257,29 @@ export default function ParametrosPage() {
 
   return (
     <div>
+      <ConfirmationModal
+        open={confirmOpen}
+        title={editing ? 'Guardar parámetro' : 'Crear parámetro'}
+        message={editing ? '¿Querés guardar los cambios de este parámetro?' : '¿Querés crear este parámetro?'}
+        detail={
+          <>
+            <div className="fw-semibold">{selected.label}</div>
+            <div className="text-muted small mt-1">
+              {global ? 'Configuración global' : clinics.find((clinic) => clinic.id_salita === salita)?.nombre || 'Salita no seleccionada'}
+            </div>
+          </>
+        }
+        confirmText="Guardar parámetro"
+        variant="primary"
+        icon="bi-sliders"
+        loading={busy}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          void submit();
+        }}
+      />
+
       <Link
         to="/configuracion"
         className="btn btn-outline-success mb-3"
@@ -311,7 +337,10 @@ export default function ParametrosPage() {
       <form
         ref={ref}
         className="dashboard-panel p-3 mb-4 configuration-form"
-        onSubmit={submit}
+        onSubmit={(event) => {
+          event.preventDefault();
+          setConfirmOpen(true);
+        }}
       >
         <h2 className="h5">
           {editing

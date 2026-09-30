@@ -12,6 +12,48 @@ afterEach(checked);
 const token = await generateAccessToken(user);
 const call = (method = "GET", path = "", body?: unknown, authenticated = true) => curl(server, token, method, path, body, authenticated);
 
+test("Especialidades de una SAPS se guardan sin profesional ni horario", async () => {
+  const setting = { ...local, clave: "salita.especialidades", valor: [other] };
+  queue(...auth(),
+    { table: "especialidades", result: [{ id_especialidad: other }] },
+    { table: "salitas", result: [{ id_salita: id, activo: true }] },
+    config([]),
+    { ...config(setting), method: "POST", check: (_url, body) => {
+      assert.equal(body?.id_salita, id);
+      assert.deepEqual(body?.valor, [other]);
+      assert.equal(body?.actualizado_por, id);
+    } });
+  const result = await call("POST", "", {
+    id_salita: id, clave: "salita.especialidades", valor: [other], es_publica: false,
+  });
+  assert.equal(result.status, 201);
+});
+
+test("Especialidades por SAPS rechaza configuración global, duplicados e IDs inexistentes", async () => {
+  for (const body of [
+    { clave: "salita.especialidades", valor: [other] },
+    { id_salita: id, clave: "salita.especialidades", valor: [other, other] },
+  ]) {
+    queue(...auth());
+    assert.equal((await call("POST", "", body)).status, 400);
+    checked();
+  }
+  queue(...auth(), { table: "especialidades", result: [] });
+  assert.equal((await call("POST", "", {
+    id_salita: id, clave: "salita.especialidades", valor: [other],
+  })).status, 400);
+});
+
+test("Actualizar especialidades de SAPS permite quitar todas y conserva la sala", async () => {
+  const setting = { ...local, clave: "salita.especialidades", valor: [other] };
+  queue(...auth(), config([setting]),
+    { ...config([{ ...setting, valor: [] }]), method: "PATCH", check: (url, body) => {
+      assert.equal(url.searchParams.get("id_salita"), `eq.${id}`);
+      assert.deepEqual(body?.valor, []);
+    } });
+  assert.equal((await call("PATCH", `/${id}`, { valor: [] })).status, 200);
+});
+
 test("GET: SUPER_ADMIN lista, filtra global/salita y busca por clave", async () => {
   for (const path of ["", "?scope=global", `?id_salita=${id}`, "/turnos.dias_anticipacion", `/agenda.intervalo_default?id_salita=${id}`]) {
     queue(...auth(), { ...config(), check: url => {

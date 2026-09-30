@@ -6,6 +6,8 @@ import {
   Link,
 } from 'react-router-dom';
 
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
+
 import {
   deleteSalita,
   getSalitaById,
@@ -43,6 +45,8 @@ const SalitaDetallePage = () => {
     useState('');
 
   const [deleting, setDeleting] =
+    useState(false);
+  const [confirmOpen, setConfirmOpen] =
     useState(false);
 
   useEffect(() => {
@@ -103,12 +107,11 @@ const SalitaDetallePage = () => {
       return;
     }
 
-    const confirmed =
-      window.confirm(
-        `¿Querés desactivar la salita "${salita.nombre}"?`,
-      );
+    setConfirmOpen(true);
+  };
 
-    if (!confirmed) {
+  const confirmDelete = async () => {
+    if (!id || !salita) {
       return;
     }
 
@@ -117,6 +120,7 @@ const SalitaDetallePage = () => {
 
       await deleteSalita(id);
 
+      setConfirmOpen(false);
       navigate('/salitas');
     } catch (error) {
       console.error(error);
@@ -175,6 +179,28 @@ const SalitaDetallePage = () => {
 
   return (
     <div className="salitas-page">
+      <ConfirmationModal
+        open={confirmOpen}
+        title="Desactivar salita"
+        subtitle="Esta acción requiere confirmación."
+        message="¿Querés desactivar la salita?"
+        detail={
+          <>
+            <div className="fw-semibold">{salita.nombre}</div>
+
+            <div className="text-muted small mt-1">
+              Código: {salita.codigo}
+            </div>
+          </>
+        }
+        confirmText="Desactivar salita"
+        cancelText="Cancelar"
+        variant="danger"
+        icon="bi-hospital"
+        loading={deleting}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => void confirmDelete()}
+      />
 
       {/* ENCABEZADO */}
       <div className="salitas-detail-top">

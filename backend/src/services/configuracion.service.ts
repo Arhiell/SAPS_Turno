@@ -1,6 +1,27 @@
 import { 
   AppError 
 } from "../utils/app-error.js";
+import { z } from "zod";
+import { supabase } from "../config/supabase.js";
+
+// Catálogo por SAPS independiente de profesionales y horarios, en la
+// configuración local existente. Solo SUPER_ADMIN administra esta clave.
+const validateClinicSpecialties = async (
+  clave: string, valor: unknown, idSalita: string | null
+) => {
+  if (clave !== "salita.especialidades") return;
+  const parsed = z.array(z.string().uuid()).max(500).safeParse(valor);
+  if (!idSalita || !parsed.success || new Set(parsed.data).size !== parsed.data.length) {
+    throw new AppError("Seleccioná una SAPS y especialidades válidas sin duplicados", 400);
+  }
+  if (!parsed.data.length) return;
+  const { data, error } = await supabase.from("especialidades")
+    .select("id_especialidad").in("id_especialidad", parsed.data);
+  if (error) throw error;
+  if (data?.length !== parsed.data.length) {
+    throw new AppError("Una de las especialidades seleccionadas no existe", 400);
+  }
+};
 
 import { 
   getSalita 
@@ -109,6 +130,7 @@ export const registerConfiguracion = async (
   const idSalita = input.id_salita ?? null;
   
   await assertConfiguracionWrite(user, idSalita, input.clave);
+  await validateClinicSpecialties(input.clave, input.valor, idSalita);
   
   if (user.rol === "ADMIN_SALITA" && input.es_publica) 
     throw new AppError("Solo SUPER_ADMIN puede publicar configuraciones", 403);
@@ -173,6 +195,7 @@ export const editConfiguracion = async (
     valor: input.valor ?? current.valor, 
     es_publica: input.es_publica ?? current.es_publica 
   });
+  await validateClinicSpecialties(current.clave, input.valor ?? current.valor, current.id_salita);
   try {
     const updated = await updateConfiguracion(current, input, user.id_usuario);
     if (!updated) throw new AppError("La configuración no existe", 404);

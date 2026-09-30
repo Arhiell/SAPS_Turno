@@ -9,6 +9,8 @@ import {
   useParams,
 } from 'react-router-dom';
 
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
+
 import {
   getProfessionals,
   getProfessionalClinics,
@@ -109,6 +111,9 @@ const ReprogramarTurnoPage = () => {
 
   const [error, setError] =
     useState('');
+
+  const [confirmOpen, setConfirmOpen] =
+    useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -324,9 +329,9 @@ const ReprogramarTurnoPage = () => {
   };
 
   const handleSubmit = async (
-    event: React.FormEvent<HTMLFormElement>,
+    event?: React.FormEvent<HTMLFormElement>,
   ) => {
-    event.preventDefault();
+    event?.preventDefault();
 
     if (!id || !turno) {
       return;
@@ -423,6 +428,29 @@ const ReprogramarTurnoPage = () => {
 
   return (
     <div className="turnos-page">
+      <ConfirmationModal
+        open={confirmOpen}
+        title="Confirmar reprogramación"
+        message="¿Querés cambiar la fecha y el horario de este turno?"
+        detail={
+          <>
+            <div className="fw-semibold">Turno {turno.codigo_turno}</div>
+            <div className="text-muted small mt-1">
+              Nuevo horario: {fecha} · {selectedSlot?.hora_inicio} - {selectedSlot?.hora_fin}
+            </div>
+          </>
+        }
+        confirmText="Reprogramar turno"
+        variant="warning"
+        icon="bi-calendar2-week"
+        loading={saving}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          void handleSubmit();
+        }}
+      />
+
       <div className="mb-4">
         <button
           type="button"
@@ -509,7 +537,10 @@ const ReprogramarTurnoPage = () => {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={(event) => {
+        event.preventDefault();
+        setConfirmOpen(true);
+      }}>
         <div className="row g-4">
           <div className="col-xl-7">
             <div className="card border-0 shadow-sm">

@@ -7,6 +7,8 @@ import {
   verifyEmail,
 } from '../../services/auth.service';
 
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
+
 import {
   authError,
   passwordError,
@@ -31,11 +33,12 @@ export default function PasswordRecoveryPage({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const token = params.get('token') ?? '';
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
+  const submit = async (event?: FormEvent, confirmed = false) => {
+    event?.preventDefault();
 
     if (busy) return;
 
@@ -72,6 +75,14 @@ export default function PasswordRecoveryPage({
         );
         return;
       }
+    }
+
+    if (
+      !confirmed &&
+      (mode === 'reset' || (mode === 'forgot' && requested))
+    ) {
+      setConfirmOpen(true);
+      return;
     }
 
     setBusy(true);
@@ -136,6 +147,22 @@ export default function PasswordRecoveryPage({
 
   return (
     <AuthForm title={title}>
+      <ConfirmationModal
+        open={confirmOpen}
+        title="Restablecer contraseña"
+        message="¿Querés guardar la nueva contraseña?"
+        detail={<div className="text-muted small">Después podrás iniciar sesión con la contraseña nueva.</div>}
+        confirmText="Restablecer contraseña"
+        variant="warning"
+        icon="bi-key"
+        loading={busy}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          void submit(undefined, true);
+        }}
+      />
+
       <form onSubmit={submit}>
         <fieldset disabled={busy || completed}>
         {mode === 'forgot' && (

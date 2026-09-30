@@ -9,6 +9,8 @@ import {
   useNavigate 
 } from 'react-router-dom';
 
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
+
 import {
    useAuth 
   } from '../../context/AuthContext';
@@ -41,6 +43,7 @@ export default function CompletePatientProfilePage() {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [confirmOpen, setConfirmOpen] = useState(false);
   
   const [form, setForm] = useState<CompletePatientProfileInput>(
     { dni: '', 
@@ -73,8 +76,8 @@ export default function CompletePatientProfilePage() {
 
   if (patient) return <Navigate to="/mi-perfil" replace />;
   
-  const submit = async (event: FormEvent) => {
-    event.preventDefault(); if (busy) return;
+  const submit = async (event?: FormEvent) => {
+    event?.preventDefault(); if (busy) return;
     
     setBusy(true); setError('');
     
@@ -100,12 +103,38 @@ export default function CompletePatientProfilePage() {
 
 return (
   <div className="card shadow-sm">
+    <ConfirmationModal
+      open={confirmOpen}
+      title="Guardar perfil"
+      message="¿Querés completar tu perfil con estos datos?"
+      detail={
+        <>
+          <div className="fw-semibold">{form.apellidos}, {form.nombres}</div>
+          <div className="text-muted small mt-1">
+            {barrios.find((barrio) => barrio.id_barrio === form.id_barrio)?.nombre || 'Barrio no seleccionado'}
+          </div>
+        </>
+      }
+      confirmText="Guardar perfil"
+      variant="primary"
+      icon="bi-person-check"
+      loading={busy}
+      onClose={() => setConfirmOpen(false)}
+      onConfirm={() => {
+        setConfirmOpen(false);
+        void submit();
+      }}
+    />
+
     <div className="card-body p-4">
       <h1 className="h3">Completar mi perfil</h1>
 
       <p>Tu cuenta: {user?.email}</p>
 
-      <form onSubmit={submit}>
+      <form onSubmit={(event) => {
+        event.preventDefault();
+        setConfirmOpen(true);
+      }}>
         <fieldset disabled={busy || loading}>
           <div className="row">
             {fields.map(([key, label, type, required]) => (

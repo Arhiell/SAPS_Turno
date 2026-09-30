@@ -47,6 +47,13 @@ export interface Professional {
   fecha_baja: string | null;
   fecha_actualizacion: string;
   persona: ProfessionalPerson;
+  salitas?: {
+    id_salita: string;
+    activo: boolean;
+    fecha_desde: string;
+    fecha_hasta: string | null;
+    salita: { id_salita: string; nombre: string; activo: boolean } | null;
+  }[];
 }
 
 

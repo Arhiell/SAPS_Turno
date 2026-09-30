@@ -10,6 +10,35 @@ const { getPatients, getPatientById, getPatientByDni } = await import("../src/se
 
 afterEach(drained);
 
+test("Búsqueda por nombre completo conserva todas las palabras, paginación y alcance de sala", async () => {
+  for (const search of ["Juan Perez", "Perez, Juan", "  Juan   Perez  "]) {
+    queue({ table: "pacientes", result: [row], check: url => {
+      const filter = url.searchParams.get("persona.or")!;
+      assert.ok(filter.startsWith("(and("));
+      assert.match(filter, /nombres\.ilike\."\*Juan\*"/);
+      assert.match(filter, /apellidos\.ilike\."\*Perez\*"/);
+      assert.equal(url.searchParams.get("id_salita_asignada"), `in.(${input.id_salita_asignada})`);
+      assert.equal(url.searchParams.get("offset"), "10");
+      assert.equal(url.searchParams.get("limit"), "10");
+    } });
+    const result = await getPatients({ page: 2, limit: 10, search }, [input.id_salita_asignada]);
+    assert.equal(result.pagination.page, 2);
+    drained();
+  }
+});
+
+test("Búsqueda normaliza DNI con puntos y no convierte signos en un listado completo", async () => {
+  queue({ table: "pacientes", result: [row], check: url =>
+    assert.match(url.searchParams.get("persona.or")!, /dni\.ilike\."\*40111222\*"/) });
+  await getPatients({ page: 1, limit: 10, search: "40.111.222" });
+  drained();
+  queue();
+  for (const search of ["%,()", "...", "---"]) {
+    const result = await getPatients({ page: 1, limit: 10, search });
+    assert.equal(result.pagination.total, 0);
+  }
+});
+
 test("Validaciones compartidas y requisitos exclusivos de pacientes", () => {
   assert.ok(createPatientSchema.safeParse(input).success);
   assert.ok(createPersonSchema.safeParse({ dni: input.dni, nombres: "Juan", apellidos: "Perez" }).success);

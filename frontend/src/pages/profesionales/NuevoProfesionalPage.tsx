@@ -25,7 +25,7 @@ const NuevoProfesionalPage = () => {
       setSaving(true);
       setError('');
 
-      await createProfessional({
+      const response = await createProfessional({
         dni: data.dni,
         nombres: data.nombres,
         apellidos: data.apellidos,
@@ -45,7 +45,7 @@ const NuevoProfesionalPage = () => {
         matricula: data.matricula,
       });
 
-      navigate('/profesionales', {
+      navigate(`/profesionales/${response.data.id_profesional}#salitas`, {
         replace: true,
       });
     } catch (error) {
@@ -78,8 +78,7 @@ const NuevoProfesionalPage = () => {
         </h2>
 
         <p className="text-muted mb-0">
-          Registrar un nuevo profesional en el
-          sistema.
+          Registrá al profesional y luego asigná una o varias SAPS y sus especialidades.
         </p>
       </div>
 

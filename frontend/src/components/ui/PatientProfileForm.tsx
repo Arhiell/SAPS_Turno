@@ -3,6 +3,8 @@ import {
   type FormEvent,
 } from 'react';
 
+import ConfirmationModal from './ConfirmationModal';
+
 import type {
   OwnPatientUpdate,
   Patient,
@@ -122,6 +124,7 @@ export default function PatientProfileForm({
     error,
     setError,
   ] = useState('');
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   // ========================================
   // COBERTURA DEL BARRIO
@@ -153,9 +156,9 @@ export default function PatientProfileForm({
   // ========================================
 
   const submit = async (
-    event: FormEvent
+    event?: FormEvent
   ) => {
-    event.preventDefault();
+    event?.preventDefault();
 
     // Evita solicitudes duplicadas.
     if (busy) {
@@ -212,12 +215,34 @@ export default function PatientProfileForm({
   // ========================================
 
   return (
-    <form
-      className="patient-section mb-4"
-      onSubmit={(event) =>
-        void submit(event)
-      }
-    >
+    <>
+      <ConfirmationModal
+        open={confirmOpen}
+        title="Guardar perfil"
+        message="¿Querés guardar los cambios de tu perfil?"
+        detail={
+          <div className="fw-semibold">
+            {draft.nombres} {draft.apellidos}
+          </div>
+        }
+        confirmText="Guardar cambios"
+        variant="primary"
+        icon="bi-person-check"
+        loading={busy}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          void submit();
+        }}
+      />
+
+      <form
+        className="patient-section mb-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setConfirmOpen(true);
+        }}
+      >
       <h2 className="h5">
         Editar perfil
       </h2>
@@ -393,6 +418,7 @@ export default function PatientProfileForm({
           </button>
         </div>
       </fieldset>
-    </form>
+      </form>
+    </>
   );
 }

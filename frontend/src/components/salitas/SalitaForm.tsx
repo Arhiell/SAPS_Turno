@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import ConfirmationModal from '../ui/ConfirmationModal';
 import { authError } from '../../utils/auth-errors';
 
 import { getBarrios } from '../../services/barrios.service';
@@ -40,6 +41,8 @@ const SalitaForm = ({
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [barriosRevision, setBarriosRevision] = useState(0);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingData, setPendingData] = useState<CreateSalitaRequest | null>(null);
 
   const [form, setForm] =
     useState<CreateSalitaRequest>({
@@ -241,12 +244,20 @@ const SalitaForm = ({
         form.horario_cierre || null,
     };
 
+    setPendingData(data);
+    setConfirmOpen(true);
+  };
+
+  const confirmSubmit = async () => {
+    if (!pendingData || saving || loading) return;
+
     try {
       setSaving(true);
-      await onSubmit(data);
+      await onSubmit(pendingData);
+      setPendingData(null);
+      setConfirmOpen(false);
     } catch (error) {
       console.error(error);
-
       setError(authError(error));
     } finally {
       setSaving(false);
@@ -255,6 +266,29 @@ const SalitaForm = ({
 
   return (
     <div className="salitas-page">
+      <ConfirmationModal
+        open={confirmOpen}
+        title={initialData ? 'Guardar cambios de la salita' : 'Crear salita'}
+        message={initialData ? '¿Querés guardar los cambios de esta salita?' : '¿Querés crear esta salita?'}
+        detail={
+          <>
+            <div className="fw-semibold">{pendingData?.nombre || form.nombre}</div>
+            <div className="text-muted small mt-1">
+              Código: {pendingData?.codigo || form.codigo} · {barrios.find((barrio) => barrio.id_barrio === (pendingData?.id_barrio || form.id_barrio))?.nombre || 'Barrio sin nombre'}
+            </div>
+          </>
+        }
+        confirmText={initialData ? 'Guardar cambios' : 'Crear salita'}
+        variant="primary"
+        icon="bi-hospital"
+        loading={saving || loading}
+        onClose={() => {
+          setConfirmOpen(false);
+          setPendingData(null);
+        }}
+        onConfirm={() => void confirmSubmit()}
+      />
+
       <form onSubmit={handleSubmit}>
 
         {error && (

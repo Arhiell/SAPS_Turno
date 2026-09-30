@@ -29,7 +29,10 @@ const profesionalSelect = `
 export const getAllProfesionales = async (scope: string[] | null = null) => {
   let query = supabase
     .from("profesionales")
-    .select(profesionalSelect);
+    .select(`${profesionalSelect}, salitas:profesional_salita (
+      id_salita, activo, fecha_desde, fecha_hasta,
+      salita:salitas (id_salita, nombre, activo)
+    )`);
   if (scope !== null) query = query.in("id_profesional", scope);
   const { data, error } = await query.order("fecha_alta", { ascending: false });
 

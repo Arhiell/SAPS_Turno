@@ -11,14 +11,21 @@ import {
   getCatalogo,
   getZonas,
   guardarCatalogo,
+  getParametros,
+  guardarParametro,
 } from '../../services/configuracion.service';
+import { getSalitas } from '../../services/salitas.service';
+import type { Salita } from '../../types/salita.types';
 
 import type {
   CatalogoInput,
   CatalogoRegistro,
   CatalogoTipo,
   Zona,
+  Parametro,
 } from '../../types/configuracion.types';
+
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
 import { authError } from '../../utils/auth-errors';
 
@@ -51,6 +58,10 @@ export default function CatalogoPage({
   // Datos del catálogo.
   const [rows, setRows] = useState<CatalogoRegistro[]>([]);
   const [zonas, setZonas] = useState<Zona[]>([]);
+  const [clinics, setClinics] = useState<Salita[]>([]);
+  const [clinicSettings, setClinicSettings] = useState<Parametro[]>([]);
+  const [selectedClinic, setSelectedClinic] = useState('');
+  const [clinicSpecialties, setClinicSpecialties] = useState<string[]>([]);
 
   // Estado del formulario.
   const [form, setForm] = useState<CatalogoInput>(empty);
@@ -67,6 +78,8 @@ export default function CatalogoPage({
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [revision, setRevision] = useState(0);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [specialtyConfirmOpen, setSpecialtyConfirmOpen] = useState(false);
 
   // Referencias para desplazamiento y foco al editar.
   const formRef = useRef<HTMLFormElement>(null);
@@ -85,11 +98,15 @@ export default function CatalogoPage({
       tipo === 'barrios'
         ? getZonas()
         : Promise.resolve([]),
+      tipo === 'especialidades' ? getSalitas().then(response => response.data) : Promise.resolve([]),
+      tipo === 'especialidades' ? getParametros() : Promise.resolve([]),
     ])
-      .then(([data, zones]) => {
+      .then(([data, zones, clinicRows, settings]) => {
         if (active) {
           setRows(data);
           setZonas(zones);
+          setClinics(clinicRows);
+          setClinicSettings(settings.filter(setting => setting.clave === 'salita.especialidades'));
           setReady(true);
         }
       })
@@ -108,6 +125,36 @@ export default function CatalogoPage({
       active = false;
     };
   }, [tipo, revision]);
+
+  useEffect(() => {
+    const setting = clinicSettings.find(item => item.id_salita === selectedClinic);
+    setClinicSpecialties(Array.isArray(setting?.valor)
+      ? setting.valor.filter((id): id is string => typeof id === 'string') : []);
+  }, [selectedClinic, clinicSettings]);
+
+  const saveClinicSpecialties = async (event?: FormEvent) => {
+    event?.preventDefault();
+    if (!selectedClinic || busy || loading || !ready) return;
+    setBusy(true);
+    setError('');
+    setSuccess('');
+    try {
+      const current = clinicSettings.find(item => item.id_salita === selectedClinic);
+      await guardarParametro({
+        id_salita: selectedClinic,
+        clave: 'salita.especialidades',
+        valor: clinicSpecialties,
+        descripcion: 'Especialidades disponibles en esta SAPS',
+        es_publica: false,
+      }, current?.id_configuracion);
+      setSuccess('Especialidades de la SAPS guardadas.');
+      setRevision(value => value + 1);
+    } catch (cause) {
+      setError(authError(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   // Actualiza parcialmente los datos del formulario.
   const change = (patch: Partial<CatalogoInput>) => {
@@ -162,8 +209,8 @@ export default function CatalogoPage({
   };
 
   // Guarda un nuevo registro o actualiza uno existente.
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
+  const submit = async (event?: FormEvent) => {
+    event?.preventDefault();
 
     if (busy || loading || !ready) {
       return;
@@ -275,6 +322,49 @@ export default function CatalogoPage({
 
   return (
     <div>
+      <ConfirmationModal
+        open={confirmOpen}
+        title={editing ? 'Guardar cambios' : 'Crear registro'}
+        subtitle="Esta acción requiere confirmación."
+        message={editing ? '¿Querés guardar los cambios del registro?' : '¿Querés crear este registro?'}
+        detail={
+          <>
+            <div className="fw-semibold">{form.nombre || 'Sin nombre'}</div>
+            <div className="text-muted small mt-1">{tipo === 'especialidades' ? 'Especialidad / catálogo' : 'Configuración del sistema'}</div>
+          </>
+        }
+        confirmText={editing ? 'Guardar cambios' : 'Guardar'}
+        cancelText="Cancelar"
+        variant="primary"
+        icon="bi-check-lg"
+        loading={busy}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          void submit();
+        }}
+      />
+
+      <ConfirmationModal
+        open={specialtyConfirmOpen}
+        title="Guardar especialidades de la SAPS"
+        message="¿Querés actualizar las especialidades disponibles en esta sala?"
+        detail={
+          <div className="fw-semibold">
+            {clinics.find((clinic) => clinic.id_salita === selectedClinic)?.nombre || 'SAPS no seleccionada'}
+          </div>
+        }
+        confirmText="Guardar especialidades"
+        variant="primary"
+        icon="bi-list-check"
+        loading={busy}
+        onClose={() => setSpecialtyConfirmOpen(false)}
+        onConfirm={() => {
+          setSpecialtyConfirmOpen(false);
+          void saveClinicSpecialties();
+        }}
+      />
+
       <Link
         className="btn btn-outline-success mb-3"
         to="/configuracion"
@@ -323,13 +413,55 @@ export default function CatalogoPage({
         </div>
       )}
 
+      {tipo === 'especialidades' && (
+        <form onSubmit={(event) => {
+          event.preventDefault();
+          setSpecialtyConfirmOpen(true);
+        }} className="dashboard-panel p-3 mb-4">
+          <h2 className="h5">Especialidades por SAPS</h2>
+          <p className="text-muted">Seleccioná las especialidades que ofrece cada sala, aunque todavía no tenga profesionales ni horarios asignados.</p>
+          <fieldset disabled={loading || busy || !ready}>
+            <label className="form-label" htmlFor="specialty-clinic">SAPS / sala</label>
+            <select id="specialty-clinic" className="form-select mb-3" value={selectedClinic}
+              onChange={event => { setSelectedClinic(event.target.value); setSuccess(''); }} required>
+              <option value="">Seleccionar SAPS</option>
+              {clinics.map(clinic => (
+                <option key={clinic.id_salita} value={clinic.id_salita}>
+                  {clinic.nombre}{clinic.activo ? '' : ' (inactiva)'}
+                </option>
+              ))}
+            </select>
+            {selectedClinic && (
+              <>
+                <div className="row g-2 mb-3">
+                  {rows.filter(row => row.activo || clinicSpecialties.includes(row.id)).map(row => (
+                    <label key={row.id} className="col-md-6">
+                      <input type="checkbox" className="form-check-input me-2"
+                        checked={clinicSpecialties.includes(row.id)}
+                        onChange={event => setClinicSpecialties(current => event.target.checked
+                          ? [...current, row.id] : current.filter(id => id !== row.id))} />
+                      {row.nombre}{row.activo ? '' : ' (inactiva)'}
+                    </label>
+                  ))}
+                </div>
+                {!rows.some(row => row.activo) && <p>No hay especialidades activas. Cargalas en el formulario de este apartado.</p>}
+                <button className="btn btn-saps" type="submit">{busy ? 'Guardando…' : 'Guardar especialidades de la SAPS'}</button>
+              </>
+            )}
+          </fieldset>
+        </form>
+      )}
+
       <div className="row g-4">
         {/* Formulario */}
         <div className="col-xl-4">
           <form
             ref={formRef}
             className="dashboard-panel p-3 configuration-form"
-            onSubmit={submit}
+            onSubmit={(event) => {
+              event.preventDefault();
+              setConfirmOpen(true);
+            }}
           >
             <h2 className="h5">
               {editing
@@ -598,6 +730,7 @@ export default function CatalogoPage({
                           : 'Detalle'}
                       </th>
 
+                      {tipo === 'especialidades' && <th scope="col">SAPS / salas</th>}
                       <th scope="col">
                         Estado
                       </th>
@@ -636,6 +769,13 @@ export default function CatalogoPage({
                               '—'}
                         </td>
 
+                        {tipo === 'especialidades' && (
+                          <td data-label="SAPS / salas">
+                            {clinics.filter(clinic => clinicSettings.some(setting =>
+                              setting.id_salita === clinic.id_salita && Array.isArray(setting.valor) && setting.valor.includes(row.id)
+                            )).map(clinic => clinic.nombre).join(', ') || 'Sin SAPS asignada'}
+                          </td>
+                        )}
                         <td data-label="Estado">
                           <span
                             className={`badge ${

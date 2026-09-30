@@ -30,6 +30,8 @@ import type {
   Barrio,
 } from '../../types/barrio.types';
 
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
+
 import { authError } from '../../utils/auth-errors';
 
 // Genera el estado inicial del formulario.
@@ -73,6 +75,7 @@ export default function CoberturaPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [revision, setRevision] = useState(0);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Referencia para volver al formulario al editar.
   const formRef = useRef<HTMLFormElement>(null);
@@ -129,8 +132,8 @@ export default function CoberturaPage() {
   };
 
   // Guarda una nueva cobertura o actualiza una existente.
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
+  const submit = async (event?: FormEvent) => {
+    event?.preventDefault();
 
     if (busy || !ready) return;
 
@@ -209,6 +212,29 @@ export default function CoberturaPage() {
 
   return (
     <div>
+      <ConfirmationModal
+        open={confirmOpen}
+        title={editing ? 'Guardar cobertura' : 'Crear cobertura'}
+        subtitle="Esta acción requiere confirmación."
+        message={editing ? '¿Querés guardar los cambios de esta cobertura?' : '¿Querés guardar esta cobertura?'}
+        detail={
+          <>
+            <div className="fw-semibold">{clinics.find(c => c.id_salita === form.id_salita)?.nombre || 'Salita sin nombre'}</div>
+            <div className="text-muted small mt-1">{barrios.find(b => b.id_barrio === form.id_barrio)?.nombre || 'Barrio sin nombre'}</div>
+          </>
+        }
+        confirmText="Guardar cobertura"
+        cancelText="Cancelar"
+        variant="primary"
+        icon="bi-geo-alt"
+        loading={busy}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          void submit();
+        }}
+      />
+
       <Link
         to="/configuracion"
         className="btn btn-outline-success mb-3"
@@ -257,7 +283,10 @@ export default function CoberturaPage() {
       {/* Formulario de creación y edición */}
       <form
         ref={formRef}
-        onSubmit={submit}
+        onSubmit={(event) => {
+          event.preventDefault();
+          setConfirmOpen(true);
+        }}
         className="dashboard-panel p-3 mb-4 configuration-form"
       >
         <h2 className="h5">

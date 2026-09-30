@@ -11,12 +11,29 @@ import {
 export const findPatients = async (
   from: number, 
   to: number, 
-  scope: string[] | null = null
+  scope: string[] | null = null,
+  search = ""
 ) => {
   let query = supabase.from("pacientes")
     .select(patientSelect, { count: "exact" }).eq("activo", true)
   
     if (scope !== null) query = query.in("id_salita_asignada", scope);
+
+    // Cada palabra debe aparecer en el DNI, los nombres o los apellidos.
+    // El filtro se aplica antes de contar y paginar, en cualquier orden del nombre.
+    const text = search.trim();
+    const terms = /^[\d.\s-]+$/.test(text)
+      ? [text.replace(/\D/g, "")].filter(Boolean)
+      : text.match(/[\p{L}\p{M}\p{N}'’-]+/gu) ?? [];
+    if (terms.length) {
+      const filters = terms.map(term => {
+        const pattern = JSON.stringify(`*${term}*`);
+        return `or(dni.ilike.${pattern},nombres.ilike.${pattern},apellidos.ilike.${pattern})`;
+      });
+      query = query.or(`and(${filters.join(",")})`, { referencedTable: "persona" });
+    } else if (text) {
+      return { patients: [], total: 0 };
+    }
   
     const { data, count, error } = await query
     .order("persona(apellidos)", { ascending: true })

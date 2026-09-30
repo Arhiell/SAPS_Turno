@@ -9,6 +9,8 @@ import {
   useParams,
 } from 'react-router-dom';
 
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
+
 import {
   getTurnoById,
   changeTurnoStatus,
@@ -56,6 +58,15 @@ const TurnoDetallePage = () => {
 
   const [changingStatus, setChangingStatus] =
     useState(false);
+
+  const [cancelOpen, setCancelOpen] =
+    useState(false);
+
+  const [cancelReason, setCancelReason] =
+    useState('');
+
+  const [statusTarget, setStatusTarget] =
+    useState<string | null>(null);
 
   const loadTurno =
     async () => {
@@ -113,31 +124,21 @@ const TurnoDetallePage = () => {
       );
   }, [message]);
 
-  const handleCancel =
-    async () => {
-      if (!id || !turno) {
-        return;
-      }
+  const handleCancel = () => {
+    if (!id || !turno) return;
+    setCancelReason('');
+    setError('');
+    setCancelOpen(true);
+  };
 
-      const motivo =
-        window.prompt(
-          'Ingrese el motivo de cancelación:',
-        );
+  const confirmCancel = async () => {
+    if (!id || !turno) return;
 
-      if (
-        motivo === null
-      ) {
-        return;
-      }
-
-      if (
-        !motivo.trim()
-      ) {
-        setError(
-          'Debe indicar un motivo de cancelación.',
-        );
-        return;
-      }
+    const reason = cancelReason.trim();
+    if (reason.length < 3) {
+      setError('Debe indicar un motivo de cancelación de al menos 3 caracteres.');
+      return;
+    }
 
       try {
         setChangingStatus(
@@ -152,10 +153,11 @@ const TurnoDetallePage = () => {
             estado:
               'CANCELADO',
             motivo_cancelacion:
-              motivo.trim(),
+              reason,
           },
         );
 
+        setCancelOpen(false);
         setMessage(
           'Turno cancelado correctamente.',
         );
@@ -172,15 +174,14 @@ const TurnoDetallePage = () => {
           false,
         );
       }
-    };
+  };
 
-  const handleStatusChange =
-    async (
-      newStatus: string,
-    ) => {
-      if (!id) {
-        return;
-      }
+  const handleStatusChange = (newStatus: string) => {
+    setStatusTarget(newStatus);
+  };
+
+  const confirmStatusChange = async () => {
+    if (!id || !statusTarget) return;
 
       try {
         setChangingStatus(
@@ -193,10 +194,11 @@ const TurnoDetallePage = () => {
           id,
           {
             estado:
-              newStatus,
+              statusTarget,
           },
         );
 
+        setStatusTarget(null);
         setMessage(
           'Estado actualizado correctamente.',
         );
@@ -213,7 +215,7 @@ const TurnoDetallePage = () => {
           false,
         );
       }
-    };
+  };
 
   const handleReprogramar =
     () => {
@@ -270,6 +272,59 @@ const TurnoDetallePage = () => {
 
   return (
     <div className="turnos-page">
+      <ConfirmationModal
+        open={cancelOpen}
+        title="Cancelar turno"
+        message="¿Querés cancelar este turno? El horario quedará disponible para otra persona."
+        detail={
+          <>
+            <div className="fw-semibold">Turno {turno.codigo_turno}</div>
+            <label className="form-label w-100 mt-3">
+              Motivo de cancelación
+              <textarea
+                className="form-control mt-1"
+                required
+                minLength={3}
+                maxLength={2000}
+                value={cancelReason}
+                disabled={changingStatus}
+                onChange={(event) => setCancelReason(event.target.value)}
+              />
+            </label>
+            {error && <div className="alert alert-danger mb-0" role="alert">{error}</div>}
+          </>
+        }
+        confirmText="Cancelar turno"
+        variant="danger"
+        icon="bi-x-circle"
+        loading={changingStatus}
+        onClose={() => {
+          setCancelOpen(false);
+          setError('');
+        }}
+        onConfirm={() => void confirmCancel()}
+      />
+
+      <ConfirmationModal
+        open={statusTarget !== null}
+        title={statusTarget === 'CONFIRMADO' ? 'Confirmar turno' : 'Pasar turno a espera'}
+        message={statusTarget === 'CONFIRMADO' ? '¿Querés confirmar este turno?' : '¿Querés pasar este turno a espera?'}
+        detail={
+          <>
+            <div className="fw-semibold">Turno {turno.codigo_turno}</div>
+            <div className="text-muted small mt-1">
+              {turno.paciente.persona.apellidos}, {turno.paciente.persona.nombres}
+            </div>
+          </>
+        }
+        confirmText={statusTarget === 'CONFIRMADO' ? 'Confirmar turno' : 'Pasar a espera'}
+        variant="primary"
+        icon="bi-check-circle"
+        loading={changingStatus}
+        onClose={() => setStatusTarget(null)}
+        onConfirm={() => void confirmStatusChange()}
+      />
+
       <div className="mb-4">
         <button
           type="button"

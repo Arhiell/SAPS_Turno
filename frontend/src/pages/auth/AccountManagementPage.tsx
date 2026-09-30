@@ -4,6 +4,8 @@ import {
   type FormEvent,
 } from 'react';
 
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
+
 import {
   useAuth,
 } from '../../context/AuthContext';
@@ -62,6 +64,8 @@ export default function AccountManagementPage() {
 
   const [success, setSuccess] = useState('');
 
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
   useEffect(() => {
     let active = true;
 
@@ -96,8 +100,8 @@ export default function AccountManagementPage() {
     };
   }, []);
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
+  const submit = async (event?: FormEvent) => {
+    event?.preventDefault();
 
     if (busy) return;
 
@@ -145,6 +149,29 @@ export default function AccountManagementPage() {
 
   return (
     <div className="card shadow-sm">
+      <ConfirmationModal
+        open={confirmOpen}
+        title="Crear cuenta de acceso"
+        subtitle="Esta acción requiere confirmación."
+        message="¿Querés crear esta cuenta de acceso?"
+        detail={
+          <>
+            <div className="fw-semibold">{username || 'Usuario sin nombre'}</div>
+            <div className="text-muted small mt-1">{email || 'Correo no informado'}</div>
+          </>
+        }
+        confirmText="Crear cuenta"
+        cancelText="Cancelar"
+        variant="primary"
+        icon="bi-person-plus"
+        loading={busy}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          void submit();
+        }}
+      />
+
       <div className="card-body p-4">
         <h1 className="h3">
           Crear cuenta de acceso
@@ -154,7 +181,10 @@ export default function AccountManagementPage() {
           Las cuentas profesionales se vinculan a un profesional ya registrado.
         </p>
 
-        <form onSubmit={submit}>
+        <form onSubmit={(event) => {
+          event.preventDefault();
+          setConfirmOpen(true);
+        }}>
           <fieldset disabled={busy || loading}>
             <label className="form-label w-100">
               Tipo de cuenta

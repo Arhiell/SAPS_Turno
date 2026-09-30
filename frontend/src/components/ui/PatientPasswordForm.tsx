@@ -8,6 +8,8 @@ import {
   useNavigate,
 } from 'react-router-dom';
 
+import ConfirmationModal from './ConfirmationModal';
+
 import {
   useAuth,
 } from '../../context/AuthContext';
@@ -65,6 +67,7 @@ export default function PatientPasswordForm() {
     error,
     setError,
   ] = useState('');
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   // ========================================
   // REINICIO DEL FORMULARIO
@@ -83,9 +86,9 @@ export default function PatientPasswordForm() {
   // ========================================
 
   const save = async (
-    event: FormEvent
+    event?: FormEvent
   ) => {
-    event.preventDefault();
+    event?.preventDefault();
 
     // Evita solicitudes duplicadas.
     if (busy) {
@@ -151,6 +154,22 @@ export default function PatientPasswordForm() {
 
   return (
     <section className="patient-section h-100">
+      <ConfirmationModal
+        open={confirmOpen}
+        title="Cambiar contraseña"
+        message="¿Querés actualizar tu contraseña de acceso?"
+        detail={<div className="text-muted small">Se cerrará tu sesión y tendrás que ingresar nuevamente.</div>}
+        confirmText="Cambiar contraseña"
+        variant="warning"
+        icon="bi-key"
+        loading={busy}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          void save();
+        }}
+      />
+
       <h2 className="h5">
         Contraseña
       </h2>
@@ -182,9 +201,10 @@ export default function PatientPasswordForm() {
       ) : (
         // Formulario para actualizar la contraseña.
         <form
-          onSubmit={(event) =>
-            void save(event)
-          }
+          onSubmit={(event) => {
+            event.preventDefault();
+            setConfirmOpen(true);
+          }}
         >
           <fieldset disabled={busy}>
             {/* Contraseña actualmente utilizada. */}

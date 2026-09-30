@@ -8,6 +8,8 @@ import {
   useNavigate,
 } from 'react-router-dom';
 
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
+
 import {
   getPatients,
 } from '../../services/patients.service';
@@ -117,6 +119,9 @@ const NuevoTurnoPage = () => {
 
   const [message, setMessage] =
     useState('');
+
+  const [confirmOpen, setConfirmOpen] =
+    useState(false);
 
   useEffect(() => {
     const loadInitialData =
@@ -306,9 +311,9 @@ const NuevoTurnoPage = () => {
 
   const handleSubmit =
     async (
-      event: React.FormEvent<HTMLFormElement>,
+      event?: React.FormEvent<HTMLFormElement>,
     ) => {
-      event.preventDefault();
+      event?.preventDefault();
 
       if (
         !selectedPatient ||
@@ -390,6 +395,36 @@ const NuevoTurnoPage = () => {
 
   return (
     <div className="turnos-page">
+      <ConfirmationModal
+        open={confirmOpen}
+        title="Confirmar turno"
+        message="¿Querés registrar este turno?"
+        detail={
+          <>
+            <div className="fw-semibold">
+              {patients.find((patient) => patient.id_paciente === selectedPatient)?.apellidos}, {patients.find((patient) => patient.id_paciente === selectedPatient)?.nombres}
+            </div>
+            <div className="text-muted small mt-1">
+              {fecha} · {selectedSlot?.hora_inicio} - {selectedSlot?.hora_fin}
+            </div>
+            <div className="text-muted small">
+              {professionals.find((professional) => professional.id_profesional === selectedProfessional)?.persona.apellidos}, {professionals.find((professional) => professional.id_profesional === selectedProfessional)?.persona.nombres}
+              {' · '}{professionalSpecialties.find((item) => item.id_especialidad === selectedSpecialty)?.especialidad.nombre}
+              {' · '}{professionalClinics.find((item) => item.id_salita === selectedSalita)?.salita.nombre}
+            </div>
+          </>
+        }
+        confirmText="Crear turno"
+        variant="primary"
+        icon="bi-calendar-check"
+        loading={saving}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          void handleSubmit();
+        }}
+      />
+
       <div className="mb-4">
         <button
           type="button"
@@ -427,7 +462,10 @@ const NuevoTurnoPage = () => {
       )}
 
       <form
-        onSubmit={handleSubmit}
+        onSubmit={(event) => {
+          event.preventDefault();
+          setConfirmOpen(true);
+        }}
       >
         <div className="row g-4">
           <div className="col-xl-7">

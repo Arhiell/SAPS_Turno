@@ -4,6 +4,8 @@ import {
   useParams,
 } from 'react-router-dom';
 
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
+
 import {
   getPatientById,
   updatePatient,
@@ -31,6 +33,9 @@ const PacienteDetallePage = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [confirmTarget, setConfirmTarget] = useState<Patient | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (!success) {
@@ -179,29 +184,27 @@ const PacienteDetallePage = () => {
       return;
     }
 
-    const action = patient.activo
-      ? 'desactivar'
-      : 'activar';
+    setConfirmTarget(patient);
+  };
 
-    const confirmed = window.confirm(
-      `¿Está seguro de que desea ${action} al paciente ${patient.apellidos}, ${patient.nombres}?`,
-    );
-
-    if (!confirmed) {
+  const confirmStatusChange = async () => {
+    if (!confirmTarget) {
       return;
     }
 
     try {
+      setConfirming(true);
       setError('');
       setSuccess('');
 
       const response =
         await updatePatientStatus(
-          patient.id_paciente,
-          !patient.activo,
+          confirmTarget.id_paciente,
+          !confirmTarget.activo,
         );
 
       setPatient(response.data.patient);
+      setConfirmTarget(null);
 
       setSuccess(
         `Paciente ${
@@ -216,6 +219,8 @@ const PacienteDetallePage = () => {
       setError(
         'No se pudo actualizar el estado del paciente.',
       );
+    } finally {
+      setConfirming(false);
     }
   };
 
@@ -255,6 +260,56 @@ const PacienteDetallePage = () => {
 
   return (
     <div>
+      <ConfirmationModal
+        open={saveConfirmOpen}
+        title="Guardar cambios"
+        subtitle="Esta acción requiere confirmación."
+        message="¿Querés guardar los cambios del paciente?"
+        detail={
+          <>
+            <div className="fw-semibold">{patient?.apellidos}, {patient?.nombres}</div>
+            <div className="text-muted small mt-1">DNI: {patient?.dni}</div>
+          </>
+        }
+        confirmText="Guardar cambios"
+        cancelText="Cancelar"
+        variant="primary"
+        icon="bi-check-lg"
+        loading={saving}
+        onClose={() => setSaveConfirmOpen(false)}
+        onConfirm={() => {
+          setSaveConfirmOpen(false);
+          void handleSave();
+        }}
+      />
+
+      {confirmTarget && (
+        <ConfirmationModal
+          open
+          title={confirmTarget.activo ? 'Desactivar paciente' : 'Activar paciente'}
+          subtitle="Esta acción requiere confirmación."
+          message={confirmTarget.activo ? '¿Querés desactivar al paciente?' : '¿Querés volver a activar al paciente?'}
+          detail={
+            <>
+              <div className="fw-semibold">
+                {confirmTarget.apellidos}, {confirmTarget.nombres}
+              </div>
+
+              <div className="text-muted small mt-1">
+                DNI: {confirmTarget.dni}
+              </div>
+            </>
+          }
+          confirmText={confirmTarget.activo ? 'Desactivar paciente' : 'Activar paciente'}
+          cancelText="Cancelar"
+          variant={confirmTarget.activo ? 'danger' : 'success'}
+          icon={confirmTarget.activo ? 'bi-person-dash' : 'bi-person-check'}
+          loading={confirming}
+          onClose={() => setConfirmTarget(null)}
+          onConfirm={() => void confirmStatusChange()}
+        />
+      )}
+
       {/* ENCABEZADO */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -716,7 +771,7 @@ const PacienteDetallePage = () => {
           <button
             type="button"
             className="btn btn-saps"
-            onClick={() => void handleSave()}
+            onClick={() => setSaveConfirmOpen(true)}
             disabled={saving}
           >
             {saving ? (

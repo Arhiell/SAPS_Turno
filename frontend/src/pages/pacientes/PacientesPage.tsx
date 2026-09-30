@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
+
 import {
-  getPatientByDni,
   getPatients,
   updatePatientStatus,
 } from '../../services/patients.service';
@@ -20,98 +21,79 @@ const PacientesPage = () => {
     useState<PatientPagination | null>(null);
 
   const [page, setPage] = useState(1);
-  const [dni, setDni] = useState('');
+  const [search, setSearch] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [revision, setRevision] = useState(0);
+  const requestId = useRef(0);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [confirmTarget, setConfirmTarget] = useState<Patient | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   const loadPatients = async () => {
+    const currentRequest = ++requestId.current;
     try {
       setLoading(true);
       setError('');
 
-      const response = await getPatients(page, 10);
+      const response = await getPatients(page, 10, appliedSearch);
+      if (currentRequest !== requestId.current) return;
 
       setPatients(response.data.patients);
       setPagination(response.data.pagination);
     } catch (error) {
+      if (currentRequest !== requestId.current) return;
       console.error(error);
+      setPatients([]);
+      setPagination(null);
       setError(
         'No se pudieron cargar los pacientes.',
       );
     } finally {
-      setLoading(false);
+      if (currentRequest === requestId.current) setLoading(false);
     }
   };
 
   useEffect(() => {
     void loadPatients();
-  }, [page]);
+    return () => { requestId.current++; };
+  }, [page, appliedSearch, revision]);
 
-  const handleSearch = async () => {
-    const dniValue = dni.trim();
-
-    if (!dniValue) {
-      setPage(1);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError('');
-
-      const response =
-        await getPatientByDni(dniValue);
-
-      setPatients([response.data.patient]);
-
-      setPagination({
-        page: 1,
-        limit: 1,
-        total: 1,
-        totalPages: 1,
-      });
-    } catch (error) {
-      console.error(error);
-
-      setPatients([]);
-      setPagination(null);
-      setError(
-        'No se encontró un paciente con ese DNI.',
-      );
-    } finally {
-      setLoading(false);
-    }
+  const handleSearch = () => {
+    setAppliedSearch(search.trim());
+    setPage(1);
+    setRevision(value => value + 1);
   };
 
   const handleClearSearch = () => {
-    setDni('');
+    setSearch('');
+    setAppliedSearch('');
     setPage(1);
+    setRevision(value => value + 1);
   };
 
   const handleStatusChange = async (
     patient: Patient,
   ) => {
-    const action = patient.activo
-      ? 'desactivar'
-      : 'activar';
+    setConfirmTarget(patient);
+  };
 
-    const confirmed = window.confirm(
-      `¿Está seguro de que desea ${action} al paciente ${patient.apellidos}, ${patient.nombres}?`,
-    );
-
-    if (!confirmed) {
+  const confirmStatusChange = async () => {
+    if (!confirmTarget) {
       return;
     }
 
     try {
+      setConfirming(true);
       setError('');
 
       await updatePatientStatus(
-        patient.id_paciente,
-        !patient.activo,
+        confirmTarget.id_paciente,
+        !confirmTarget.activo,
       );
 
+      setConfirmTarget(null);
       await loadPatients();
     } catch (error) {
       console.error(error);
@@ -119,6 +101,8 @@ const PacientesPage = () => {
       setError(
         'No se pudo actualizar el estado del paciente.',
       );
+    } finally {
+      setConfirming(false);
     }
   };
 
@@ -128,6 +112,33 @@ const PacientesPage = () => {
 
   return (
     <div>
+      {confirmTarget && (
+        <ConfirmationModal
+          open
+          title={confirmTarget.activo ? 'Desactivar paciente' : 'Activar paciente'}
+          subtitle="Esta acción requiere confirmación."
+          message={confirmTarget.activo ? '¿Querés desactivar al paciente?' : '¿Querés volver a activar al paciente?'}
+          detail={
+            <>
+              <div className="fw-semibold">
+                {confirmTarget.apellidos}, {confirmTarget.nombres}
+              </div>
+
+              <div className="text-muted small mt-1">
+                DNI: {confirmTarget.dni}
+              </div>
+            </>
+          }
+          confirmText={confirmTarget.activo ? 'Desactivar paciente' : 'Activar paciente'}
+          cancelText="Cancelar"
+          variant={confirmTarget.activo ? 'danger' : 'success'}
+          icon={confirmTarget.activo ? 'bi-person-dash' : 'bi-person-check'}
+          loading={confirming}
+          onClose={() => setConfirmTarget(null)}
+          onConfirm={() => void confirmStatusChange()}
+        />
+      )}
+
       {/* ENCABEZADO */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -161,10 +172,12 @@ const PacientesPage = () => {
               <input
                 type="text"
                 className="form-control"
-                placeholder="Buscar paciente por DNI"
-                value={dni}
+                placeholder="DNI, apellido o nombre completo"
+                aria-label="Buscar paciente por DNI, apellido o nombre completo"
+                maxLength={150}
+                value={search}
                 onChange={(event) =>
-                  setDni(event.target.value)
+                  setSearch(event.target.value)
                 }
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') {

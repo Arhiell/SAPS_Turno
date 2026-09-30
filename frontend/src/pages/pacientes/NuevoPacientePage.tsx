@@ -8,6 +8,8 @@ import {
   useNavigate,
 } from 'react-router-dom';
 
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
+
 import {
   createPatient,
 } from '../../services/patients.service';
@@ -47,6 +49,9 @@ const NuevoPacientePage = () => {
     useState(true);
 
   const [saving, setSaving] =
+    useState(false);
+
+  const [confirmOpen, setConfirmOpen] =
     useState(false);
 
   const [error, setError] =
@@ -160,9 +165,9 @@ const NuevoPacientePage = () => {
 
   const handleSubmit =
     async (
-      event: React.FormEvent<HTMLFormElement>,
+      event?: React.FormEvent<HTMLFormElement>,
     ) => {
-      event.preventDefault();
+      event?.preventDefault();
 
       try {
         setSaving(true);
@@ -264,6 +269,27 @@ const NuevoPacientePage = () => {
 
   return (
     <div>
+      <ConfirmationModal
+        open={confirmOpen}
+        title="Registrar paciente"
+        message="¿Querés registrar este paciente?"
+        detail={
+          <>
+            <div className="fw-semibold">{form.apellidos}, {form.nombres}</div>
+            <div className="text-muted small mt-1">DNI: {form.dni}</div>
+          </>
+        }
+        confirmText="Registrar paciente"
+        variant="primary"
+        icon="bi-person-plus"
+        loading={saving}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          void handleSubmit();
+        }}
+      />
+
       {/* ENCABEZADO */}
       <div className="mb-4">
         <button
@@ -307,7 +333,10 @@ const NuevoPacientePage = () => {
       )}
 
       <form
-        onSubmit={handleSubmit}
+        onSubmit={(event) => {
+          event.preventDefault();
+          setConfirmOpen(true);
+        }}
       >
         {/* DATOS PERSONALES */}
         <div className="card border-0 shadow-sm mb-4">

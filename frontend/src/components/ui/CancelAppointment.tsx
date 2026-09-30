@@ -3,6 +3,8 @@ import {
   type FormEvent,
 } from 'react';
 
+import ConfirmationModal from './ConfirmationModal';
+
 import {
   changeTurnoStatus,
 } from '../../services/turnos.service';
@@ -24,6 +26,7 @@ export default function CancelAppointment({
 }) {
   // Controla si se muestra el formulario de cancelación.
   const [open, setOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Motivo ingresado por el paciente.
   const [reason, setReason] = useState('');
@@ -37,15 +40,22 @@ export default function CancelAppointment({
   // CANCELACIÓN DEL TURNO
   // ========================================
 
-  const cancel = async (
+  const cancel = (
     event: FormEvent
   ) => {
     event.preventDefault();
 
-    // Evita enviar varias solicitudes al mismo tiempo.
-    if (busy) {
+    if (busy || reason.trim().length < 3) {
+      setError('Ingresá un motivo de al menos 3 caracteres.');
       return;
     }
+
+    setError('');
+    setConfirmOpen(true);
+  };
+
+  const confirmCancel = async () => {
+    if (busy) return;
 
     setBusy(true);
     setError('');
@@ -108,6 +118,24 @@ export default function CancelAppointment({
 
   return (
     <div>
+      <ConfirmationModal
+        open={confirmOpen}
+        title="Cancelar turno"
+        message="¿Querés cancelar este turno? El horario quedará disponible para otra persona."
+        detail={
+          <>
+            <div className="fw-semibold">Turno {turno.codigo_turno}</div>
+            <div className="text-muted small mt-1">Motivo: {reason.trim()}</div>
+          </>
+        }
+        confirmText="Confirmar cancelación"
+        variant="danger"
+        icon="bi-x-circle"
+        loading={busy}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => void confirmCancel()}
+      />
+
       {!open ? (
         // Muestra inicialmente el botón de cancelación.
         <button

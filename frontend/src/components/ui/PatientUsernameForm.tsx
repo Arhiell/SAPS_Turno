@@ -3,6 +3,8 @@ import {
   type FormEvent,
 } from 'react';
 
+import ConfirmationModal from './ConfirmationModal';
+
 import {
   useAuth,
 } from '../../context/AuthContext';
@@ -54,14 +56,16 @@ export default function PatientUsernameForm() {
     setSuccess,
   ] = useState('');
 
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
   // ========================================
   // GUARDAR NOMBRE DE USUARIO
   // ========================================
 
   const save = async (
-    event: FormEvent
+    event?: FormEvent
   ) => {
-    event.preventDefault();
+    event?.preventDefault();
 
     // Evita solicitudes duplicadas.
     if (busy) {
@@ -102,6 +106,29 @@ export default function PatientUsernameForm() {
 
   return (
     <section className="patient-section h-100">
+      <ConfirmationModal
+        open={confirmOpen}
+        title="Cambiar nombre de usuario"
+        subtitle="Esta acción requiere confirmación."
+        message="¿Querés guardar este nombre de usuario?"
+        detail={
+          <>
+            <div className="fw-semibold">{name.trim() || 'Sin nombre'}</div>
+            <div className="text-muted small mt-1">Quedará visible en la app y tu perfil.</div>
+          </>
+        }
+        confirmText="Guardar usuario"
+        cancelText="Cancelar"
+        variant="primary"
+        icon="bi-person-check"
+        loading={busy}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          void save();
+        }}
+      />
+
       <h2 className="h5">
         Nombre de usuario
       </h2>
@@ -148,9 +175,10 @@ export default function PatientUsernameForm() {
       ) : (
         // Formulario para modificar el usuario.
         <form
-          onSubmit={(event) =>
-            void save(event)
-          }
+          onSubmit={(event) => {
+            event.preventDefault();
+            setConfirmOpen(true);
+          }}
         >
           <fieldset disabled={busy}>
             {/* Nuevo nombre de usuario. */}
