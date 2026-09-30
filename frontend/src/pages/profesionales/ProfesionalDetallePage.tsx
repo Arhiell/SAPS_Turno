@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
+
 import AsignacionVigencia from '../../components/profesionales/AsignacionVigencia';
+
 import {
+  useLocation,
   useNavigate,
   useParams,
   Link,
@@ -30,12 +33,25 @@ import type {
   Salita,
 } from '../../types/salita.types';
 
+interface ProfesionalDetalleLocationState {
+  professional?: Professional;
+  message?: string;
+  messageTitle?: string;
+}
+
 const ProfesionalDetallePage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
 
+  const navigationState =
+    (location.state as ProfesionalDetalleLocationState | null) ??
+    null;
+
   const [professional, setProfessional] =
-    useState<Professional | null>(null);
+    useState<Professional | null>(
+      navigationState?.professional ?? null,
+    );
 
   const [specialties, setSpecialties] =
     useState<ProfessionalSpecialty[]>([]);
@@ -56,22 +72,53 @@ const ProfesionalDetallePage = () => {
     useState('');
 
   const [loading, setLoading] =
-    useState(true);
+    useState(!navigationState?.professional);
 
   const [error, setError] =
     useState('');
 
   const [message, setMessage] =
-    useState('');
+    useState(
+      navigationState?.message ?? '',
+    );
 
-  const loadData = async () => {
+  const [messageTitle, setMessageTitle] =
+    useState(
+      navigationState?.messageTitle ??
+        'Actualización completada',
+    );
+
+  const [removalTarget, setRemovalTarget] =
+    useState<{
+      tipo: 'salita' | 'especialidad';
+      nombre: string;
+      id: string;
+    } | null>(null);
+
+  const [removing, setRemoving] =
+    useState(false);
+
+  const loadData = async (
+    showLoading = true,
+    professionalOverride?: Professional | null,
+  ) => {
     if (!id) {
       return;
     }
 
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
+
       setError('');
+
+      const professionalRequest =
+        professionalOverride
+          ? Promise.resolve({
+              data: professionalOverride,
+            })
+          : getProfessionalById(id);
 
       const [
         professionalResponse,
@@ -80,7 +127,7 @@ const ProfesionalDetallePage = () => {
         allSpecialtiesResponse,
         allClinicsResponse,
       ] = await Promise.all([
-        getProfessionalById(id),
+        professionalRequest,
         getProfessionalSpecialties(id),
         getProfessionalClinics(id),
         getSpecialties(),
@@ -112,20 +159,47 @@ const ProfesionalDetallePage = () => {
           (clinic) => clinic.activo,
         ),
       );
-    } catch (error) {
-      console.error(error);
+    } catch (cause) {
+      console.error(cause);
 
       setError(
         'No se pudo cargar la información del profesional.',
       );
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    void loadData();
-  }, [id]);
+    const state =
+      (location.state as ProfesionalDetalleLocationState | null) ??
+      null;
+
+    if (state?.professional) {
+      setProfessional(
+        state.professional,
+      );
+
+      setMessage(
+        state.message ?? '',
+      );
+
+      setMessageTitle(
+        state.messageTitle ??
+          'Actualización completada',
+      );
+    }
+
+    void loadData(
+      !state?.professional,
+      state?.professional ?? null,
+    );
+  }, [
+    id,
+    location.state,
+  ]);
 
   useEffect(() => {
     if (!message) {
@@ -159,13 +233,17 @@ const ProfesionalDetallePage = () => {
 
       setSelectedSpecialty('');
 
+      setMessageTitle(
+        'Asignación completada',
+      );
+
       setMessage(
         'Especialidad asignada correctamente.',
       );
 
-      await loadData();
-    } catch (error) {
-      console.error(error);
+      await loadData(false);
+    } catch (cause) {
+      console.error(cause);
 
       setError(
         'No se pudo asignar la especialidad.',
@@ -173,41 +251,19 @@ const ProfesionalDetallePage = () => {
     }
   };
 
-  const handleRemoveSpecialty = async (
+  const handleRemoveSpecialty = (
     specialty: ProfessionalSpecialty,
   ) => {
     if (!id) {
       return;
     }
 
-    const confirmed = window.confirm(
-      `¿Desea quitar la especialidad "${specialty.especialidad.nombre}" del profesional?`,
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      setError('');
-
-      await deleteProfessionalSpecialty(
-        id,
-        specialty.id_especialidad,
-      );
-
-      setMessage(
-        'Especialidad quitada correctamente.',
-      );
-
-      await loadData();
-    } catch (error) {
-      console.error(error);
-
-      setError(
-        'No se pudo quitar la especialidad.',
-      );
-    }
+    setRemovalTarget({
+      tipo: 'especialidad',
+      nombre:
+        specialty.especialidad.nombre,
+      id: specialty.id_especialidad,
+    });
   };
 
   const handleAddClinic = async () => {
@@ -227,13 +283,17 @@ const ProfesionalDetallePage = () => {
 
       setSelectedClinic('');
 
+      setMessageTitle(
+        'Asignación completada',
+      );
+
       setMessage(
         'Salita asignada correctamente.',
       );
 
-      await loadData();
-    } catch (error) {
-      console.error(error);
+      await loadData(false);
+    } catch (cause) {
+      console.error(cause);
 
       setError(
         'No se pudo asignar la salita.',
@@ -241,40 +301,76 @@ const ProfesionalDetallePage = () => {
     }
   };
 
-  const handleRemoveClinic = async (
+  const handleRemoveClinic = (
     clinic: ProfessionalClinic,
   ) => {
     if (!id) {
       return;
     }
 
-    const confirmed = window.confirm(
-      `¿Desea quitar la asignación de "${clinic.salita.nombre}"?`,
-    );
+    setRemovalTarget({
+      tipo: 'salita',
+      nombre: clinic.salita.nombre,
+      id: clinic.id_salita,
+    });
+  };
 
-    if (!confirmed) {
+  const confirmRemoval = async () => {
+    if (
+      !id ||
+      !removalTarget ||
+      removing
+    ) {
       return;
     }
 
     try {
+      setRemoving(true);
       setError('');
 
-      await deleteProfessionalClinic(
-        id,
-        clinic.id_salita,
-      );
+      if (
+        removalTarget.tipo === 'salita'
+      ) {
+        await deleteProfessionalClinic(
+          id,
+          removalTarget.id,
+        );
 
-      setMessage(
-        'Asignación de salita quitada correctamente.',
-      );
+        setMessageTitle(
+          'Asignación eliminada',
+        );
 
-      await loadData();
-    } catch (error) {
-      console.error(error);
+        setMessage(
+          'La asignación de la salita se quitó correctamente.',
+        );
+      } else {
+        await deleteProfessionalSpecialty(
+          id,
+          removalTarget.id,
+        );
+
+        setMessageTitle(
+          'Asignación eliminada',
+        );
+
+        setMessage(
+          'La especialidad se quitó correctamente.',
+        );
+      }
+
+      setRemovalTarget(null);
+
+      await loadData(false);
+    } catch (cause) {
+      console.error(cause);
 
       setError(
-        'No se pudo quitar la salita.',
+        removalTarget.tipo === 'salita'
+          ? 'No se pudo quitar la asignación de la salita.'
+          : 'No se pudo quitar la especialidad.',
       );
+    } finally {
+      setRemoving(false);
     }
   };
 
@@ -314,7 +410,8 @@ const ProfesionalDetallePage = () => {
     );
   }
 
-  const person = professional.persona;
+  const person =
+    professional.persona;
 
   const assignedSpecialtyIds =
     new Set(
@@ -327,7 +424,8 @@ const ProfesionalDetallePage = () => {
   const assignedClinicIds =
     new Set(
       clinics.map(
-        (item) => item.id_salita,
+        (item) =>
+          item.id_salita,
       ),
     );
 
@@ -349,10 +447,17 @@ const ProfesionalDetallePage = () => {
 
   return (
     <div className="professional-detail">
-      <Link className="btn btn-saps mb-3" to={`/configuracion/horarios?profesional=${id}`}>
-        <i className="bi bi-calendar-week me-2" />Horarios y disponibilidad
+
+      <Link
+        className="btn btn-saps mb-3"
+        to={`/configuracion/horarios?profesional=${id}`}
+      >
+        <i className="bi bi-calendar-week me-2" />
+        Horarios y disponibilidad
       </Link>
+
       <div className="d-flex justify-content-between align-items-start mb-4 gap-3">
+
         <div>
           <button
             type="button"
@@ -371,7 +476,8 @@ const ProfesionalDetallePage = () => {
           </h2>
 
           <p className="text-muted mb-0">
-            Matrícula: {professional.matricula}
+            Matrícula:{' '}
+            {professional.matricula}
           </p>
         </div>
 
@@ -381,21 +487,79 @@ const ProfesionalDetallePage = () => {
           onClick={() =>
             navigate(
               `/profesionales/${professional.id_profesional}/editar`,
+              {
+                state: {
+                  professional,
+
+                  returnTo:
+                    `/profesionales/${professional.id_profesional}`,
+
+                  returnLabel:
+                    'Volver al profesional',
+                },
+              },
             )
           }
         >
           <i className="bi bi-pencil me-2" />
           Editar
         </button>
+
       </div>
 
       {message && (
         <div
-          className="alert alert-success"
-          role="alert"
+          className="position-fixed top-0 end-0 p-3"
+          style={{
+            zIndex: 1080,
+            width: 'min(420px, 100vw)',
+          }}
+          aria-live="polite"
+          aria-atomic="true"
         >
-          <i className="bi bi-check-circle me-2" />
-          {message}
+          <div
+            className="alert alert-success shadow-sm border-0 mb-0 position-relative"
+            role="status"
+            style={{
+              padding:
+                '14px 48px 14px 48px',
+              borderRadius: '12px',
+              minHeight: '72px',
+            }}
+          >
+            <i
+              className="bi bi-check-circle-fill position-absolute text-success"
+              aria-hidden="true"
+              style={{
+                left: '16px',
+                top: '16px',
+                fontSize: '1.15rem',
+              }}
+            />
+
+            <div>
+              <div className="fw-semibold mb-1">
+                {messageTitle}
+              </div>
+
+              <div className="small">
+                {message}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="btn-close position-absolute"
+              aria-label="Cerrar mensaje"
+              onClick={() =>
+                setMessage('')
+              }
+              style={{
+                top: '12px',
+                right: '12px',
+              }}
+            />
+          </div>
         </div>
       )}
 
@@ -409,10 +573,193 @@ const ProfesionalDetallePage = () => {
         </div>
       )}
 
+      {removalTarget && (
+        <>
+          <div
+            className="modal-backdrop fade show"
+            style={{
+              zIndex: 1050,
+            }}
+          />
+
+          <div
+            className="modal d-block fade show"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="remove-assignment-title"
+            style={{
+              zIndex: 1055,
+            }}
+            onMouseDown={(event) => {
+              if (
+                event.target ===
+                  event.currentTarget &&
+                !removing
+              ) {
+                setRemovalTarget(null);
+              }
+            }}
+          >
+            <div
+              className="modal-dialog modal-dialog-centered"
+              role="document"
+              style={{
+                width: '100%',
+                maxWidth: '520px',
+                margin: '1rem auto',
+              }}
+            >
+              <div className="modal-content border-0 shadow-lg">
+
+                <div
+                  className="modal-header border-0 pb-2 position-relative"
+                  style={{
+                    padding:
+                      '20px 56px 10px 20px',
+                  }}
+                >
+                  <div className="d-flex align-items-center gap-3">
+
+                    <div
+                      className="rounded-circle d-flex align-items-center justify-content-center bg-warning-subtle text-warning"
+                      style={{
+                        width: '48px',
+                        height: '48px',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <i className="bi bi-exclamation-triangle-fill fs-5" />
+                    </div>
+
+                    <div>
+                      <h5
+                        className="modal-title fw-bold mb-1"
+                        id="remove-assignment-title"
+                      >
+                        Quitar asignación
+                      </h5>
+
+                      <p className="text-muted mb-0 small">
+                        Esta acción requiere
+                        confirmación.
+                      </p>
+                    </div>
+
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn-close position-absolute"
+                    aria-label="Cerrar"
+                    disabled={removing}
+                    onClick={() =>
+                      setRemovalTarget(null)
+                    }
+                    style={{
+                      top: '18px',
+                      right: '18px',
+                    }}
+                  />
+                </div>
+
+                <div
+                  className="modal-body pt-2"
+                  style={{
+                    paddingLeft: '20px',
+                    paddingRight: '20px',
+                  }}
+                >
+                  <p className="mb-2">
+                    ¿Querés quitar la{' '}
+                    <strong>
+                      {removalTarget.tipo ===
+                      'salita'
+                        ? 'asignación a la salita'
+                        : 'especialidad'}
+                    </strong>{' '}
+                    de este profesional?
+                  </p>
+
+                  <div className="bg-light border rounded p-3">
+                    <div className="fw-semibold">
+                      {removalTarget.nombre}
+                    </div>
+
+                    <div className="text-muted small mt-1">
+                      {removalTarget.tipo ===
+                      'salita'
+                        ? 'La salita seguirá existiendo en el sistema. Solo se quitará su asignación a este profesional.'
+                        : 'La especialidad seguirá existiendo en el sistema. Solo se quitará su asignación a este profesional.'}
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  className="modal-footer border-0 pt-0"
+                  style={{
+                    padding:
+                      '8px 20px 20px',
+                    gap: '8px',
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    disabled={removing}
+                    style={{
+                      minWidth: '96px',
+                    }}
+                    onClick={() =>
+                      setRemovalTarget(null)
+                    }
+                  >
+                    Cancelar
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    disabled={removing}
+                    style={{
+                      minWidth: '150px',
+                    }}
+                    onClick={() =>
+                      void confirmRemoval()
+                    }
+                  >
+                    {removing ? (
+                      <>
+                        <span
+                          className="spinner-border spinner-border-sm me-2"
+                          role="status"
+                          aria-hidden="true"
+                        />
+
+                        Quitando...
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-trash me-2" />
+                        Quitar asignación
+                      </>
+                    )}
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       <div className="row g-4">
+
         {/* INFORMACIÓN PERSONAL */}
+
         <div className="col-xl-5">
+
           <div className="card border-0 shadow-sm h-100">
+
             <div className="card-header bg-white py-3">
               <h5 className="mb-0 fw-bold">
                 <i className="bi bi-person-vcard me-2 text-success" />
@@ -421,13 +768,16 @@ const ProfesionalDetallePage = () => {
             </div>
 
             <div className="card-body">
+
               <div className="professional-detail-avatar">
                 <i className="bi bi-person-badge" />
               </div>
 
               <div className="professional-info-list">
+
                 <div>
                   <span>DNI</span>
+
                   <strong>
                     {person.dni}
                   </strong>
@@ -435,6 +785,7 @@ const ProfesionalDetallePage = () => {
 
                 <div>
                   <span>Matrícula</span>
+
                   <strong>
                     {professional.matricula}
                   </strong>
@@ -444,6 +795,7 @@ const ProfesionalDetallePage = () => {
                   <span>
                     Fecha de nacimiento
                   </span>
+
                   <strong>
                     {person.fecha_nacimiento ||
                       '—'}
@@ -452,6 +804,7 @@ const ProfesionalDetallePage = () => {
 
                 <div>
                   <span>Sexo</span>
+
                   <strong>
                     {person.sexo ||
                       'No informa'}
@@ -460,6 +813,7 @@ const ProfesionalDetallePage = () => {
 
                 <div>
                   <span>Teléfono</span>
+
                   <strong>
                     {person.telefono ||
                       '—'}
@@ -468,6 +822,7 @@ const ProfesionalDetallePage = () => {
 
                 <div>
                   <span>Email</span>
+
                   <strong>
                     {person.email ||
                       '—'}
@@ -476,6 +831,7 @@ const ProfesionalDetallePage = () => {
 
                 <div>
                   <span>Dirección</span>
+
                   <strong>
                     {person.direccion ||
                       '—'}
@@ -484,6 +840,7 @@ const ProfesionalDetallePage = () => {
 
                 <div>
                   <span>Localidad</span>
+
                   <strong>
                     {person.localidad ||
                       '—'}
@@ -492,6 +849,7 @@ const ProfesionalDetallePage = () => {
 
                 <div>
                   <span>Estado</span>
+
                   <strong>
                     {professional.activo ? (
                       <span className="badge bg-success-subtle text-success">
@@ -504,18 +862,24 @@ const ProfesionalDetallePage = () => {
                     )}
                   </strong>
                 </div>
+
               </div>
             </div>
           </div>
         </div>
 
         {/* ASIGNACIONES */}
+
         <div className="col-xl-7">
 
           {/* ESPECIALIDADES */}
+
           <div className="card border-0 shadow-sm mb-4">
+
             <div className="card-header bg-white py-3">
+
               <div className="d-flex justify-content-between align-items-center">
+
                 <h5 className="mb-0 fw-bold">
                   <i className="bi bi-award me-2 text-success" />
                   Especialidades
@@ -524,12 +888,17 @@ const ProfesionalDetallePage = () => {
                 <span className="badge bg-success-subtle text-success">
                   {specialties.length}
                 </span>
+
               </div>
+
             </div>
 
             <div className="card-body">
+
               <div className="row g-2 mb-4">
+
                 <div className="col">
+
                   <select
                     className="form-select"
                     value={selectedSpecialty}
@@ -558,9 +927,11 @@ const ProfesionalDetallePage = () => {
                       ),
                     )}
                   </select>
+
                 </div>
 
                 <div className="col-auto">
+
                   <button
                     type="button"
                     className="btn btn-saps"
@@ -574,7 +945,9 @@ const ProfesionalDetallePage = () => {
                     <i className="bi bi-plus-lg me-1" />
                     Asignar
                   </button>
+
                 </div>
+
               </div>
 
               {specialties.length === 0 ? (
@@ -584,6 +957,7 @@ const ProfesionalDetallePage = () => {
                 </div>
               ) : (
                 <div className="professional-assignment-list">
+
                   {specialties.map(
                     (specialty) => (
                       <div
@@ -592,7 +966,9 @@ const ProfesionalDetallePage = () => {
                           specialty.id_especialidad
                         }
                       >
+
                         <div>
+
                           <strong>
                             {
                               specialty
@@ -607,7 +983,46 @@ const ProfesionalDetallePage = () => {
                               specialty.fecha_desde
                             }
                           </small>
-                          <AsignacionVigencia profesional={professional.id_profesional} relacion={specialty.id_especialidad} tipo="especialidad" desde={specialty.fecha_desde} hasta={specialty.fecha_hasta} activo={specialty.activo} onSaved={loadData} />
+
+                          <small>
+                            Hasta{' '}
+                            {specialty.fecha_hasta ??
+                              'Sin fecha de finalización'}
+                          </small>
+
+                          <AsignacionVigencia
+                            profesional={
+                              professional.id_profesional
+                            }
+                            relacion={
+                              specialty.id_especialidad
+                            }
+                            tipo="especialidad"
+                            desde={
+                              specialty.fecha_desde
+                            }
+                            hasta={
+                              specialty.fecha_hasta
+                            }
+                            activo={
+                              specialty.activo
+                            }
+                            onSaved={() =>
+                              loadData(false)
+                            }
+                            onSuccess={(
+                              successMessage,
+                            ) => {
+                              setMessageTitle(
+                                'Vigencia actualizada',
+                              );
+
+                              setMessage(
+                                successMessage,
+                              );
+                            }}
+                          />
+
                         </div>
 
                         <button
@@ -622,18 +1037,25 @@ const ProfesionalDetallePage = () => {
                         >
                           <i className="bi bi-trash" />
                         </button>
+
                       </div>
                     ),
                   )}
+
                 </div>
               )}
+
             </div>
           </div>
 
           {/* SALITAS */}
+
           <div className="card border-0 shadow-sm">
+
             <div className="card-header bg-white py-3">
+
               <div className="d-flex justify-content-between align-items-center">
+
                 <h5 className="mb-0 fw-bold">
                   <i className="bi bi-hospital me-2 text-success" />
                   Salitas
@@ -642,12 +1064,17 @@ const ProfesionalDetallePage = () => {
                 <span className="badge bg-success-subtle text-success">
                   {clinics.length}
                 </span>
+
               </div>
+
             </div>
 
             <div className="card-body">
+
               <div className="row g-2 mb-4">
+
                 <div className="col">
+
                   <select
                     className="form-select"
                     value={selectedClinic}
@@ -676,9 +1103,11 @@ const ProfesionalDetallePage = () => {
                       ),
                     )}
                   </select>
+
                 </div>
 
                 <div className="col-auto">
+
                   <button
                     type="button"
                     className="btn btn-saps"
@@ -692,7 +1121,9 @@ const ProfesionalDetallePage = () => {
                     <i className="bi bi-plus-lg me-1" />
                     Asignar
                   </button>
+
                 </div>
+
               </div>
 
               {clinics.length === 0 ? (
@@ -701,6 +1132,7 @@ const ProfesionalDetallePage = () => {
                 </div>
               ) : (
                 <div className="professional-assignment-list">
+
                   {clinics.map(
                     (clinic) => (
                       <div
@@ -709,7 +1141,9 @@ const ProfesionalDetallePage = () => {
                           clinic.id_salita
                         }
                       >
+
                         <div>
+
                           <strong>
                             {clinic.salita.nombre}
                           </strong>
@@ -722,7 +1156,46 @@ const ProfesionalDetallePage = () => {
                             Desde{' '}
                             {clinic.fecha_desde}
                           </small>
-                          <AsignacionVigencia profesional={professional.id_profesional} relacion={clinic.id_salita} tipo="salita" desde={clinic.fecha_desde} hasta={clinic.fecha_hasta} activo={clinic.activo} onSaved={loadData} />
+
+                          <small>
+                            Hasta{' '}
+                            {clinic.fecha_hasta ??
+                              'Sin fecha de finalización'}
+                          </small>
+
+                          <AsignacionVigencia
+                            profesional={
+                              professional.id_profesional
+                            }
+                            relacion={
+                              clinic.id_salita
+                            }
+                            tipo="salita"
+                            desde={
+                              clinic.fecha_desde
+                            }
+                            hasta={
+                              clinic.fecha_hasta
+                            }
+                            activo={
+                              clinic.activo
+                            }
+                            onSaved={() =>
+                              loadData(false)
+                            }
+                            onSuccess={(
+                              successMessage,
+                            ) => {
+                              setMessageTitle(
+                                'Vigencia actualizada',
+                              );
+
+                              setMessage(
+                                successMessage,
+                              );
+                            }}
+                          />
+
                         </div>
 
                         <button
@@ -737,11 +1210,14 @@ const ProfesionalDetallePage = () => {
                         >
                           <i className="bi bi-trash" />
                         </button>
+
                       </div>
                     ),
                   )}
+
                 </div>
               )}
+
             </div>
           </div>
 

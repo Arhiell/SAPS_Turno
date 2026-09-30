@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+
 import {
+  useLocation,
   useNavigate,
   useParams,
 } from 'react-router-dom';
@@ -17,15 +19,52 @@ import type {
   Professional,
 } from '../../types/profesional.types';
 
+interface EditarProfesionalLocationState {
+  professional?: Professional;
+  returnTo?: string;
+  returnLabel?: string;
+}
+
 const EditarProfesionalPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
 
+  const navigationState =
+    (location.state as EditarProfesionalLocationState | null) ??
+    null;
+
+  /*
+   * Si venimos desde el detalle, volvemos al detalle.
+   *
+   * Si venimos desde el listado, volvemos al listado.
+   *
+   * Si entramos directamente a la URL de edición,
+   * tomamos el listado como lugar de retorno.
+   */
+  const defaultDetailPath = id
+    ? `/profesionales/${id}`
+    : '/profesionales';
+
+  const returnTo =
+    navigationState?.returnTo ??
+    (navigationState?.professional
+      ? defaultDetailPath
+      : '/profesionales');
+
+  const returnLabel =
+    navigationState?.returnLabel ??
+    (navigationState?.professional
+      ? 'Volver al profesional'
+      : 'Volver a profesionales');
+
   const [professional, setProfessional] =
-    useState<Professional | null>(null);
+    useState<Professional | null>(
+      navigationState?.professional ?? null,
+    );
 
   const [loading, setLoading] =
-    useState(true);
+    useState(!navigationState?.professional);
 
   const [saving, setSaving] =
     useState(false);
@@ -38,7 +77,19 @@ const EditarProfesionalPage = () => {
       setError(
         'No se especificó el profesional.',
       );
+
       setLoading(false);
+
+      return;
+    }
+
+    if (navigationState?.professional) {
+      setProfessional(
+        navigationState.professional,
+      );
+
+      setLoading(false);
+
       return;
     }
 
@@ -51,8 +102,8 @@ const EditarProfesionalPage = () => {
           await getProfessionalById(id);
 
         setProfessional(response.data);
-      } catch (error) {
-        console.error(error);
+      } catch (cause) {
+        console.error(cause);
 
         setError(
           'No se pudo cargar el profesional.',
@@ -63,12 +114,15 @@ const EditarProfesionalPage = () => {
     };
 
     void loadProfessional();
-  }, [id]);
+  }, [
+    id,
+    navigationState?.professional,
+  ]);
 
   const handleSubmit = async (
     data: ProfessionalFormData,
   ) => {
-    if (!id) {
+    if (!id || !professional) {
       return;
     }
 
@@ -96,14 +150,96 @@ const EditarProfesionalPage = () => {
         matricula: data.matricula,
       });
 
+      const updatedProfessional: Professional = {
+        ...professional,
+
+        matricula: data.matricula,
+
+        persona: {
+          ...professional.persona,
+
+          dni: data.dni,
+          nombres: data.nombres,
+          apellidos: data.apellidos,
+
+          fecha_nacimiento:
+            data.fecha_nacimiento || null,
+
+          sexo: data.sexo,
+
+          telefono:
+            data.telefono || null,
+
+          email:
+            data.email || null,
+
+          direccion:
+            data.direccion || null,
+
+          localidad: data.localidad,
+
+          provincia: data.provincia,
+
+          codigo_postal:
+            data.codigo_postal || null,
+        },
+      };
+
+      setProfessional(
+        updatedProfessional,
+      );
+
+      /*
+       * Si editamos desde el detalle,
+       * volvemos al detalle con los datos actualizados.
+       *
+       * Si editamos desde el listado,
+       * volvemos directamente al listado.
+       */
+      if (
+        returnTo ===
+        `/profesionales/${id}`
+      ) {
+        navigate(
+          returnTo,
+          {
+            replace: true,
+
+            state: {
+              professional:
+                updatedProfessional,
+
+              message:
+                'Los datos del profesional se actualizaron correctamente.',
+
+              messageTitle:
+                'Datos actualizados',
+            },
+          },
+        );
+
+        return;
+      }
+
       navigate(
-        `/profesionales/${id}`,
+        returnTo,
         {
           replace: true,
+
+          state: {
+            professional:
+              updatedProfessional,
+
+            message:
+              'Los datos del profesional se actualizaron correctamente.',
+
+            messageTitle:
+              'Datos actualizados',
+          },
         },
       );
-    } catch (error) {
-      console.error(error);
+    } catch (cause) {
+      console.error(cause);
 
       setError(
         'No se pudieron guardar los cambios.',
@@ -111,6 +247,19 @@ const EditarProfesionalPage = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const goBack = () => {
+    navigate(
+      returnTo,
+      {
+        state: professional
+          ? {
+              professional,
+            }
+          : undefined,
+      },
+    );
   };
 
   if (loading) {
@@ -155,14 +304,11 @@ const EditarProfesionalPage = () => {
         <button
           type="button"
           className="btn btn-link text-decoration-none p-0 mb-3"
-          onClick={() =>
-            navigate(
-              `/profesionales/${id}`,
-            )
-          }
+          onClick={goBack}
         >
           <i className="bi bi-arrow-left me-2" />
-          Volver al profesional
+
+          {returnLabel}
         </button>
 
         <h2 className="fw-bold mb-1">
@@ -180,6 +326,7 @@ const EditarProfesionalPage = () => {
           role="alert"
         >
           <i className="bi bi-exclamation-triangle me-2" />
+
           {error}
         </div>
       )}
@@ -188,11 +335,7 @@ const EditarProfesionalPage = () => {
         professional={professional}
         loading={saving}
         onSubmit={handleSubmit}
-        onCancel={() =>
-          navigate(
-            `/profesionales/${id}`,
-          )
-        }
+        onCancel={goBack}
       />
     </div>
   );

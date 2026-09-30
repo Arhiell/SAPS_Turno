@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import {
   deleteProfessional,
   getProfessionals,
+  updateProfessional,
 } from '../../services/profesionales.service';
 
 import type {
@@ -12,8 +13,19 @@ import type {
 
 import '../../styles/profesionales.css';
 
+interface ProfesionalesLocationState {
+  message?: string;
+  messageTitle?: string;
+  professional?: Professional;
+}
+
 const ProfesionalesPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const navigationState =
+    (location.state as ProfesionalesLocationState | null) ??
+    null;
 
   const [professionals, setProfessionals] =
     useState<Professional[]>([]);
@@ -28,11 +40,34 @@ const ProfesionalesPage = () => {
     useState(true);
 
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState(
+    navigationState?.message ?? '',
+  );
 
-  const loadProfessionals = async () => {
+  const [messageTitle, setMessageTitle] = useState(
+    navigationState?.messageTitle ?? 'Operación completada',
+  );
+
+  const [deactivationTarget, setDeactivationTarget] =
+    useState<Professional | null>(null);
+
+  const [deactivating, setDeactivating] =
+    useState(false);
+
+  const [activationTarget, setActivationTarget] =
+    useState<Professional | null>(null);
+
+  const [activating, setActivating] =
+    useState(false);
+
+  const loadProfessionals = async (
+    showLoading = true,
+  ) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
+
       setError('');
 
       const response =
@@ -46,13 +81,25 @@ const ProfesionalesPage = () => {
         'No se pudieron cargar los profesionales.',
       );
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     void loadProfessionals();
   }, []);
+
+  useEffect(() => {
+    if (navigationState?.message) {
+      setMessage(navigationState.message);
+      setMessageTitle(
+        navigationState.messageTitle ??
+          'Operación completada',
+      );
+    }
+  }, [navigationState?.message, navigationState?.messageTitle]);
 
   useEffect(() => {
     if (!message) {
@@ -112,43 +159,478 @@ const ProfesionalesPage = () => {
       statusFilter,
     ]);
 
-  const handleDelete = async (
+  const handleDelete = (
     professional: Professional,
   ) => {
-    const fullName =
-      `${professional.persona.apellidos}, ${professional.persona.nombres}`;
+    setDeactivationTarget(professional);
+  };
 
-    const confirmed = window.confirm(
-      `¿Está seguro de que desea desactivar al profesional ${fullName}?`,
-    );
-
-    if (!confirmed) {
+  const confirmDeactivation = async () => {
+    if (
+      !deactivationTarget ||
+      deactivating
+    ) {
       return;
     }
 
+    const professionalId =
+      deactivationTarget.id_profesional;
+
     try {
+      setDeactivating(true);
       setError('');
 
       await deleteProfessional(
-        professional.id_profesional,
+        professionalId,
+      );
+
+      setDeactivationTarget(null);
+
+      setMessageTitle(
+        'Profesional desactivado',
       );
 
       setMessage(
-        'Profesional desactivado correctamente.',
+        'El profesional se desactivó correctamente.',
       );
 
-      await loadProfessionals();
+      await loadProfessionals(false);
     } catch (error) {
       console.error(error);
 
       setError(
         'No se pudo actualizar el estado del profesional.',
       );
+    } finally {
+      setDeactivating(false);
+    }
+  };
+
+  const handleActivate = (
+    professional: Professional,
+  ) => {
+    setActivationTarget(professional);
+  };
+
+  const confirmActivation = async () => {
+    if (
+      !activationTarget ||
+      activating
+    ) {
+      return;
+    }
+
+    const professionalId =
+      activationTarget.id_profesional;
+
+    try {
+      setActivating(true);
+      setError('');
+
+      await updateProfessional(
+        professionalId,
+        {
+          activo: true,
+          fecha_baja: null,
+        },
+      );
+
+      setActivationTarget(null);
+
+      setMessageTitle(
+        'Profesional activado',
+      );
+
+      setMessage(
+        'El profesional se activó correctamente.',
+      );
+
+      await loadProfessionals(false);
+    } catch (error) {
+      console.error(error);
+
+      setError(
+        'No se pudo activar al profesional.',
+      );
+    } finally {
+      setActivating(false);
     }
   };
 
   return (
-    <div className="profesionales-page">
+    <>
+      {activationTarget && (
+        <>
+          <div
+            className="modal-backdrop fade show"
+            style={{
+              zIndex: 1050,
+            }}
+          />
+
+          <div
+            className="modal d-block fade show"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="activate-professional-title"
+            style={{
+              zIndex: 1055,
+            }}
+            onMouseDown={(event) => {
+              if (
+                event.target ===
+                  event.currentTarget &&
+                !activating
+              ) {
+                setActivationTarget(null);
+              }
+            }}
+          >
+            <div
+              className="modal-dialog modal-dialog-centered"
+              role="document"
+              style={{
+                width: '100%',
+                maxWidth: '520px',
+                margin: '1rem auto',
+              }}
+            >
+              <div className="modal-content border-0 shadow-lg">
+                <div
+                  className="modal-header border-0 pb-2 position-relative"
+                  style={{
+                    padding:
+                      '20px 56px 10px 20px',
+                  }}
+                >
+                  <div className="d-flex align-items-center gap-3">
+                    <div
+                      className="rounded-circle d-flex align-items-center justify-content-center bg-success-subtle text-success"
+                      style={{
+                        width: '48px',
+                        height: '48px',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <i className="bi bi-person-check fs-5" />
+                    </div>
+
+                    <div>
+                      <h5
+                        className="modal-title fw-bold mb-1"
+                        id="activate-professional-title"
+                      >
+                        Activar profesional
+                      </h5>
+
+                      <p className="text-muted mb-0 small">
+                        Esta acción requiere confirmación.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn-close position-absolute"
+                    aria-label="Cerrar"
+                    disabled={activating}
+                    onClick={() =>
+                      setActivationTarget(null)
+                    }
+                    style={{
+                      top: '18px',
+                      right: '18px',
+                    }}
+                  />
+                </div>
+
+                <div
+                  className="modal-body pt-2"
+                  style={{
+                    paddingLeft: '20px',
+                    paddingRight: '20px',
+                  }}
+                >
+                  <p className="mb-2">
+                    ¿Querés volver a activar al profesional?
+                  </p>
+
+                  <div className="bg-light border rounded p-3">
+                    <div className="fw-semibold">
+                      {
+                        activationTarget.persona
+                          .apellidos
+                      }
+                      ,{' '}
+                      {
+                        activationTarget.persona
+                          .nombres
+                      }
+                    </div>
+
+                    <div className="text-muted small mt-1">
+                      Matrícula:{' '}
+                      {
+                        activationTarget.matricula
+                      }
+                    </div>
+                  </div>
+
+                  <div className="alert alert-success d-flex align-items-start gap-2 mt-3 mb-0 py-2">
+                    <i className="bi bi-info-circle-fill mt-1" />
+
+                    <small>
+                      El profesional volverá a figurar como
+                      activo y podrá ser utilizado en las
+                      operaciones correspondientes del sistema.
+                    </small>
+                  </div>
+                </div>
+
+                <div
+                  className="modal-footer border-0 pt-0"
+                  style={{
+                    padding:
+                      '8px 20px 20px',
+                    gap: '8px',
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    disabled={activating}
+                    style={{
+                      minWidth: '96px',
+                    }}
+                    onClick={() =>
+                      setActivationTarget(null)
+                    }
+                  >
+                    Cancelar
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn btn-success"
+                    disabled={activating}
+                    style={{
+                      minWidth: '170px',
+                    }}
+                    onClick={() =>
+                      void confirmActivation()
+                    }
+                  >
+                    {activating ? (
+                      <>
+                        <span
+                          className="spinner-border spinner-border-sm me-2"
+                          role="status"
+                          aria-hidden="true"
+                        />
+                        Activando...
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-person-check me-2" />
+                        Activar profesional
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {deactivationTarget && (
+        <>
+          <div
+            className="modal-backdrop fade show"
+            style={{
+              zIndex: 1050,
+            }}
+          />
+
+          <div
+            className="modal d-block fade show"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="deactivate-professional-title"
+            style={{
+              zIndex: 1055,
+            }}
+            onMouseDown={(event) => {
+              if (
+                event.target ===
+                  event.currentTarget &&
+                !deactivating
+              ) {
+                setDeactivationTarget(null);
+              }
+            }}
+          >
+            <div
+              className="modal-dialog modal-dialog-centered"
+              role="document"
+              style={{
+                width: '100%',
+                maxWidth: '520px',
+                margin: '1rem auto',
+              }}
+            >
+              <div className="modal-content border-0 shadow-lg">
+
+                <div
+                  className="modal-header border-0 pb-2 position-relative"
+                  style={{
+                    padding:
+                      '20px 56px 10px 20px',
+                  }}
+                >
+                  <div className="d-flex align-items-center gap-3">
+
+                    <div
+                      className="rounded-circle d-flex align-items-center justify-content-center bg-warning-subtle text-warning"
+                      style={{
+                        width: '48px',
+                        height: '48px',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <i className="bi bi-person-dash fs-5" />
+                    </div>
+
+                    <div>
+                      <h5
+                        className="modal-title fw-bold mb-1"
+                        id="deactivate-professional-title"
+                      >
+                        Desactivar profesional
+                      </h5>
+
+                      <p className="text-muted mb-0 small">
+                        Esta acción requiere confirmación.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn-close position-absolute"
+                    aria-label="Cerrar"
+                    disabled={deactivating}
+                    onClick={() =>
+                      setDeactivationTarget(null)
+                    }
+                    style={{
+                      top: '18px',
+                      right: '18px',
+                    }}
+                  />
+                </div>
+
+                <div
+                  className="modal-body pt-2"
+                  style={{
+                    paddingLeft: '20px',
+                    paddingRight: '20px',
+                  }}
+                >
+                  <p className="mb-2">
+                    ¿Querés desactivar al profesional?
+                  </p>
+
+                  <div className="bg-light border rounded p-3">
+                    <div className="fw-semibold">
+                      {
+                        deactivationTarget.persona
+                          .apellidos
+                      }
+                      ,{' '}
+                      {
+                        deactivationTarget.persona
+                          .nombres
+                      }
+                    </div>
+
+                    <div className="text-muted small mt-1">
+                      Matrícula:{' '}
+                      {
+                        deactivationTarget.matricula
+                      }
+                    </div>
+                  </div>
+
+                  <div className="alert alert-warning d-flex align-items-start gap-2 mt-3 mb-0 py-2">
+                    <i className="bi bi-info-circle-fill mt-1" />
+
+                    <small>
+                      El profesional quedará inactivo,
+                      pero sus datos e historial se
+                      conservarán en el sistema.
+                    </small>
+                  </div>
+                </div>
+
+                <div
+                  className="modal-footer border-0 pt-0"
+                  style={{
+                    padding:
+                      '8px 20px 20px',
+                    gap: '8px',
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    disabled={deactivating}
+                    style={{
+                      minWidth: '96px',
+                    }}
+                    onClick={() =>
+                      setDeactivationTarget(null)
+                    }
+                  >
+                    Cancelar
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    disabled={deactivating}
+                    style={{
+                      minWidth: '180px',
+                    }}
+                    onClick={() =>
+                      void confirmDeactivation()
+                    }
+                  >
+                    {deactivating ? (
+                      <>
+                        <span
+                          className="spinner-border spinner-border-sm me-2"
+                          role="status"
+                          aria-hidden="true"
+                        />
+                        Desactivando...
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-person-dash me-2" />
+                        Desactivar profesional
+                      </>
+                    )}
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      <div className="profesionales-page">
       <div className="d-flex justify-content-between align-items-center mb-4 gap-3">
         <div>
           <h2 className="fw-bold mb-1">
@@ -177,11 +659,27 @@ const ProfesionalesPage = () => {
 
       {message && (
         <div
-          className="alert alert-success"
+          className="alert alert-success d-flex align-items-start gap-3"
           role="alert"
         >
-          <i className="bi bi-check-circle me-2" />
-          {message}
+          <i className="bi bi-check-circle-fill mt-1" />
+
+          <div className="flex-grow-1">
+            <div className="fw-semibold mb-1">
+              {messageTitle}
+            </div>
+
+            <div>
+              {message}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="btn-close"
+            aria-label="Cerrar mensaje"
+            onClick={() => setMessage('')}
+          />
         </div>
       )}
 
@@ -418,13 +916,22 @@ const ProfesionalesPage = () => {
                               onClick={() =>
                                 navigate(
                                   `/profesionales/${professional.id_profesional}/editar`,
+                                  {
+                                    state: {
+                                      professional,
+                                      returnTo:
+                                        '/profesionales',
+                                      returnLabel:
+                                        'Volver a profesionales',
+                                    },
+                                  },
                                 )
                               }
                             >
                               <i className="bi bi-pencil" />
                             </button>
 
-                            {professional.activo && (
+                            {professional.activo ? (
                               <button
                                 type="button"
                                 className="btn btn-sm btn-outline-danger"
@@ -436,6 +943,19 @@ const ProfesionalesPage = () => {
                                 }
                               >
                                 <i className="bi bi-person-dash" />
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-success"
+                                title="Activar"
+                                onClick={() =>
+                                  void handleActivate(
+                                    professional,
+                                  )
+                                }
+                              >
+                                <i className="bi bi-person-check" />
                               </button>
                             )}
                           </div>
@@ -449,7 +969,8 @@ const ProfesionalesPage = () => {
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 

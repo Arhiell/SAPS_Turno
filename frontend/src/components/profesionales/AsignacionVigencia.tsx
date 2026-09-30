@@ -16,6 +16,7 @@ interface Props {
   hasta: string | null;
   activo: boolean;
   onSaved: () => Promise<void>;
+  onSuccess?: (message: string) => void;
 }
 
 // Permite editar la vigencia de una salita o especialidad
@@ -28,6 +29,7 @@ export default function AsignacionVigencia({
   hasta,
   activo,
   onSaved,
+  onSuccess,
 }: Props) {
   // Controla si el formulario de edición está visible.
   const [open, setOpen] = useState(false);
@@ -52,7 +54,7 @@ export default function AsignacionVigencia({
     // La fecha final no puede ser anterior a la inicial.
     if (end && end < start) {
       setError(
-        'La fecha final debe ser igual o posterior al inicio.'
+        'La fecha final debe ser igual o posterior al inicio.',
       );
       return;
     }
@@ -73,13 +75,20 @@ export default function AsignacionVigencia({
           fecha_desde: start,
           fecha_hasta: end || null,
           activo: enabled,
-        }
+        },
       );
 
-      // Actualiza los datos del componente padre.
+      // Actualiza los datos del componente padre sin mostrar
+      // nuevamente la pantalla de carga completa.
       await onSaved();
 
       setOpen(false);
+
+      onSuccess?.(
+        tipo === 'salita'
+          ? 'Se actualizó el período de la salita.'
+          : 'Se actualizó el período de la especialidad.',
+      );
     } catch (cause) {
       setError(authError(cause));
     } finally {
