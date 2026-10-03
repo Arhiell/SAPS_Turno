@@ -11,6 +11,7 @@ import {
 import type {
   Patient,
   PatientPagination,
+  PatientStatusFilter,
 } from '../../types/patient.types';
 
 const PacientesPage = () => {
@@ -23,7 +24,8 @@ const PacientesPage = () => {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
-  const [revision, setRevision] = useState(0);
+  const [statusFilter, setStatusFilter] =
+    useState<PatientStatusFilter>('activo');
   const requestId = useRef(0);
 
   const [loading, setLoading] = useState(true);
@@ -37,7 +39,12 @@ const PacientesPage = () => {
       setLoading(true);
       setError('');
 
-      const response = await getPatients(page, 10, appliedSearch);
+      const response = await getPatients(
+        page,
+        10,
+        appliedSearch,
+        statusFilter,
+      );
       if (currentRequest !== requestId.current) return;
 
       setPatients(response.data.patients);
@@ -58,20 +65,16 @@ const PacientesPage = () => {
   useEffect(() => {
     void loadPatients();
     return () => { requestId.current++; };
-  }, [page, appliedSearch, revision]);
+  }, [page, appliedSearch, statusFilter]);
 
-  const handleSearch = () => {
-    setAppliedSearch(search.trim());
-    setPage(1);
-    setRevision(value => value + 1);
-  };
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setAppliedSearch(search.trim());
+      setPage(1);
+    }, 350);
 
-  const handleClearSearch = () => {
-    setSearch('');
-    setAppliedSearch('');
-    setPage(1);
-    setRevision(value => value + 1);
-  };
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
   const handleStatusChange = async (
     patient: Patient,
@@ -166,48 +169,52 @@ const PacientesPage = () => {
       {/* BUSCADOR */}
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-body">
-          <div className="row g-2">
+          <div className="row g-3">
 
-            <div className="col-md-8">
-              <input
-                type="text"
-                className="form-control"
-                placeholder="DNI, apellido o nombre completo"
-                aria-label="Buscar paciente por DNI, apellido o nombre completo"
-                maxLength={150}
-                value={search}
-                onChange={(event) =>
-                  setSearch(event.target.value)
-                }
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    void handleSearch();
-                  }
-                }}
-              />
-            </div>
-
-            <div className="col-md-2">
-              <button
-                type="button"
-                className="btn btn-saps w-100"
-                onClick={() =>
-                  void handleSearch()
-                }
-              >
-                <i className="bi bi-search me-2" />
+            <div className="col-lg-8">
+              <label className="form-label">
                 Buscar
-              </button>
+              </label>
+
+              <div className="input-group">
+                <span className="input-group-text bg-white">
+                  <i className="bi bi-search" />
+                </span>
+
+                <input
+                  type="search"
+                  className="form-control"
+                  placeholder="DNI, apellido o nombre completo"
+                  aria-label="Buscar paciente por DNI, apellido o nombre completo"
+                  maxLength={150}
+                  value={search}
+                  onChange={(event) =>
+                    setSearch(event.target.value)
+                  }
+                />
+              </div>
             </div>
 
-            <div className="col-md-2">
-              <button
-                type="button"
-                className="btn btn-outline-secondary w-100"
-                onClick={handleClearSearch}
+            <div className="col-lg-4">
+              <label className="form-label">
+                Estado
+              </label>
+
+              <select
+                className="form-select"
+                value={statusFilter}
+                aria-label="Filtrar pacientes por estado"
+                onChange={(event) => {
+                  setStatusFilter(
+                    event.target.value as PatientStatusFilter,
+                  );
+                  setPage(1);
+                }}
               >
-                Limpiar
-              </button>
+                <option value="activo">Activos</option>
+                <option value="inactivo">Inactivos</option>
+                <option value="todos">Todos</option>
+              </select>
             </div>
 
           </div>

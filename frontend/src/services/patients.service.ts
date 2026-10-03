@@ -8,6 +8,7 @@ export const updateOwnPatient = async (data: OwnPatientUpdate) =>
 import type {
   CreatePatientRequest,
   PatientResponse,
+  PatientStatusFilter,
   PatientsResponse,
   UpdatePatientRequest,
 } from '../types/patient.types';
@@ -16,6 +17,7 @@ export const getPatients = async (
   page = 1,
   limit = 10,
   search = '',
+  estado: PatientStatusFilter = 'activo',
 ): Promise<PatientsResponse> => {
   const response = await api.get<PatientsResponse>(
     '/patients',
@@ -24,6 +26,7 @@ export const getPatients = async (
         page,
         limit,
         search: search || undefined,
+        estado,
       },
     },
   );

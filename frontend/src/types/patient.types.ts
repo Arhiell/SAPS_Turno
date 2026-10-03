@@ -8,6 +8,11 @@ export type PatientSex =
   | 'X'
   | 'NO_INFORMA';
 
+export type PatientStatusFilter =
+  | 'activo'
+  | 'inactivo'
+  | 'todos';
+
 
 // ========================================
 // ACTUALIZACIÓN DEL PERFIL PROPIO

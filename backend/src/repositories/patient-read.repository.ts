@@ -12,10 +12,15 @@ export const findPatients = async (
   from: number, 
   to: number, 
   scope: string[] | null = null,
-  search = ""
+  search = "",
+  status: "activo" | "inactivo" | "todos" = "activo"
 ) => {
   let query = supabase.from("pacientes")
-    .select(patientSelect, { count: "exact" }).eq("activo", true)
+    .select(patientSelect, { count: "exact" })
+
+    if (status !== "todos") {
+      query = query.eq("activo", status === "activo");
+    }
   
     if (scope !== null) query = query.in("id_salita_asignada", scope);
 

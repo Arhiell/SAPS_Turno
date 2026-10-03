@@ -26,6 +26,9 @@ export const patientDniSchema = z.object({
  */
 export const patientListQuerySchema = z.object({
   search: z.string().trim().max(150).optional(),
+  estado: z
+    .enum(["activo", "inactivo", "todos"])
+    .default("activo"),
   page: z.coerce
     .number()
     .int()

@@ -32,7 +32,7 @@ export const getPatients = async (
   const result =
     await findPatients(
       from,
-      to, scope, query.search
+      to, scope, query.search, query.estado
     );
 
   const totalPages =

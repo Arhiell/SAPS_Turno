@@ -266,6 +266,23 @@ const TurnosPage = () => {
   ]);
 
   useEffect(() => {
+    const timer =
+      window.setTimeout(
+        () => {
+          setAppliedSearch(
+            search.trim(),
+          );
+        },
+        350,
+      );
+
+    return () =>
+      window.clearTimeout(
+        timer,
+      );
+  }, [search]);
+
+  useEffect(() => {
     if (!message) {
       return;
     }
@@ -299,13 +316,6 @@ const TurnosPage = () => {
     () => {
       setFecha(
         getToday(),
-      );
-    };
-
-  const handleSearch =
-    () => {
-      setAppliedSearch(
-        search.trim(),
       );
     };
 
@@ -400,20 +410,7 @@ const TurnosPage = () => {
                       event.target.value,
                     )
                   }
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      handleSearch();
-                    }
-                  }}
                 />
-
-                <button
-                  type="button"
-                  className="btn btn-outline-success"
-                  onClick={handleSearch}
-                >
-                  Buscar
-                </button>
 
                 {appliedSearch && (
                   <button
