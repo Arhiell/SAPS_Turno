@@ -84,6 +84,8 @@ export const turnoQuerySchema = z
       turnoEstadoSchema.optional(),
 
     // Configuración de paginación.
+    search: z.string().trim().max(150).optional(),
+
     page: z.coerce
       .number()
       .int()

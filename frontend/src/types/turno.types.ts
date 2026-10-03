@@ -310,6 +310,7 @@ export interface TurnosFilters {
   id_salita?: string;
 
   estado?: string;
+  search?: string;
 
   page?: number;
   limit?: number;

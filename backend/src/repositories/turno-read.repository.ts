@@ -19,6 +19,61 @@ import type {
   TurnoQuery,
 } from '../validators/turno-query.validator.js';
 
+const patientSearchTerms = (search: string) => {
+  const text = search.trim();
+
+  if (!text) {
+    return [];
+  }
+
+  if (/^[\d.\s-]+$/.test(text)) {
+    return [text.replace(/\D/g, '')].filter(Boolean);
+  }
+
+  return text.match(/[\p{L}\p{M}\p{N}'’-]+/gu) ?? [];
+};
+
+export const findPatientIdsForTurnoSearch = async (
+  search: string,
+  scope: string[] | null
+) => {
+  const terms = patientSearchTerms(search);
+
+  if (terms.length === 0) {
+    return [];
+  }
+
+  let query = supabase
+    .from('pacientes')
+    .select('id_paciente, persona:personas!inner(dni,nombres,apellidos)')
+    .eq('activo', true);
+
+  if (scope !== null) {
+    if (scope.length === 0) {
+      return [];
+    }
+
+    query = query.in('id_salita_asignada', scope);
+  }
+
+  const filters = terms.map((term) => {
+    const pattern = JSON.stringify(`*${term}*`);
+
+    return `or(dni.ilike.${pattern},nombres.ilike.${pattern},apellidos.ilike.${pattern})`;
+  });
+
+  const { data, error } = await query.or(
+    `and(${filters.join(',')})`,
+    { referencedTable: 'persona' }
+  );
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map((row) => String(row.id_paciente));
+};
+
 // Busca un turno específico por su ID.
 export const findTurnoById = async (
   id: string
@@ -70,6 +125,7 @@ export const findTurnos = async (
   filters: TurnoQuery,
   scope: string[] | null,
   stateId?: string,
+  patientIds?: string[] | null,
   agenda?: {
     id_especialidad?: string | undefined;
   }
@@ -104,6 +160,13 @@ export const findTurnos = async (
     query = query.in(
       'id_salita',
       scope
+    );
+  }
+
+  if (patientIds) {
+    query = query.in(
+      'id_paciente',
+      patientIds
     );
   }
 

@@ -87,7 +87,7 @@ export const getAgendaDiaria = async (
     for (let page = 1; ; page++) {
       const result = await findTurnos(
         { 
-          ...filters, page, limit: 100 }, scope, state?.id_estado,
+          ...filters, page, limit: 100 }, scope, state?.id_estado, null,
           { 
             id_especialidad: filters.id_especialidad 
           }

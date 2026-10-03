@@ -1,5 +1,6 @@
 import { 
   findTurnoById, 
+  findPatientIdsForTurnoSearch,
   findTurnos, 
   findTurnoState } from "../repositories/turno-read.repository.js";
 
@@ -64,12 +65,28 @@ export const getTurnos = async (
      if (filters.id_salita) assertTurnoScope(scope, filters.id_salita);
      
      const state = filters.estado ? await getTurnoState(filters.estado) : null;
+     const patientIds = filters.search
+      ? await findPatientIdsForTurnoSearch(filters.search, null)
+      : null;
+     
+     if (filters.search && patientIds?.length === 0) {
+      return {
+        turnos: [],
+        pagination: {
+          page: filters.page,
+          limit: filters.limit,
+          total: 0,
+          totalPages: 0
+        }
+      };
+     }
      
      const result = scope?.length === 0 ? { turnos: [], total: 0 }
      : await findTurnos(
       filters, 
       scope, 
-      state?.id_estado
+      state?.id_estado,
+      patientIds
 );
 
   return { 

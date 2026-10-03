@@ -146,6 +146,12 @@ const TurnosPage = () => {
   const [estado, setEstado] =
     useState('');
 
+  const [search, setSearch] =
+    useState('');
+
+  const [appliedSearch, setAppliedSearch] =
+    useState('');
+
   const [loading, setLoading] =
     useState(true);
 
@@ -219,6 +225,9 @@ const TurnosPage = () => {
               undefined,
             estado:
               estado || undefined,
+            search:
+              appliedSearch ||
+              undefined,
             page,
             limit: 20,
           });
@@ -253,6 +262,7 @@ const TurnosPage = () => {
     patientId,
     salitaId,
     estado,
+    appliedSearch,
   ]);
 
   useEffect(() => {
@@ -281,6 +291,8 @@ const TurnosPage = () => {
       setPatientId('');
       setSalitaId('');
       setEstado('');
+      setSearch('');
+      setAppliedSearch('');
     };
 
   const handleToday =
@@ -288,6 +300,19 @@ const TurnosPage = () => {
       setFecha(
         getToday(),
       );
+    };
+
+  const handleSearch =
+    () => {
+      setAppliedSearch(
+        search.trim(),
+      );
+    };
+
+  const handleClearSearch =
+    () => {
+      setSearch('');
+      setAppliedSearch('');
     };
 
   return (
@@ -353,6 +378,56 @@ const TurnosPage = () => {
 
         <div className="card-body">
           <div className="row g-3">
+            <div className="col-lg-6">
+              <label className="form-label">
+                Buscar paciente
+              </label>
+
+              <div className="input-group">
+                <span className="input-group-text">
+                  <i className="bi bi-search" />
+                </span>
+
+                <input
+                  type="search"
+                  className="form-control"
+                  placeholder="DNI, apellido o nombre completo"
+                  aria-label="Buscar paciente por DNI, apellido o nombre completo"
+                  maxLength={150}
+                  value={search}
+                  onChange={(event) =>
+                    setSearch(
+                      event.target.value,
+                    )
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      handleSearch();
+                    }
+                  }}
+                />
+
+                <button
+                  type="button"
+                  className="btn btn-outline-success"
+                  onClick={handleSearch}
+                >
+                  Buscar
+                </button>
+
+                {appliedSearch && (
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    onClick={handleClearSearch}
+                    title="Limpiar busqueda"
+                  >
+                    <i className="bi bi-x-lg" />
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="col-lg-3 col-md-6">
               <label className="form-label">
                 Fecha
