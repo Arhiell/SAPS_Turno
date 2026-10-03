@@ -20,7 +20,7 @@ import {
 } from '../../services/profesionales.service';
 
 import { getSpecialties } from '../../services/especialidades.service';
-import { getSalitas } from '../../services/salitas.service';
+import { getAdminSalitas } from '../../services/salitas.service';
 
 import type {
   Professional,
@@ -131,7 +131,7 @@ const ProfesionalDetallePage = () => {
         getProfessionalSpecialties(id),
         getProfessionalClinics(id),
         getSpecialties(),
-        getSalitas(),
+        getAdminSalitas(),
       ]);
 
       setProfessional(

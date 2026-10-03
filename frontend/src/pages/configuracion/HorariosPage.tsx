@@ -21,7 +21,7 @@ import {
   getProfessionalSpecialties,
 } from '../../services/profesionales.service';
 
-import { getSalitas } from '../../services/salitas.service';
+import { getAdminSalitas } from '../../services/salitas.service';
 import { getSpecialties } from '../../services/especialidades.service';
 import { getDisponibilidad } from '../../services/turnos.service';
 
@@ -137,7 +137,7 @@ export default function HorariosPage() {
     void Promise.all([
       getHorarios(),
       getProfessionals(),
-      getSalitas(),
+      getAdminSalitas(),
       getSpecialties(),
     ])
       .then(([h, p, c, s]) => {

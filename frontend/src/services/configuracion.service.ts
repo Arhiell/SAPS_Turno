@@ -1,7 +1,5 @@
-import axios from 'axios';
-
 import api from './api';
-import { getSalitas } from './salitas.service';
+import { getAdminSalitas } from './salitas.service';
 
 import type {
   Bloqueo,
@@ -185,46 +183,11 @@ export const getParametros = async () =>
 export const getSalitasConfigurables = async (
   superAdmin: boolean
 ) => {
-  const { data } = await getSalitas();
+  const { data } = await getAdminSalitas();
 
-  // SUPER_ADMIN puede configurar todas las salitas.
-  if (superAdmin) {
-    return data;
-  }
-
-  // El catálogo de salitas es público;
-  // esta lectura valida el alcance administrativo.
-  const permitted = await Promise.all(
-    data.map(async (salita) => {
-      try {
-        await api.get(
-          '/configuracion',
-          {
-            params: {
-              id_salita: salita.id_salita,
-            },
-          }
-        );
-
-        return salita;
-      } catch (cause) {
-        // Si recibe 403, la salita queda fuera del alcance.
-        if (
-          axios.isAxiosError(cause) &&
-          cause.response?.status === 403
-        ) {
-          return null;
-        }
-
-        throw cause;
-      }
-    })
-  );
-
-  // Elimina las salitas sin permiso.
-  return permitted.filter(
-    (salita) => salita !== null
-  );
+  return superAdmin
+    ? data
+    : data.filter((salita) => salita.activo);
 };
 
 // Crea o actualiza un parámetro del sistema.

@@ -19,7 +19,7 @@ import {
 } from '../../services/profesionales.service';
 
 import {
-  getSalitas,
+  getAdminSalitas,
 } from '../../services/salitas.service';
 
 import type {
@@ -171,7 +171,7 @@ const TurnosPage = () => {
         ] = await Promise.all([
           getPatients(1, 100),
           getProfessionals(),
-          getSalitas(),
+          getAdminSalitas(),
         ]);
 
         setPatients(

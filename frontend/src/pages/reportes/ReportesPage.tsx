@@ -14,7 +14,7 @@ import {
 } from '../../services/reportes.service';
 
 import {
-  getSalitas,
+  getAdminSalitas,
 } from '../../services/salitas.service';
 
 import type {
@@ -233,7 +233,7 @@ const ReportesPage = () => {
           );
 
           const response =
-            await getSalitas();
+            await getAdminSalitas();
 
           setSalitas(
             response.data.filter(

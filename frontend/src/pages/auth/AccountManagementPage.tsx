@@ -15,7 +15,7 @@ import {
 } from '../../services/auth.service';
 
 import {
-  getSalitas,
+  getAdminSalitas,
 } from '../../services/salitas.service';
 
 import {
@@ -70,7 +70,7 @@ export default function AccountManagementPage() {
     let active = true;
 
     void Promise.all([
-      getSalitas(),
+      getAdminSalitas(),
       getProfessionals(),
     ])
       .then(([s, p]) => {

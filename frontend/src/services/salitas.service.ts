@@ -15,6 +15,14 @@ export const getSalitas = async (): Promise<SalitasResponse> => {
   return response.data;
 };
 
+export const getAdminSalitas = async (): Promise<SalitasResponse> => {
+  const response = await api.get<SalitasResponse>(
+    '/salitas/admin',
+  );
+
+  return response.data;
+};
+
 export const getSalitaById = async (
   id: string,
 ): Promise<SalitaResponse> => {

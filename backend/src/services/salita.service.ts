@@ -1,13 +1,32 @@
 import {
   getAllSalitas,
+  getSalitasByIds,
   getSalitaById,
   createSalita,
   updateSalita,
   deleteSalita
 } from "../repositories/salita.repository.js";
 
+import type {
+  AuthenticatedUser
+} from "../types/auth.types.js";
+
+import {
+  getTurnoScope
+} from "./turno-access.service.js";
+
 export const getSalitas = async () => {
   return await getAllSalitas();
+};
+
+export const getSalitasAdministrativas = async (user: AuthenticatedUser) => {
+  const scope = await getTurnoScope(user);
+
+  if (scope === null) {
+    return await getAllSalitas();
+  }
+
+  return await getSalitasByIds(scope);
 };
 
 export const getSalita = async (id: string) => {

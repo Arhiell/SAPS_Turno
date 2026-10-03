@@ -29,6 +29,39 @@ export const getAllSalitas = async () => {
   return data;
 };
 
+export const getSalitasByIds = async (ids: string[]) => {
+  if (ids.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("salitas")
+    .select(`
+      id_salita,
+      codigo,
+      nombre,
+      direccion,
+      id_barrio,
+      telefono,
+      email,
+      latitud,
+      longitud,
+      horario_apertura,
+      horario_cierre,
+      activo,
+      fecha_creacion,
+      fecha_actualizacion
+    `)
+    .in("id_salita", ids)
+    .order("nombre", { ascending: true });
+
+  if (error) {
+    throw new Error(`Error consultando salitas: ${error.message}`);
+  }
+
+  return data;
+};
+
 // GET por ID
 export const getSalitaById = async (id: string) => {
   const { data, error } = await supabase

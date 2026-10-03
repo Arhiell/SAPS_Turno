@@ -6,6 +6,7 @@ import type {
 
 import {
   getSalitas,
+  getSalitasAdministrativas,
   getSalita,
   crearSalita,
   actualizarSalita,
@@ -17,6 +18,20 @@ export const getAllSalitas = async (
   _req: Request, res: Response, next: NextFunction) => {
     try {
       const salitas = await getSalitas();
+
+      return res.status(200).json({
+        success: true,
+        data: salitas,
+      });
+    } catch (error) {
+      next(error);
+    }
+};
+
+export const getAdminSalitas = async (
+  req: Request, res: Response, next: NextFunction) => {
+    try {
+      const salitas = await getSalitasAdministrativas(req.user!);
 
       return res.status(200).json({
         success: true,

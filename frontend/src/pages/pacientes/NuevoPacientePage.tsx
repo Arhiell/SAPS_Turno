@@ -19,7 +19,7 @@ import {
 } from '../../services/barrios.service';
 
 import {
-  getSalitas,
+  getAdminSalitas,
 } from '../../services/salitas.service';
 
 import type {
@@ -93,7 +93,7 @@ const NuevoPacientePage = () => {
             salitasResponse,
           ] = await Promise.all([
             getBarrios(),
-            getSalitas(),
+            getAdminSalitas(),
           ]);
 
           setBarrios(
