@@ -78,12 +78,15 @@ const initial = (id = ''): HorarioInput => ({
 });
 
 export default function HorariosPage() {
-  // Permite recibir un profesional desde la URL.
   const [params] = useSearchParams();
+
+  // Profesional recibido desde la URL.
+  const professionalFromUrl = params.get('profesional') ?? '';
+  const openedFromProfessional = Boolean(professionalFromUrl);
 
   // Estado del formulario.
   const [form, setForm] = useState<HorarioInput>(() =>
-    initial(params.get('profesional') ?? '')
+    initial(professionalFromUrl)
   );
 
   const [editing, setEditing] = useState<string>();
@@ -114,7 +117,7 @@ export default function HorariosPage() {
 
   // Filtro del listado.
   const [filter, setFilter] = useState(
-    params.get('profesional') ?? ''
+    professionalFromUrl
   );
 
   // Datos para consultar disponibilidad.
@@ -125,6 +128,18 @@ export default function HorariosPage() {
 
   // Referencia para volver al formulario al editar.
   const formRef = useRef<HTMLFormElement>(null);
+
+  // Profesional seleccionado.
+  const selectedProfessional =
+    professionals.find(
+      (professional) =>
+        professional.id_profesional === form.id_profesional
+    ) ?? null;
+
+  // Nombre legible del profesional seleccionado.
+  const selectedProfessionalName = selectedProfessional
+    ? `${selectedProfessional.persona.apellidos}, ${selectedProfessional.persona.nombres}`
+    : '';
 
   // Carga horarios, profesionales, salitas y especialidades.
   useEffect(() => {
@@ -209,6 +224,27 @@ export default function HorariosPage() {
     };
   }, [form.id_profesional, revision]);
 
+  // Si la página recibe un profesional desde la URL,
+  // mantenemos ese profesional como filtro inicial.
+  useEffect(() => {
+    if (professionalFromUrl) {
+      setFilter(professionalFromUrl);
+
+      setForm((current) => {
+        if (current.id_profesional === professionalFromUrl) {
+          return current;
+        }
+
+        return {
+          ...current,
+          id_profesional: professionalFromUrl,
+          id_salita: '',
+          id_especialidad: '',
+        };
+      });
+    }
+  }, [professionalFromUrl]);
+
   // Actualiza parcialmente el formulario.
   // También limpia la consulta de disponibilidad anterior.
   const change = (patch: Partial<HorarioInput>) => {
@@ -262,7 +298,15 @@ export default function HorariosPage() {
   // Limpia el formulario y finaliza la edición.
   const reset = () => {
     setEditing(undefined);
-    setForm(initial());
+
+    setForm(
+      initial(
+        openedFromProfessional
+          ? professionalFromUrl
+          : ''
+      )
+    );
+
     setAvailability(null);
   };
 
@@ -349,7 +393,7 @@ export default function HorariosPage() {
       reset();
 
       setSuccess(
-        'Horario guardado. Podés consultar su disponibilidad.'
+        'Horario guardado correctamente. Podés consultar su disponibilidad.'
       );
 
       // Fuerza la recarga del listado.
@@ -375,6 +419,7 @@ export default function HorariosPage() {
 
     setBusy(true);
     setError('');
+    setSuccess('');
     setAvailability(null);
 
     try {
@@ -400,7 +445,6 @@ export default function HorariosPage() {
       ...input
     } = row;
 
-    // Envía solo los campos editables del horario.
     setForm({
       id_profesional: input.id_profesional,
       id_especialidad: input.id_especialidad,
@@ -422,21 +466,49 @@ export default function HorariosPage() {
     setSuccess('');
     setError('');
 
-    // Lleva al usuario nuevamente al formulario.
     formRef.current?.scrollIntoView({
+      behavior: 'smooth',
       block: 'start',
     });
   };
 
+  const visibleRows = rows.filter(
+    (schedule) =>
+      !filter ||
+      schedule.id_profesional === filter
+  );
+
+  const availabilityHasSlots =
+    Boolean(
+      availability &&
+      availability.slots.length
+    );
+
   return (
     <div>
-      <Link
-        className="btn btn-outline-success mb-3"
-        to="/configuracion"
-      >
-        Volver a Configuración
-      </Link>
+      {/* Navegación contextual */}
+      <div className="d-flex flex-wrap gap-2 mb-3">
+        {openedFromProfessional &&
+        form.id_profesional ? (
+          <Link
+            className="btn btn-outline-success"
+            to={`/profesionales/${form.id_profesional}`}
+          >
+            <i className="bi bi-arrow-left me-2" />
+            Volver al profesional
+          </Link>
+        ) : (
+          <Link
+            className="btn btn-outline-success"
+            to="/configuracion"
+          >
+            <i className="bi bi-arrow-left me-2" />
+            Volver a Configuración
+          </Link>
+        )}
+      </div>
 
+      {/* Encabezado */}
       <div className="dashboard-header">
         <h1>
           Horarios y disponibilidad
@@ -444,24 +516,76 @@ export default function HorariosPage() {
 
         <p>
           Definí las franjas de atención de los
-          profesionales de tus salitas.
+          profesionales de tus salitas y consultá
+          los turnos disponibles.
         </p>
       </div>
+
+      {/* Contexto del profesional */}
+      {openedFromProfessional && (
+        <div
+          className="dashboard-panel p-3 mb-4"
+          style={{
+            borderLeft: '4px solid var(--saps-green, #198754)',
+          }}
+        >
+          <div className="d-flex align-items-start gap-3">
+            <div
+              className="rounded-circle d-flex align-items-center justify-content-center"
+              style={{
+                width: 44,
+                height: 44,
+                background: 'rgba(25, 135, 84, 0.1)',
+                flexShrink: 0,
+              }}
+            >
+              <i className="bi bi-person-badge fs-5 text-success" />
+            </div>
+
+            <div>
+              <div className="small text-muted">
+                Profesional seleccionado
+              </div>
+
+              <div className="fw-semibold fs-5">
+                {selectedProfessionalName ||
+                  'Cargando profesional...'}
+              </div>
+
+              {selectedProfessional?.matricula && (
+                <div className="small text-muted mt-1">
+                  Matrícula:{' '}
+                  {selectedProfessional.matricula}
+                </div>
+              )}
+
+              <div className="small text-muted mt-2">
+                Estás configurando los horarios y la
+                disponibilidad de este profesional.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mensajes generales */}
       {error && (
         <div
-          className="alert alert-danger"
+          className="alert alert-danger d-flex flex-wrap align-items-center justify-content-between gap-2"
           role="alert"
         >
-          {error}
+          <div>
+            <i className="bi bi-exclamation-triangle me-2" />
+            {error}
+          </div>
 
           <button
-            className="btn btn-outline-danger ms-2"
+            className="btn btn-outline-danger"
             disabled={busy}
             onClick={() =>
               setRevision((value) => value + 1)
             }
+            type="button"
           >
             Recargar
           </button>
@@ -470,17 +594,34 @@ export default function HorariosPage() {
 
       {success && (
         <div
-          className="alert alert-success"
+          className="alert alert-success d-flex align-items-center justify-content-between gap-2"
           role="status"
         >
-          {success}
+          <div>
+            <i className="bi bi-check-circle me-2" />
+            {success}
+          </div>
+
+          <button
+            type="button"
+            className="btn-close"
+            aria-label="Cerrar"
+            onClick={() => setSuccess('')}
+          />
         </div>
       )}
 
       {loading && (
-        <p role="status">
-          Cargando horarios…
-        </p>
+        <div
+          className="alert alert-light border"
+          role="status"
+        >
+          <span
+            className="spinner-border spinner-border-sm me-2"
+            aria-hidden="true"
+          />
+          Cargando horarios y configuración...
+        </div>
       )}
 
       {/* Formulario de horarios */}
@@ -489,14 +630,33 @@ export default function HorariosPage() {
         className="dashboard-panel p-3 mb-4 configuration-form"
         onSubmit={submit}
       >
-        <h2 className="h5">
-          {editing
-            ? 'Editar horario'
-            : 'Nuevo horario'}
-        </h2>
+        <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <div>
+            <h2 className="h5 mb-1">
+              {editing
+                ? 'Editar horario'
+                : 'Nuevo horario'}
+            </h2>
+
+            <p className="text-muted small mb-0">
+              Definí cuándo y dónde atiende el
+              profesional.
+            </p>
+          </div>
+
+          {editing && (
+            <span className="badge text-bg-warning">
+              Editando horario
+            </span>
+          )}
+        </div>
 
         <fieldset
-          disabled={busy || loading || !ready}
+          disabled={
+            busy ||
+            loading ||
+            !ready
+          }
         >
           <div className="row g-3">
             <label className="col-lg-4 form-label">
@@ -508,7 +668,8 @@ export default function HorariosPage() {
                 value={form.id_profesional}
                 onChange={(e) =>
                   change({
-                    id_profesional: e.target.value,
+                    id_profesional:
+                      e.target.value,
                     id_salita: '',
                     id_especialidad: '',
                   })
@@ -527,8 +688,12 @@ export default function HorariosPage() {
                   )
                   .map((professional) => (
                     <option
-                      key={professional.id_profesional}
-                      value={professional.id_profesional}
+                      key={
+                        professional.id_profesional
+                      }
+                      value={
+                        professional.id_profesional
+                      }
                     >
                       {professional.persona.apellidos},{' '}
                       {professional.persona.nombres}
@@ -559,7 +724,8 @@ export default function HorariosPage() {
                   .filter(
                     (clinic) =>
                       clinicOptions.includes(clinic) ||
-                      clinic.id_salita === form.id_salita
+                      clinic.id_salita ===
+                        form.id_salita
                   )
                   .map((clinic) => (
                     <option
@@ -568,7 +734,9 @@ export default function HorariosPage() {
                     >
                       {clinic.nombre}
 
-                      {!clinicOptions.includes(clinic)
+                      {!clinicOptions.includes(
+                        clinic
+                      )
                         ? ' (sin asignación vigente)'
                         : ''}
                     </option>
@@ -586,7 +754,8 @@ export default function HorariosPage() {
                 value={form.id_especialidad}
                 onChange={(e) =>
                   change({
-                    id_especialidad: e.target.value,
+                    id_especialidad:
+                      e.target.value,
                   })
                 }
               >
@@ -597,18 +766,26 @@ export default function HorariosPage() {
                 {specialties
                   .filter(
                     (specialty) =>
-                      specialtyOptions.includes(specialty) ||
+                      specialtyOptions.includes(
+                        specialty
+                      ) ||
                       specialty.id_especialidad ===
                         form.id_especialidad
                   )
                   .map((specialty) => (
                     <option
-                      key={specialty.id_especialidad}
-                      value={specialty.id_especialidad}
+                      key={
+                        specialty.id_especialidad
+                      }
+                      value={
+                        specialty.id_especialidad
+                      }
                     >
                       {specialty.nombre}
 
-                      {!specialtyOptions.includes(specialty)
+                      {!specialtyOptions.includes(
+                        specialty
+                      )
                         ? ' (sin asignación vigente)'
                         : ''}
                     </option>
@@ -616,23 +793,44 @@ export default function HorariosPage() {
               </select>
             </label>
 
-            {/* Acceso a las asignaciones del profesional */}
+            {/* Acceso a las asignaciones */}
             {form.id_profesional && (
               <div className="col-12">
-                <Link
-                  to={`/profesionales/${form.id_profesional}`}
-                >
-                  Administrar asignaciones del profesional
-                </Link>
+                <div className="alert alert-light border mb-0">
+                  <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <div>
+                      <strong>
+                        Asignaciones del profesional
+                      </strong>
 
-                {relationLoading && (
-                  <span
-                    role="status"
-                    className="ms-2"
-                  >
-                    Cargando asignaciones…
-                  </span>
-                )}
+                      <div className="small text-muted">
+                        La salita y la especialidad deben
+                        estar asignadas al profesional para
+                        poder activar este horario.
+                      </div>
+                    </div>
+
+                    <Link
+                      className="btn btn-sm btn-outline-success"
+                      to={`/profesionales/${form.id_profesional}`}
+                    >
+                      Administrar asignaciones
+                    </Link>
+                  </div>
+
+                  {relationLoading && (
+                    <div
+                      role="status"
+                      className="small text-muted mt-2"
+                    >
+                      <span
+                        className="spinner-border spinner-border-sm me-1"
+                        aria-hidden="true"
+                      />
+                      Cargando asignaciones...
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -671,7 +869,8 @@ export default function HorariosPage() {
                 value={form.hora_inicio}
                 onChange={(e) =>
                   change({
-                    hora_inicio: e.target.value,
+                    hora_inicio:
+                      e.target.value,
                   })
                 }
               />
@@ -687,7 +886,8 @@ export default function HorariosPage() {
                 value={form.hora_fin}
                 onChange={(e) =>
                   change({
-                    hora_fin: e.target.value,
+                    hora_fin:
+                      e.target.value,
                   })
                 }
               />
@@ -702,7 +902,9 @@ export default function HorariosPage() {
                 min={5}
                 max={240}
                 required
-                value={form.duracion_turno_minutos}
+                value={
+                  form.duracion_turno_minutos
+                }
                 onChange={(e) =>
                   change({
                     duracion_turno_minutos:
@@ -710,6 +912,11 @@ export default function HorariosPage() {
                   })
                 }
               />
+
+              <small className="text-muted">
+                Ejemplo: 20 minutos genera turnos
+                de 20 min.
+              </small>
             </label>
 
             <label className="col-sm-6 col-lg-3 form-label">
@@ -719,7 +926,9 @@ export default function HorariosPage() {
                 className="form-control"
                 type="number"
                 min={1}
-                value={form.cupo_maximo_diario ?? ''}
+                value={
+                  form.cupo_maximo_diario ?? ''
+                }
                 onChange={(e) =>
                   change({
                     cupo_maximo_diario:
@@ -729,6 +938,10 @@ export default function HorariosPage() {
                   })
                 }
               />
+
+              <small className="text-muted">
+                Dejalo vacío si no querés limitarlo.
+              </small>
             </label>
 
             <label className="col-sm-6 col-lg-3 form-label">
@@ -741,7 +954,8 @@ export default function HorariosPage() {
                 value={form.vigencia_desde}
                 onChange={(e) =>
                   change({
-                    vigencia_desde: e.target.value,
+                    vigencia_desde:
+                      e.target.value,
                   })
                 }
               />
@@ -754,7 +968,9 @@ export default function HorariosPage() {
                 className="form-control"
                 type="date"
                 min={form.vigencia_desde}
-                value={form.vigencia_hasta ?? ''}
+                value={
+                  form.vigencia_hasta ?? ''
+                }
                 onChange={(e) =>
                   change({
                     vigencia_hasta:
@@ -762,6 +978,11 @@ export default function HorariosPage() {
                   })
                 }
               />
+
+              <small className="text-muted">
+                Sin fecha significa que no tiene
+                vencimiento definido.
+              </small>
             </label>
 
             <div className="col-12">
@@ -772,23 +993,29 @@ export default function HorariosPage() {
                   checked={form.activo}
                   onChange={(e) =>
                     change({
-                      activo: e.target.checked,
+                      activo:
+                        e.target.checked,
                     })
                   }
                 />
 
-                Horario activo
+                <span className="form-check-label">
+                  Horario activo
+                </span>
               </label>
             </div>
 
             <div className="col-12 d-flex flex-wrap gap-2">
               <button
                 className="btn btn-saps"
+                type="submit"
                 disabled={relationLoading}
               >
                 {busy
-                  ? 'Procesando…'
-                  : 'Guardar horario'}
+                  ? 'Procesando...'
+                  : editing
+                    ? 'Guardar cambios'
+                    : 'Guardar horario'}
               </button>
 
               {editing && (
@@ -796,6 +1023,7 @@ export default function HorariosPage() {
                   className="btn btn-outline-secondary"
                   type="button"
                   onClick={reset}
+                  disabled={busy}
                 >
                   Cancelar edición
                 </button>
@@ -807,91 +1035,230 @@ export default function HorariosPage() {
 
       {/* Consulta de disponibilidad */}
       <section className="dashboard-panel p-3 mb-4">
-        <h2 className="h5">
-          Consultar disponibilidad
-        </h2>
+        <div className="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+          <div>
+            <h2 className="h5 mb-1">
+              Disponibilidad
+            </h2>
 
-        <p className="text-muted">
-          Usa el profesional, la salita y la especialidad
-          seleccionados arriba. Solo contempla horarios ya
-          guardados.
-        </p>
+            <p className="text-muted mb-0">
+              Consultá los turnos generados para
+              una fecha concreta.
+            </p>
+          </div>
 
-        <div className="d-flex flex-wrap gap-3 align-items-end">
-          <label className="form-label">
-            Fecha
-
-            <input
-              className="form-control"
-              type="date"
-              value={date}
-              disabled={busy}
-              onChange={(e) => {
-                setDate(e.target.value);
-                setAvailability(null);
-              }}
-            />
-          </label>
-
-          <button
-            className="btn btn-outline-success mb-2"
-            disabled={
-              busy ||
-              loading ||
-              !ready ||
-              !date ||
-              !form.id_profesional ||
-              !form.id_salita ||
-              !form.id_especialidad
-            }
-            onClick={() => void preview()}
-          >
-            Consultar disponibilidad
-          </button>
+          {availability && (
+            <span className="badge text-bg-success">
+              Consulta realizada
+            </span>
+          )}
         </div>
 
-        {/* Resultado de la disponibilidad */}
-        {availability && (
-          <div aria-live="polite">
-            <p>
-              {availability.resumen.disponibles} disponibles ·{' '}
-              {availability.resumen.ocupados} ocupados ·{' '}
-              {availability.resumen.bloqueados} bloqueados
-            </p>
+        {!form.id_profesional ||
+        !form.id_salita ||
+        !form.id_especialidad ? (
+          <div className="alert alert-light border mb-0">
+            <i className="bi bi-info-circle me-2" />
 
-            <div className="row g-2">
-              {availability.slots.map((slot) => (
-                <div
-                  className="col-6 col-md-3"
-                  key={`${slot.hora_inicio}-${slot.hora_fin}`}
-                >
-                  <div
-                    className={`p-3 rounded ${
-                      slot.estado === 'DISPONIBLE'
-                        ? 'bg-success-subtle text-success-emphasis'
-                        : 'bg-light'
-                    }`}
-                  >
+            Para consultar la disponibilidad,
+            seleccioná primero el profesional, la
+            salita y la especialidad en el formulario
+            de arriba.
+          </div>
+        ) : (
+          <>
+            <div className="alert alert-light border">
+              <div className="row g-2 small">
+                <div className="col-md-4">
+                  <strong>Profesional:</strong>{' '}
+                  {selectedProfessionalName ||
+                    'Seleccionado'}
+                </div>
+
+                <div className="col-md-4">
+                  <strong>Salita:</strong>{' '}
+                  {clinics.find(
+                    (clinic) =>
+                      clinic.id_salita ===
+                      form.id_salita
+                  )?.nombre ||
+                    'Seleccionada'}
+                </div>
+
+                <div className="col-md-4">
+                  <strong>Especialidad:</strong>{' '}
+                  {specialties.find(
+                    (specialty) =>
+                      specialty.id_especialidad ===
+                      form.id_especialidad
+                  )?.nombre ||
+                    'Seleccionada'}
+                </div>
+              </div>
+            </div>
+
+            <div className="d-flex flex-wrap gap-3 align-items-end">
+              <label className="form-label mb-0">
+                Fecha
+
+                <input
+                  className="form-control"
+                  type="date"
+                  value={date}
+                  disabled={busy}
+                  onChange={(e) => {
+                    setDate(e.target.value);
+                    setAvailability(null);
+                  }}
+                />
+              </label>
+
+              <button
+                className="btn btn-outline-success"
+                type="button"
+                disabled={
+                  busy ||
+                  loading ||
+                  !ready ||
+                  !date
+                }
+                onClick={() =>
+                  void preview()
+                }
+              >
+                {busy
+                  ? 'Consultando...'
+                  : 'Consultar disponibilidad'}
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Resultado */}
+        {availability && (
+          <div
+            className="mt-4"
+            aria-live="polite"
+          >
+            <div className="row g-3 mb-3">
+              <div className="col-md-4">
+                <div className="border rounded p-3 h-100">
+                  <div className="small text-muted">
+                    Disponibles
+                  </div>
+
+                  <div className="fs-3 fw-bold text-success">
+                    {availability.resumen.disponibles}
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-md-4">
+                <div className="border rounded p-3 h-100">
+                  <div className="small text-muted">
+                    Ocupados
+                  </div>
+
+                  <div className="fs-3 fw-bold">
+                    {availability.resumen.ocupados}
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-md-4">
+                <div className="border rounded p-3 h-100">
+                  <div className="small text-muted">
+                    Bloqueados
+                  </div>
+
+                  <div className="fs-3 fw-bold text-secondary">
+                    {availability.resumen.bloqueados}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {availabilityHasSlots ? (
+              <div className="row g-3">
+                {availability.slots.map(
+                  (slot) => {
+                    const isAvailable =
+                      slot.estado ===
+                      'DISPONIBLE';
+
+                    const isOccupied =
+                      slot.estado ===
+                      'OCUPADO';
+
+                    return (
+                      <div
+                        className="col-6 col-md-4 col-lg-3"
+                        key={`${slot.hora_inicio}-${slot.hora_fin}`}
+                      >
+                        <div
+                          className={`border rounded p-3 h-100 ${
+                            isAvailable
+                              ? 'border-success bg-success-subtle'
+                              : isOccupied
+                                ? 'bg-light'
+                                : 'bg-secondary-subtle'
+                          }`}
+                        >
+                          <div className="d-flex justify-content-between align-items-start gap-2">
+                            <strong>
+                              {slot.hora_inicio}–
+                              {slot.hora_fin}
+                            </strong>
+
+                            {isAvailable ? (
+                              <i
+                                className="bi bi-check-circle text-success"
+                                aria-hidden="true"
+                              />
+                            ) : isOccupied ? (
+                              <i
+                                className="bi bi-person-fill text-secondary"
+                                aria-hidden="true"
+                              />
+                            ) : (
+                              <i
+                                className="bi bi-lock-fill text-secondary"
+                                aria-hidden="true"
+                              />
+                            )}
+                          </div>
+
+                          <div className="small mt-2">
+                            {isAvailable
+                              ? 'Disponible'
+                              : isOccupied
+                                ? 'Ocupado'
+                                : 'Bloqueado'}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                )}
+              </div>
+            ) : (
+              <div className="alert alert-light border mb-0">
+                <div className="d-flex gap-3 align-items-start">
+                  <i className="bi bi-calendar-x fs-4 text-muted" />
+
+                  <div>
                     <strong>
-                      {slot.hora_inicio}–{slot.hora_fin}
+                      No hay turnos para esta fecha.
                     </strong>
 
-                    <div className="small">
-                      {slot.estado === 'DISPONIBLE'
-                        ? 'Disponible'
-                        : slot.estado === 'OCUPADO'
-                          ? 'Ocupado'
-                          : 'Bloqueado'}
+                    <div className="small text-muted mt-1">
+                      No se encontraron bloques de
+                      atención disponibles para la
+                      combinación seleccionada.
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-
-            {!availability.slots.length && (
-              <p>
-                No hay horarios disponibles para esta fecha.
-              </p>
+              </div>
             )}
           </div>
         )}
@@ -900,11 +1267,26 @@ export default function HorariosPage() {
       {/* Listado de horarios registrados */}
       <section className="dashboard-panel">
         <div className="p-3">
-          <h2 className="h5">
-            Horarios guardados
-          </h2>
+          <div className="d-flex flex-wrap justify-content-between align-items-start gap-3">
+            <div>
+              <h2 className="h5 mb-1">
+                Horarios guardados
+              </h2>
 
-          <label className="form-label w-100">
+              <p className="text-muted small mb-0">
+                Administrá las franjas de atención
+                configuradas.
+              </p>
+            </div>
+
+            {openedFromProfessional && (
+              <span className="badge text-bg-light border">
+                Mostrando horarios del profesional
+              </span>
+            )}
+          </div>
+
+          <label className="form-label w-100 mt-3">
             Filtrar profesional
 
             <select
@@ -918,15 +1300,21 @@ export default function HorariosPage() {
                 Todos
               </option>
 
-              {professionals.map((professional) => (
-                <option
-                  key={professional.id_profesional}
-                  value={professional.id_profesional}
-                >
-                  {professional.persona.apellidos},{' '}
-                  {professional.persona.nombres}
-                </option>
-              ))}
+              {professionals.map(
+                (professional) => (
+                  <option
+                    key={
+                      professional.id_profesional
+                    }
+                    value={
+                      professional.id_profesional
+                    }
+                  >
+                    {professional.persona.apellidos},{' '}
+                    {professional.persona.nombres}
+                  </option>
+                )
+              )}
             </select>
           </label>
         </div>
@@ -954,13 +1342,8 @@ export default function HorariosPage() {
             </thead>
 
             <tbody>
-              {rows
-                .filter(
-                  (schedule) =>
-                    !filter ||
-                    schedule.id_profesional === filter
-                )
-                .map((schedule) => {
+              {visibleRows.map(
+                (schedule) => {
                   const professional =
                     professionals.find(
                       (value) =>
@@ -968,8 +1351,26 @@ export default function HorariosPage() {
                         schedule.id_profesional
                     );
 
+                  const clinic =
+                    clinics.find(
+                      (value) =>
+                        value.id_salita ===
+                        schedule.id_salita
+                    );
+
+                  const specialty =
+                    specialties.find(
+                      (value) =>
+                        value.id_especialidad ===
+                        schedule.id_especialidad
+                    );
+
                   return (
-                    <tr key={schedule.id_horario}>
+                    <tr
+                      key={
+                        schedule.id_horario
+                      }
+                    >
                       <td data-label="Profesional">
                         {professional
                           ? `${professional.persona.apellidos}, ${professional.persona.nombres}`
@@ -977,39 +1378,46 @@ export default function HorariosPage() {
                       </td>
 
                       <td data-label="Salita / especialidad">
-                        {clinics.find(
-                          (clinic) =>
-                            clinic.id_salita ===
-                            schedule.id_salita
-                        )?.nombre ??
+                        {clinic?.nombre ??
                           'Salita no disponible'}
 
                         <br />
 
-                        {specialties.find(
-                          (specialty) =>
-                            specialty.id_especialidad ===
-                            schedule.id_especialidad
-                        )?.nombre ??
+                        {specialty?.nombre ??
                           'Especialidad no disponible'}
                       </td>
 
                       <td data-label="Franja">
-                        {days[schedule.dia_semana - 1]} ·{' '}
-                        {schedule.hora_inicio.slice(0, 5)}–
-                        {schedule.hora_fin.slice(0, 5)}
+                        {days[
+                          schedule.dia_semana - 1
+                        ]}{' '}
+                        ·{' '}
+                        {schedule.hora_inicio.slice(
+                          0,
+                          5
+                        )}
+                        –
+                        {schedule.hora_fin.slice(
+                          0,
+                          5
+                        )}
 
                         <br />
 
                         <small>
                           Turnos de{' '}
-                          {schedule.duracion_turno_minutos} min
+                          {
+                            schedule.duracion_turno_minutos
+                          }{' '}
+                          min
                         </small>
                       </td>
 
                       <td data-label="Vigencia">
-                        {schedule.vigencia_desde} /{' '}
-                        {schedule.vigencia_hasta ?? 'Sin fin'}
+                        {schedule.vigencia_desde}
+                        {' / '}
+                        {schedule.vigencia_hasta ??
+                          'Sin fin'}
                       </td>
 
                       <td data-label="Estado">
@@ -1029,7 +1437,10 @@ export default function HorariosPage() {
                       <td data-label="Acciones">
                         <button
                           className="btn btn-outline-success"
-                          disabled={busy || loading}
+                          type="button"
+                          disabled={
+                            busy || loading
+                          }
                           onClick={() =>
                             edit(schedule)
                           }
@@ -1039,20 +1450,27 @@ export default function HorariosPage() {
                       </td>
                     </tr>
                   );
-                })}
+                }
+              )}
             </tbody>
           </table>
         </div>
 
         {!loading &&
-          !rows.filter(
-            (schedule) =>
-              !filter ||
-              schedule.id_profesional === filter
-          ).length && (
-            <p className="p-3 text-muted">
-              No hay horarios para este filtro.
-            </p>
+          !visibleRows.length && (
+            <div className="p-4 text-center text-muted">
+              <i className="bi bi-calendar-week fs-2 d-block mb-2" />
+
+              <strong>
+                No hay horarios configurados.
+              </strong>
+
+              <div className="small mt-1">
+                {filter
+                  ? 'El profesional seleccionado todavía no tiene horarios registrados.'
+                  : 'Todavía no se registraron horarios de atención.'}
+              </div>
+            </div>
           )}
       </section>
     </div>
