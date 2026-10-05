@@ -38,13 +38,18 @@ import {
 export default function AccountManagementPage() {
   const { user } = useAuth();
 
-  const [kind, setKind] = useState<'admins' | 'professionals'>(
+  const [kind, setKind] = useState<
+    'admins' | 'professionals'
+  >(
     'professionals'
   );
 
-  const [salitas, setSalitas] = useState<Salita[]>([]);
+  const [salitas, setSalitas] = useState<
+    Salita[]
+  >([]);
 
-  const [professionals, setProfessionals] = useState<Professional[]>([]);
+  const [professionals, setProfessionals] =
+    useState<Professional[]>([]);
 
   const [target, setTarget] = useState('');
 
@@ -54,7 +59,8 @@ export default function AccountManagementPage() {
 
   const [password, setPassword] = useState('');
 
-  const [confirmation, setConfirmation] = useState('');
+  const [confirmation, setConfirmation] =
+    useState('');
 
   const [busy, setBusy] = useState(false);
 
@@ -64,7 +70,8 @@ export default function AccountManagementPage() {
 
   const [success, setSuccess] = useState('');
 
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] =
+    useState(false);
 
   useEffect(() => {
     let active = true;
@@ -76,17 +83,23 @@ export default function AccountManagementPage() {
       .then(([s, p]) => {
         if (active) {
           setSalitas(
-            s.data.filter((item) => item.activo)
+            s.data.filter(
+              (item) => item.activo
+            )
           );
 
           setProfessionals(
-            p.data.filter((item) => item.activo)
+            p.data.filter(
+              (item) => item.activo
+            )
           );
         }
       })
       .catch((cause) => {
         if (active) {
-          setError(authError(cause));
+          setError(
+            authError(cause)
+          );
         }
       })
       .finally(() => {
@@ -100,10 +113,14 @@ export default function AccountManagementPage() {
     };
   }, []);
 
-  const submit = async (event?: FormEvent) => {
+  const submit = async (
+    event?: FormEvent
+  ) => {
     event?.preventDefault();
 
-    if (busy) return;
+    if (busy) {
+      return;
+    }
 
     const validation = passwordError(
       password,
@@ -141,7 +158,9 @@ export default function AccountManagementPage() {
         'Cuenta creada. La persona recibió un código de 4 dígitos y debe verificar su correo antes de iniciar sesión.'
       );
     } catch (cause) {
-      setError(authError(cause));
+      setError(
+        authError(cause)
+      );
     } finally {
       setBusy(false);
     }
@@ -156,8 +175,15 @@ export default function AccountManagementPage() {
         message="¿Querés crear esta cuenta de acceso?"
         detail={
           <>
-            <div className="fw-semibold">{username || 'Usuario sin nombre'}</div>
-            <div className="text-muted small mt-1">{email || 'Correo no informado'}</div>
+            <div className="fw-semibold">
+              {username ||
+                'Usuario sin nombre'}
+            </div>
+
+            <div className="text-muted small mt-1">
+              {email ||
+                'Correo no informado'}
+            </div>
           </>
         }
         confirmText="Crear cuenta"
@@ -165,7 +191,9 @@ export default function AccountManagementPage() {
         variant="primary"
         icon="bi-person-plus"
         loading={busy}
-        onClose={() => setConfirmOpen(false)}
+        onClose={() =>
+          setConfirmOpen(false)
+        }
         onConfirm={() => {
           setConfirmOpen(false);
           void submit();
@@ -178,14 +206,21 @@ export default function AccountManagementPage() {
         </h1>
 
         <p>
-          Las cuentas profesionales se vinculan a un profesional ya registrado.
+          Las cuentas profesionales se vinculan
+          a un profesional ya registrado.
         </p>
 
-        <form onSubmit={(event) => {
-          event.preventDefault();
-          setConfirmOpen(true);
-        }}>
-          <fieldset disabled={busy || loading}>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            setConfirmOpen(true);
+          }}
+        >
+          <fieldset
+            disabled={
+              busy || loading
+            }
+          >
             <label className="form-label w-100">
               Tipo de cuenta
 
@@ -194,7 +229,8 @@ export default function AccountManagementPage() {
                 value={kind}
                 onChange={(e) => {
                   setKind(
-                    e.target.value === 'admins'
+                    e.target.value ===
+                      'admins'
                       ? 'admins'
                       : 'professionals'
                   );
@@ -207,7 +243,8 @@ export default function AccountManagementPage() {
                   Profesional
                 </option>
 
-                {user?.rol === 'SUPER_ADMIN' && (
+                {user?.rol ===
+                  'SUPER_ADMIN' && (
                   <option value="admins">
                     Administrador de salita
                   </option>
@@ -225,7 +262,9 @@ export default function AccountManagementPage() {
                 required
                 value={target}
                 onChange={(e) =>
-                  setTarget(e.target.value)
+                  setTarget(
+                    e.target.value
+                  )
                 }
               >
                 <option value="">
@@ -241,15 +280,28 @@ export default function AccountManagementPage() {
                         {s.nombre}
                       </option>
                     ))
-                  : professionals.map((p) => (
-                      <option
-                        key={p.id_profesional}
-                        value={p.id_profesional}
-                      >
-                        {p.persona.apellidos}{' '}
-                        {p.persona.nombres} — {p.matricula}
-                      </option>
-                    ))}
+                  : professionals.map(
+                      (p) => (
+                        <option
+                          key={
+                            p.id_profesional
+                          }
+                          value={
+                            p.id_profesional
+                          }
+                        >
+                          {
+                            p.persona
+                              .apellidos
+                          }{' '}
+                          {
+                            p.persona
+                              .nombres
+                          }{' '}
+                          — {p.matricula}
+                        </option>
+                      )
+                    )}
               </select>
             </label>
 
@@ -264,7 +316,9 @@ export default function AccountManagementPage() {
                 autoComplete="off"
                 value={username}
                 onChange={(e) =>
-                  setUsername(e.target.value)
+                  setUsername(
+                    e.target.value
+                  )
                 }
               />
             </label>
@@ -278,25 +332,36 @@ export default function AccountManagementPage() {
                 type="email"
                 value={email}
                 onChange={(e) =>
-                  setEmail(e.target.value)
+                  setEmail(
+                    e.target.value
+                  )
                 }
               />
             </label>
 
             <label className="form-label w-100">
-              Contraseña inicial
+              Contraseña
 
               <input
                 className="form-control"
                 required
                 type="password"
                 autoComplete="new-password"
-                maxLength={128}
+                minLength={8}
+                maxLength={12}
                 value={password}
                 onChange={(e) =>
-                  setPassword(e.target.value)
+                  setPassword(
+                    e.target.value
+                  )
                 }
               />
+
+              <small className="text-muted d-block mt-1">
+                Entre 8 y 12 caracteres, con
+                mayúscula, minúscula, número y
+                símbolo.
+              </small>
             </label>
 
             <label className="form-label w-100">
@@ -307,17 +372,22 @@ export default function AccountManagementPage() {
                 required
                 type="password"
                 autoComplete="new-password"
+                minLength={8}
+                maxLength={12}
                 value={confirmation}
                 onChange={(e) =>
-                  setConfirmation(e.target.value)
+                  setConfirmation(
+                    e.target.value
+                  )
                 }
               />
-            </label>
 
-            <p className="small text-muted">
-              Entre 8 y 128 caracteres, con mayúscula,
-              minúscula, número y símbolo.
-            </p>
+              <small className="text-muted d-block mt-1">
+                Entre 8 y 12 caracteres, con
+                mayúscula, minúscula, número y
+                símbolo.
+              </small>
+            </label>
 
             {error && (
               <div
@@ -337,7 +407,10 @@ export default function AccountManagementPage() {
               </div>
             )}
 
-            <button className="btn btn-primary">
+            <button
+              className="btn btn-primary"
+              type="submit"
+            >
               {busy
                 ? 'Creando…'
                 : 'Crear cuenta'}

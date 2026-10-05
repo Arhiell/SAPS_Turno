@@ -1,306 +1,287 @@
 import { env } from "../config/env.js";
-import { 
-  generateUsernameFromEmail 
+
+import {
+  generateUsernameFromEmail,
 } from "../utils/username-generator.js";
 
 import type {
-  RegisterInput
+  RegisterInput,
+  LoginInput,
 } from "../validators/auth.validator.js";
 
 import {
   createUser,
   findRoleByCode,
   findUserByEmail,
-  findUserByUsername
-} from "../repositories/user.repository.js";
-
-import {
-  hashPassword
-} from "./password.service.js";
-
-import {
-  AppError
-} from "../utils/app-error.js";
-
-import type {
-  LoginInput
-} from "../validators/auth.validator.js";
-
-import {
-  createSession
-} from "../services/session.service.js";
-
-import {
+  findUserByUsername,
   clearExpiredLoginLock,
   findRoleById,
   findUserForLogin,
   registerFailedLogin,
-  registerSuccessfulLogin
+  registerSuccessfulLogin,
 } from "../repositories/user.repository.js";
 
 import {
-  verifyPassword
+  hashPassword,
+  verifyPassword,
 } from "./password.service.js";
 
 import {
-  generateAccessToken
-} from "./jwt.service.js";
-import { access } from "node:fs";
+  AppError,
+} from "../utils/app-error.js";
 
 import {
-  validateLoginAccess
+  createSession,
+} from "../services/session.service.js";
+
+import {
+  generateAccessToken,
+  generateLoginVerificationToken,
+} from "./jwt.service.js";
+
+import {
+  validateLoginAccess,
 } from "./login-access.service.js";
-import { createVerificationCodeForNewUser } from "./email-verification.service.js";
+
+import {
+  createVerificationCodeForNewUser,
+} from "./email-verification.service.js";
+
+import {
+  findLatestPendingEmailToken,
+} from "../repositories/email-verification.repository.js";
 
 import type {
-  RequestMetadata
+  RequestMetadata,
 } from "../types/request-metadata.types.js";
 
+// ========================================
+// REGISTRO PÚBLICO
+// ========================================
 
-// Registra una cuenta pública. Todo registro público recibe siempre
-//el rol PACIENTE.
 export const registerUser = async (
   input: RegisterInput,
-  metadata: RequestMetadata
+  metadata: RequestMetadata,
 ) => {
-  // Normalizamos datos antes de utilizarlos.
-  const email = input.email.trim().toLowerCase();
-  const username = input.nombre_usuario?.trim() ?? generateUsernameFromEmail(email);
+  const email =
+    input.email.trim().toLowerCase();
 
-  // Comprobamos primero si el email está ocupado.
-  const existingEmail = await findUserByEmail(email);
+  const username =
+    input.nombre_usuario?.trim() ??
+    generateUsernameFromEmail(email);
+
+  const existingEmail =
+    await findUserByEmail(email);
 
   if (existingEmail) {
     throw new AppError(
       "El correo electrónico ya está registrado",
-      409
+      409,
     );
   }
 
-  //Evitamos nombres de usuario duplicados.
   const existingUsername =
     await findUserByUsername(username);
 
   if (existingUsername) {
     throw new AppError(
       "El nombre de usuario ya está registrado",
-      409
+      409,
     );
   }
 
-  // El rol NO viene del frontend. El backend siempre asigna PACIENTE.
-   const patientRole = await findRoleByCode("PACIENTE");
+  const patientRole =
+    await findRoleByCode("PACIENTE");
 
   if (!patientRole) {
     throw new AppError(
       "El rol PACIENTE no está configurado",
-      500
+      500,
     );
   }
 
-  //La contraseña se convierte en hash antes de tocar la base de datos.
-  const passwordHash = await hashPassword(
-    input.password
-  );
+  const passwordHash =
+    await hashPassword(
+      input.password,
+    );
 
-  // Finalmente registramos la cuenta.
-  const user = await createUser({
-    id_rol: patientRole.id_rol,
-    nombre_usuario: username,
-    email,
-    password_hash: passwordHash
-  });
+  const user =
+    await createUser({
+      id_rol: patientRole.id_rol,
+      nombre_usuario: username,
+      email,
+      password_hash: passwordHash,
+    });
 
-  /*
-  * Después de crear correctamente la cuenta,
-  * generamos su token de verificación.
-  */
   const verificationExpiresAt =
     await createVerificationCodeForNewUser(
       user.id_usuario,
       email,
-      metadata.ip
+      metadata.ip,
     );
 
   return {
     user: {
       ...user,
-     rol: {
-       codigo: patientRole.codigo,
-       nombre: patientRole.nombre
-       }
+      rol: {
+        codigo: patientRole.codigo,
+        nombre: patientRole.nombre,
+      },
     },
-    verificationExpiresAt
+    verificationExpiresAt,
   };
 };
 
-/**
- * Inicia sesión mediante email o username.
- *
- * También controla:
- * - usuario activo
- * - bloqueo temporal
- * - intentos fallidos
- * - contraseña
- * - rol activo
- * - último acceso
- */
+// ========================================
+// LOGIN
+// ========================================
 
 export const loginUser = async (
   input: LoginInput,
   metadata: {
     ip: string | null;
     userAgent: string | null;
-  }
+  },
 ) => {
   const identifier =
-    input.identifier.trim().toLowerCase();
+    input.identifier
+      .trim()
+      .toLowerCase();
 
-  /**
-   * Buscamos al usuario por email o nombre de usuario.
-   */
-  const user = await findUserForLogin(
-    identifier
-  );
+  const user =
+    await findUserForLogin(identifier);
 
-  /**
-   * Utilizamos un mensaje genérico.
-   * No queremos revelar si determinado
-   * correo existe en el sistema.
-   */
   if (!user) {
     throw new AppError(
       "Credenciales incorrectas",
-      401
+      401,
     );
   }
 
-  /**
-   * Antes de revisar la contraseña,
-    * comprobamos las reglas de acceso.
+  /*
+   * Permitimos que el usuario llegue hasta la
+   * comprobación de contraseña aunque su correo
+   * todavía no esté verificado.
+   *
+   * La sesión NO se crea hasta completar el código.
    */
-  validateLoginAccess({
-    activo: user.activo,
-    email_verificado:
-      user.email_verificado,
-      bloqueado_hasta:
-        user.bloqueado_hasta
-  });
+  validateLoginAccess(
+    user,
+    {
+      allowUnverifiedEmail: true,
+    },
+  );
 
-  const now = new Date();
+  const now =
+    new Date();
 
-  /**
-   * Si existe un bloqueo que todavía
-   * está vigente, rechazamos el login.
-   */
+  let failedAttempts =
+    user.intentos_fallidos ?? 0;
+
+  // ========================================
+  // BLOQUEO ACTIVO
+  // ========================================
+
   if (
     user.bloqueado_hasta &&
     new Date(user.bloqueado_hasta) > now
   ) {
     throw new AppError(
       "La cuenta se encuentra temporalmente bloqueada",
-      423
+      423,
     );
   }
 
-  /**
-   * Si existía un bloqueo pero ya venció,
-   * reiniciamos los intentos.
-   */
-  let failedAttempts =
-    user.intentos_fallidos ?? 0;
+  // ========================================
+  // BLOQUEO VENCIDO
+  // ========================================
 
   if (
     user.bloqueado_hasta &&
     new Date(user.bloqueado_hasta) <= now
   ) {
     await clearExpiredLoginLock(
-      user.id_usuario
+      user.id_usuario,
     );
 
     failedAttempts = 0;
   }
 
-  /**
-   * Comparamos la contraseña recibida
-   * contra el hash Argon2 almacenado.
-   */
+  // ========================================
+  // COMPROBAR CONTRASEÑA
+  // ========================================
+
   const passwordIsValid =
     await verifyPassword(
       user.password_hash,
-      input.password
+      input.password,
     );
 
   if (!passwordIsValid) {
     const newAttempts =
       failedAttempts + 1;
 
-    /**
-     * Si alcanzó el máximo permitido,
-     * calculamos la fecha del bloqueo.
-     */
     if (
       newAttempts >=
       env.LOGIN_MAX_ATTEMPTS
     ) {
-      const blockedUntil = new Date(
-        now.getTime() +
+      const blockedUntil =
+        new Date(
+          now.getTime() +
           env.LOGIN_LOCK_MINUTES *
-            60 *
-            1000
-      );
+          60 *
+          1000,
+        );
 
       await registerFailedLogin(
         user.id_usuario,
         newAttempts,
-        blockedUntil.toISOString()
+        blockedUntil.toISOString(),
       );
 
       throw new AppError(
         "Demasiados intentos fallidos. La cuenta fue bloqueada temporalmente",
-        423
+        423,
       );
     }
 
-    /**
-     * Todavía no alcanzó el límite,
-     * solamente incrementamos el contador.
-     */
     await registerFailedLogin(
       user.id_usuario,
       newAttempts,
-      null
+      null,
     );
 
     throw new AppError(
       "Credenciales incorrectas",
-      401
+      401,
     );
   }
 
-  /**
-   * La contraseña es correcta.
-   * Ahora comprobamos que el rol continúe existiendo y esté activo.
-   */
-  const role = await findRoleById(
-    user.id_rol
-  );
+  // ========================================
+  // COMPROBAR ROL
+  // ========================================
 
-  if (!role || !role.activo) {
+  const role =
+    await findRoleById(
+      user.id_rol,
+    );
+
+  if (
+    !role ||
+    !role.activo
+  ) {
     throw new AppError(
       "El usuario no posee un rol válido",
-      403
+      403,
     );
   }
 
-  /**
-   * Login exitoso:
-   * - intentos = 0
-   * - bloqueo = NULL
-   * - ultimo_acceso = ahora
+  /*
+   * Las credenciales fueron correctas.
+   * Reiniciamos los intentos fallidos.
    */
   await registerSuccessfulLogin(
-    user.id_usuario
+    user.id_usuario,
   );
 
   const authenticatedUser = {
@@ -308,29 +289,80 @@ export const loginUser = async (
     email: user.email,
     nombre_usuario:
       user.nombre_usuario,
-    rol: role.codigo
+    rol: role.codigo,
   };
 
+  // ========================================
+  // CORREO NO VERIFICADO
+  // ========================================
 
-  /**
-   * Finalmente generamos el JWT.
-   */
+  if (!user.email_verificado) {
+
+    /*
+     * IMPORTANTE:
+     *
+     * Acá NO llamamos a createEmailCode().
+     *
+     * Por lo tanto, iniciar sesión NO genera
+     * un segundo código.
+     */
+
+    const loginVerificationToken =
+      await generateLoginVerificationToken(
+        user.id_usuario,
+      );
+
+    /*
+     * Buscamos el código que ya fue generado
+     * cuando se creó la cuenta.
+     */
+    const pending =
+      await findLatestPendingEmailToken(
+        user.id_usuario,
+      );
+
+    const verificationExpiresAt =
+      pending?.fecha_expiracion ??
+      null;
+
+    const resendAvailableAt =
+      pending
+        ? new Date(
+            new Date(
+              pending.fecha_creacion,
+            ).getTime() +
+            60 * 1000,
+          ).toISOString()
+        : null;
+
+    return {
+      requiresEmailVerification: true as const,
+      email: user.email,
+      loginVerificationToken,
+      verificationExpiresAt,
+      resendAvailableAt,
+    };
+  }
+
+  // ========================================
+  // LOGIN NORMAL
+  // ========================================
+
   const accessToken =
     await generateAccessToken(
-      authenticatedUser
+      authenticatedUser,
     );
 
-  // Creamos tambien una sesión resfresh
   const refreshToken =
-   await createSession (
-    user.id_usuario,
-    metadata
-   );
+    await createSession(
+      user.id_usuario,
+      metadata,
+    );
 
-   return {
+  return {
+    requiresEmailVerification: false as const,
     user: authenticatedUser,
     accessToken,
-    refreshToken
-   };
-
+    refreshToken,
+  };
 };

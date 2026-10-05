@@ -28,7 +28,17 @@ export const errorHandler = (
   if (error instanceof AppError) {
     return res.status(error.statusCode).json({
       success: false,
-      message: error.message
+      message: error.message,
+      ...(error.code
+        ? {
+            code: error.code,
+          }
+        : {}),
+      ...(error.data
+        ? {
+            data: error.data,
+          }
+        : {}),
     });
   }
 

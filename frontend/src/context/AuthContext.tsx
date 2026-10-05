@@ -14,11 +14,13 @@ import {
   loginWithGoogle as googleRequest,
   getProfile,
 } from '../services/auth.service';
+
 import type { Patient } from '../types/patient.types';
 
 import type {
   AuthUser,
   LoginRequest,
+  LoginResultResponse,
 } from '../types/auth.types';
 
 import {
@@ -36,10 +38,19 @@ interface AuthContextValue {
   accessToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (data: LoginRequest) => Promise<void>;
+
+  login: (
+    data: LoginRequest,
+  ) => Promise<LoginResultResponse>;
+
   logout: () => Promise<void>;
-  loginWithGoogle: (credential: string) => Promise<void>;
+
+  loginWithGoogle: (
+    credential: string,
+  ) => Promise<void>;
+
   patient: Patient | null;
+
   reloadProfile: () => Promise<void>;
 }
 
@@ -47,146 +58,308 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-const AuthContext = createContext<AuthContextValue | undefined>(
-  undefined,
-);
+const AuthContext =
+  createContext<AuthContextValue | undefined>(
+    undefined,
+  );
 
 export const AuthProvider = ({
   children,
 }: AuthProviderProps) => {
-  const [user, setUser] = useState<AuthUser | null>(
-    getStoredUser(),
-  );
+  const [user, setUser] =
+    useState<AuthUser | null>(
+      getStoredUser(),
+    );
 
-  const [accessToken, setAccessToken] = useState<string | null>(
-    getAccessToken(),
-  );
+  const [accessToken, setAccessToken] =
+    useState<string | null>(
+      getAccessToken(),
+    );
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [patient, setPatient] = useState<Patient | null>(null);
+  const [isLoading, setIsLoading] =
+    useState(true);
+
+  const [patient, setPatient] =
+    useState<Patient | null>(null);
+
   const reloadProfile = async () => {
-    const response = await getProfile();
-    setUser(response.data.user);
-    saveStoredUser(response.data.user);
-    setPatient(response.data.patient);
+    const response =
+      await getProfile();
+
+    setUser(
+      response.data.user,
+    );
+
+    saveStoredUser(
+      response.data.user,
+    );
+
+    setPatient(
+      response.data.patient,
+    );
   };
 
   useEffect(() => {
-    const restoreSession = async () => {
-      const storedRefreshToken = getRefreshToken();
+    const restoreSession =
+      async () => {
+        const storedRefreshToken =
+          getRefreshToken();
 
-      if (!storedRefreshToken) {
-        clearAuthSession(); setUser(null); setAccessToken(null);
-        setIsLoading(false);
-        return;
-      }
+        if (!storedRefreshToken) {
+          clearAuthSession();
 
-      try {
-        const response = await refreshSession({
-          refreshToken: storedRefreshToken,
-        });
+          setUser(null);
+          setAccessToken(null);
 
-        updateAuthTokens(
-          response.data.accessToken,
-          response.data.refreshToken,
-        );
+          setIsLoading(false);
 
-        setAccessToken(response.data.accessToken);
-        await reloadProfile();
-      } catch {
-        clearAuthSession();
+          return;
+        }
 
-        setAccessToken(null);
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+        try {
+          const response =
+            await refreshSession({
+              refreshToken:
+                storedRefreshToken,
+            });
+
+          updateAuthTokens(
+            response.data.accessToken,
+            response.data.refreshToken,
+          );
+
+          setAccessToken(
+            response.data.accessToken,
+          );
+
+          await reloadProfile();
+        } catch {
+          clearAuthSession();
+
+          setAccessToken(null);
+          setUser(null);
+          setPatient(null);
+        } finally {
+          setIsLoading(false);
+        }
+      };
 
     void restoreSession();
   }, []);
 
   useEffect(() => {
     const sync = () => {
-      setAccessToken(getAccessToken()); setUser(getStoredUser());
-      if (!getAccessToken()) setPatient(null);
+      setAccessToken(
+        getAccessToken(),
+      );
+
+      setUser(
+        getStoredUser(),
+      );
+
+      if (!getAccessToken()) {
+        setPatient(null);
+      }
     };
-    window.addEventListener('saps-session', sync);
-    window.addEventListener('storage', sync);
-    return () => { window.removeEventListener('saps-session', sync); window.removeEventListener('storage', sync); };
+
+    window.addEventListener(
+      'saps-session',
+      sync,
+    );
+
+    window.addEventListener(
+      'storage',
+      sync,
+    );
+
+    return () => {
+      window.removeEventListener(
+        'saps-session',
+        sync,
+      );
+
+      window.removeEventListener(
+        'storage',
+        sync,
+      );
+    };
   }, []);
 
   const login = async (
     data: LoginRequest,
-  ): Promise<void> => {
-    const response = await loginRequest(data);
+  ): Promise<LoginResultResponse> => {
+    const response =
+      await loginRequest(data);
 
+    /**
+     * Si el backend indica que hace falta
+     * verificar el correo, todavía no existe
+     * una sesión.
+     *
+     * Comprobamos el valor explícitamente.
+     */
+    if (
+      'requiresEmailVerification' in
+        response.data &&
+      response.data.requiresEmailVerification ===
+        true
+    ) {
+      return response;
+    }
+
+    /**
+     * A partir de este punto necesitamos
+     * asegurarnos de que estamos ante el
+     * resultado de login normal.
+     *
+     * LoginResponseData contiene accessToken.
+     * LoginVerificationRequiredData no.
+     *
+     * Esta comprobación también permite que
+     * TypeScript haga el narrowing correctamente.
+     */
+    if (!('accessToken' in response.data)) {
+      return response;
+    }
+
+    /**
+     * Login normal:
+     *
+     * guardamos Access Token,
+     * Refresh Token y usuario.
+     */
     saveAuthSession(
       response.data.accessToken,
       response.data.refreshToken,
       response.data.user,
     );
 
-    setAccessToken(response.data.accessToken);
-    setUser(response.data.user);
-    try { await reloadProfile(); } catch (error) { clearAuthSession(); throw error; }
-  };
+    setAccessToken(
+      response.data.accessToken,
+    );
 
-  const loginWithGoogle = async (credential: string) => {
-    const response = await googleRequest(credential);
-    saveAuthSession(response.data.accessToken, response.data.refreshToken, response.data.user);
-    setAccessToken(response.data.accessToken); setUser(response.data.user);
-    try { await reloadProfile(); } catch (error) { clearAuthSession(); throw error; }
-  };
-
-  const logout = async (): Promise<void> => {
-    const storedRefreshToken = getRefreshToken();
+    setUser(
+      response.data.user,
+    );
 
     try {
-      if (storedRefreshToken) {
-        await logoutRequest({
-          refreshToken: storedRefreshToken,
-        });
-      }
-    } finally {
+      await reloadProfile();
+    } catch (error) {
       clearAuthSession();
 
       setAccessToken(null);
       setUser(null);
       setPatient(null);
+
+      throw error;
     }
+
+    return response;
   };
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      user,
-      accessToken,
-      isAuthenticated: Boolean(accessToken && user),
-      isLoading,
-      login,
-      logout,
-      loginWithGoogle,
-      patient,
-      reloadProfile,
-    }),
-    [user, accessToken, isLoading, patient],
-  );
+  const loginWithGoogle =
+    async (
+      credential: string,
+    ) => {
+      const response =
+        await googleRequest(
+          credential,
+        );
+
+      saveAuthSession(
+        response.data.accessToken,
+        response.data.refreshToken,
+        response.data.user,
+      );
+
+      setAccessToken(
+        response.data.accessToken,
+      );
+
+      setUser(
+        response.data.user,
+      );
+
+      try {
+        await reloadProfile();
+      } catch (error) {
+        clearAuthSession();
+
+        setAccessToken(null);
+        setUser(null);
+        setPatient(null);
+
+        throw error;
+      }
+    };
+
+  const logout =
+    async (): Promise<void> => {
+      const storedRefreshToken =
+        getRefreshToken();
+
+      try {
+        if (storedRefreshToken) {
+          await logoutRequest({
+            refreshToken:
+              storedRefreshToken,
+          });
+        }
+      } finally {
+        clearAuthSession();
+
+        setAccessToken(null);
+        setUser(null);
+        setPatient(null);
+      }
+    };
+
+  const value =
+    useMemo<AuthContextValue>(
+      () => ({
+        user,
+        accessToken,
+        isAuthenticated:
+          Boolean(
+            accessToken &&
+            user,
+          ),
+        isLoading,
+        login,
+        logout,
+        loginWithGoogle,
+        patient,
+        reloadProfile,
+      }),
+      [
+        user,
+        accessToken,
+        isLoading,
+        patient,
+      ],
+    );
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={value}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = (): AuthContextValue => {
-  const context = useContext(AuthContext);
+export const useAuth =
+  (): AuthContextValue => {
+    const context =
+      useContext(
+        AuthContext,
+      );
 
-  if (!context) {
-    throw new Error(
-      'useAuth debe utilizarse dentro de un AuthProvider',
-    );
-  }
+    if (!context) {
+      throw new Error(
+        'useAuth debe utilizarse dentro de un AuthProvider',
+      );
+    }
 
-  return context;
-};
+    return context;
+  };

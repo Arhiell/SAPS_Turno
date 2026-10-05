@@ -11,10 +11,6 @@ import {
   useAuth,
 } from '../../context/AuthContext';
 
-import {
-  getMenuForRole,
-} from '../../components/layout/sidebar-menu';
-
 import TurnoCard from '../../components/ui/TurnoCard';
 
 import {
@@ -317,19 +313,6 @@ export default function Dashboard() {
   }
 
   // ========================================
-  // ACCESOS RÁPIDOS
-  // ========================================
-
-  // Obtiene las opciones permitidas para el rol,
-  // excluyendo el inicio actual.
-  const links = getMenuForRole(
-    user?.rol
-  ).filter(
-    (item) =>
-      item.path !== '/'
-  );
-
-  // ========================================
   // INTERFAZ
   // ========================================
 
@@ -395,7 +378,7 @@ export default function Dashboard() {
               setRevision(
                 (v) => v + 1
               )
-            }
+          }
           >
             Reintentar
           </button>
@@ -493,7 +476,7 @@ export default function Dashboard() {
 
       <div className="row g-4">
         {/* Próximos turnos. */}
-        <div className="col-xl-8">
+        <div className="col-12">
           <section className="dashboard-panel">
             <div className="dashboard-panel-header">
               <h2>
@@ -586,50 +569,6 @@ export default function Dashboard() {
                 </Link>
               </div>
             )}
-          </section>
-        </div>
-
-        {/* ===================================
-            ACCESOS RÁPIDOS
-            =================================== */}
-
-        <div className="col-xl-4">
-          <section className="dashboard-panel">
-            <div className="dashboard-panel-header">
-              <h2>
-                Accesos rápidos
-              </h2>
-            </div>
-
-            <div className="dashboard-actions">
-              {links.map(
-                (item) => (
-                  <Link
-                    className="dashboard-action text-decoration-none"
-                    key={item.path}
-                    to={item.path}
-                  >
-                    <span className="dashboard-action-icon">
-                      <i
-                        className={`bi ${item.icon}`}
-                        aria-hidden="true"
-                      />
-                    </span>
-
-                    <span className="dashboard-action-content">
-                      <strong>
-                        {item.label}
-                      </strong>
-                    </span>
-
-                    <i
-                      className="bi bi-chevron-right"
-                      aria-hidden="true"
-                    />
-                  </Link>
-                )
-              )}
-            </div>
           </section>
         </div>
       </div>

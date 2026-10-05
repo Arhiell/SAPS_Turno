@@ -1,7 +1,16 @@
-﻿import { useState, type FormEvent } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+﻿import {
+  useState,
+  type FormEvent,
+} from 'react';
+
+import {
+  Link,
+  useNavigate,
+  useLocation,
+} from 'react-router-dom';
 
 import { useAuth } from '../../context/AuthContext';
+
 import { authError } from '../../utils/auth-errors';
 
 import AuthForm from './AuthForm';
@@ -9,43 +18,142 @@ import PasswordInput from './PasswordInput';
 import GoogleButton from './GoogleButton';
 
 const Login = () => {
-  const { login, isLoading } = useAuth();
+  const {
+    login,
+    isLoading,
+  } = useAuth();
 
-  const navigate = useNavigate();
-  const { state } = useLocation();
+  const navigate =
+    useNavigate();
 
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const { state } =
+    useLocation();
 
-  const busy = isLoading || submitting;
+  const [
+    identifier,
+    setIdentifier,
+  ] = useState('');
 
-  const handleSubmit = async (
-    event: FormEvent<HTMLFormElement>
-  ) => {
-    event.preventDefault();
+  const [
+    password,
+    setPassword,
+  ] = useState('');
 
-    if (busy) return;
+  const [
+    error,
+    setError,
+  ] = useState('');
 
-    setSubmitting(true);
-    setError('');
+  const [
+    submitting,
+    setSubmitting,
+  ] = useState(false);
 
-    try {
-      await login({
-        identifier,
-        password,
-      });
+  const busy =
+    isLoading ||
+    submitting;
 
-      navigate('/', {
-        replace: true,
-      });
-    } catch (cause) {
-      setError(authError(cause));
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const handleSubmit =
+    async (
+      event: FormEvent<HTMLFormElement>,
+    ) => {
+      event.preventDefault();
+
+      if (busy) {
+        return;
+      }
+
+      setSubmitting(true);
+      setError('');
+
+      try {
+        const result =
+          await login({
+            identifier,
+            password,
+          });
+
+        /**
+         * El login puede devolver dos resultados:
+         *
+         * 1. Login normal:
+         *    requiresEmailVerification = false
+         *
+         * 2. Login pendiente de verificación:
+         *    requiresEmailVerification = true
+         *
+         * Primero comprobamos que la propiedad exista
+         * y después comprobamos que su valor sea TRUE.
+         *
+         * Esto evita confundir:
+         *
+         * requiresEmailVerification: false
+         *
+         * con:
+         *
+         * requiresEmailVerification: true
+         */
+        if (
+          'requiresEmailVerification' in
+            result.data &&
+          result.data.requiresEmailVerification ===
+            true
+        ) {
+          navigate(
+            '/verificar-codigo',
+            {
+              replace: true,
+
+              state: {
+                email:
+                  result.data.email,
+
+                loginVerificationToken:
+                  result.data
+                    .loginVerificationToken,
+
+                verificationExpiresAt:
+                  result.data
+                    .verificationExpiresAt,
+
+                resendAvailableAt:
+                  result.data
+                    .resendAvailableAt,
+
+                fromLogin:
+                  true,
+              },
+            },
+          );
+
+          return;
+        }
+
+        /**
+         * Login normal.
+         *
+         * El AuthContext ya guardó:
+         * - Access Token
+         * - Refresh Token
+         * - Usuario
+         *
+         * Por lo tanto solamente navegamos
+         * al inicio del sistema.
+         */
+        navigate(
+          '/',
+          {
+            replace: true,
+          },
+        );
+      } catch (cause) {
+        setError(
+          authError(cause),
+        );
+      } finally {
+        setSubmitting(false);
+      }
+    };
 
   return (
     <AuthForm
@@ -68,7 +176,18 @@ const Login = () => {
         </>
       }
     >
-      {state?.passwordChanged === true && <div className="alert alert-success" role="status">Contraseña actualizada. Ingresá con tu nueva contraseña.</div>}
+      {state?.passwordChanged ===
+        true && (
+        <div
+          className="alert alert-success"
+          role="status"
+        >
+          Contraseña actualizada.
+          Ingresá con tu nueva
+          contraseña.
+        </div>
+      )}
+
       <form
         onSubmit={handleSubmit}
         aria-busy={busy}
@@ -92,7 +211,9 @@ const Login = () => {
               className="form-control"
               value={identifier}
               onChange={(event) =>
-                setIdentifier(event.target.value)
+                setIdentifier(
+                  event.target.value,
+                )
               }
               required
             />
@@ -105,7 +226,9 @@ const Login = () => {
             autoComplete="current-password"
             value={password}
             onChange={(event) =>
-              setPassword(event.target.value)
+              setPassword(
+                event.target.value,
+              )
             }
             required
           />
@@ -156,7 +279,9 @@ const Login = () => {
         o continuá con
       </div>
 
-      <GoogleButton disabled={busy} />
+      <GoogleButton
+        disabled={busy}
+      />
     </AuthForm>
   );
 };

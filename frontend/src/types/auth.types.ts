@@ -22,10 +22,28 @@ export interface LoginResponseData {
   refreshToken: string;
 }
 
+export interface LoginVerificationRequiredData {
+  requiresEmailVerification: true;
+  email: string;
+  loginVerificationToken: string;
+  verificationExpiresAt: string | null;
+  resendAvailableAt: string | null;
+}
+
+export type LoginResultData =
+  | LoginResponseData
+  | LoginVerificationRequiredData;
+
 export interface LoginResponse {
   success: boolean;
   message: string;
   data: LoginResponseData;
+}
+
+export interface LoginResultResponse {
+  success: boolean;
+  message: string;
+  data: LoginResultData;
 }
 
 export interface RefreshRequest {
@@ -53,13 +71,35 @@ export interface ApiErrorResponse {
   errors?: Record<string, string[]>;
 }
 
-export interface RegisterPatientInput { email: string; password: string }
-export interface PasswordRecoveryInput { email: string }
+export interface RegisterPatientInput {
+  email: string;
+  password: string;
+}
+
+export interface PasswordRecoveryInput {
+  email: string;
+}
+
 export type ResetPasswordInput =
-  | { token: string; newPassword: string }
-  | { email: string; code: string; newPassword: string };
-export type CompletePatientProfileInput = Omit<import('./patient.types').CreatePatientRequest, 'email'>;
+  | {
+      token: string;
+      newPassword: string;
+    }
+  | {
+      email: string;
+      code: string;
+      newPassword: string;
+    };
+
+export type CompletePatientProfileInput = Omit<
+  import('./patient.types').CreatePatientRequest,
+  'email'
+>;
+
 export interface ProfileResponse {
   success: boolean;
-  data: { user: AuthUser; patient: import('./patient.types').Patient | null };
+  data: {
+    user: AuthUser;
+    patient: import('./patient.types').Patient | null;
+  };
 }
