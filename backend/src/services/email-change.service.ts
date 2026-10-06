@@ -1,3 +1,4 @@
+import { duplicateMessages } from "../utils/duplicate-error.js";
 import {
   createEmailCode,
 } from './email-verification.service.js';
@@ -27,9 +28,8 @@ import {
   AppError,
 } from '../utils/app-error.js';
 
-// ========================================
+
 // SOLICITUD DE CAMBIO DE CORREO
-// ========================================
 
 // Solicita el cambio de correo del usuario autenticado.
 export const requestEmailChange = async (
@@ -99,7 +99,7 @@ export const requestEmailChange = async (
     )
   ) {
     throw new AppError(
-      'No se puede utilizar ese correo.',
+      duplicateMessages.email,
       409
     );
   }
@@ -122,9 +122,7 @@ export const requestEmailChange = async (
   };
 };
 
-// ========================================
 // CONFIRMACIÓN DEL CAMBIO DE CORREO
-// ========================================
 
 // Confirma el nuevo correo mediante el código recibido.
 export const confirmEmailChange = async (

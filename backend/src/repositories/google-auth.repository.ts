@@ -1,3 +1,4 @@
+import { literalLikePattern } from "../utils/like-pattern.js";
 import {
   supabase }
    from "../config/supabase.js";
@@ -47,7 +48,7 @@ export const findUserByGoogleEmail = async (email: string) => {
         id_rol
       `,
     )
-    .ilike("email", email)
+    .ilike("email", literalLikePattern(email))
     .limit(1)
     .maybeSingle();
 
@@ -105,7 +106,7 @@ export const createGoogleUser = async (data: CreateGoogleUserData) => {
     .single();
 
   if (error) {
-    throw new Error(`Error creando usuario Google: ${error.message}`);
+    throw error;
   }
 
   return user;

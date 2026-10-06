@@ -1,3 +1,4 @@
+import { duplicateMessages } from "../utils/duplicate-error.js";
 import {
   usernameUpdateSchema,
   passwordChangeSchema,
@@ -46,10 +47,8 @@ import type {
   AuthenticatedUser,
 } from '../types/auth.types.js';
 
-// ========================================
-// CAMBIO DE NOMBRE DE USUARIO
-// ========================================
 
+// CAMBIO DE NOMBRE DE USUARIO
 // Actualiza el nombre de usuario de la cuenta autenticada.
 export const changeOwnUsername = async (
   body: unknown,
@@ -83,7 +82,7 @@ export const changeOwnUsername = async (
       )
     ) {
       throw new AppError(
-        'Ese nombre de usuario ya está en uso.',
+        duplicateMessages.username,
         409
       );
     }
@@ -92,9 +91,7 @@ export const changeOwnUsername = async (
   }
 };
 
-// ========================================
 // CAMBIO DE CONTRASEÑA
-// ========================================
 
 // Cambia la contraseña de la cuenta autenticada.
 export const changeOwnPassword = async (

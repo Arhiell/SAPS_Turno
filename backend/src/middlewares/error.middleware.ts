@@ -8,6 +8,7 @@ import type {
 
 import { ZodError } from "zod";
 import { AppError } from "../utils/app-error.js";
+import { duplicateError } from "../utils/duplicate-error.js";
 
 type DatabaseError = {
   code?: string;
@@ -23,6 +24,7 @@ export const errorHandler = (
   _next: NextFunction
 ) => {
   console.error(error);
+  error = duplicateError(error) ?? error;
 
   // Errores controlados de la aplicación
   if (error instanceof AppError) {
@@ -78,14 +80,6 @@ export const errorHandler = (
     return res.status(400).json({
       success: false,
       message: "Los datos enviados no cumplen las reglas de la base de datos"
-    });
-  }
-
-  // Registro duplicado
-  if (databaseError.code === "23505") {
-    return res.status(409).json({
-      success: false,
-      message: "Ya existe un registro con esos datos"
     });
   }
 

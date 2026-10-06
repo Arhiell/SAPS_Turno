@@ -1,65 +1,149 @@
 import {
+  createProfesional,
+  deleteProfesional,
+  findProfesionalIdentity,
   getAllProfesionales,
   getProfesionalById,
-  createProfesional,
   updateProfesional,
-  deleteProfesional
-} from "../repositories/profesional.repository.js";
+} from '../repositories/profesional.repository.js';
 
 import {
-  findOrCreatePerson,
-  editPerson
-} from "./person.service.js";
+  AppError,
+} from '../utils/app-error.js';
+
+import {
+  duplicateMessages,
+} from '../utils/duplicate-error.js';
 
 import {
   createProfesionalSchema,
   updateProfesionalSchema,
   type CreateProfesionalInput,
-  type UpdateProfesionalInput
-} from "../validators/profesional.validator.js";
+  type UpdateProfesionalInput,
+} from '../validators/profesional.validator.js';
 
-export const getProfesionales = async (scope: string[] | null = null) => {
-  return await getAllProfesionales(scope);
+import {
+  editPerson,
+  findOrCreatePerson,
+} from './person.service.js';
+
+// Verifica que la matrícula no pertenezca a otro profesional.
+const ensureMatriculaAvailable = async (
+  matricula: string,
+  id?: string
+) => {
+  const existing =
+    await findProfesionalIdentity(
+      'matricula',
+      matricula
+    );
+
+  if (
+    existing &&
+    existing.id_profesional !== id
+  ) {
+    throw new AppError(
+      duplicateMessages.matricula,
+      409
+    );
+  }
 };
 
-export const getProfesional = async (id: string) => {
-  return await getProfesionalById(id);
+// Obtiene los profesionales según el alcance indicado.
+export const getProfesionales = async (
+  scope: string[] | null = null
+) => {
+  return await getAllProfesionales(
+    scope
+  );
 };
 
+// Obtiene un profesional por su identificador.
+export const getProfesional = async (
+  id: string
+) => {
+  return await getProfesionalById(
+    id
+  );
+};
+
+// Valida y registra un nuevo profesional.
 export const crearProfesional = async (
   input: CreateProfesionalInput
 ) => {
   const validated =
-    createProfesionalSchema.parse(input);
+    createProfesionalSchema.parse(
+      input
+    );
 
   const {
     matricula,
     ...personData
   } = validated;
 
-  const persona =
-    await findOrCreatePerson(personData);
-
-  return await createProfesional({
-    id_persona: persona.id_persona,
+  // Comprueba la matrícula antes de crear el profesional.
+  await ensureMatriculaAvailable(
     matricula
+  );
+
+  // Busca o crea la persona asociada.
+  const persona =
+    await findOrCreatePerson(
+      personData
+    );
+
+  // Evita asociar la misma persona a más de un profesional.
+  if (
+    await findProfesionalIdentity(
+      'id_persona',
+      persona.id_persona
+    )
+  ) {
+    throw new AppError(
+      duplicateMessages.dni,
+      409
+    );
+  }
+
+  // Crea el perfil profesional asociado a la persona.
+  return await createProfesional({
+    id_persona:
+      persona.id_persona,
+    matricula,
   });
 };
 
+// Valida y actualiza los datos de un profesional.
 export const actualizarProfesional = async (
   id: string,
   input: UpdateProfesionalInput
 ) => {
   const validated =
-    updateProfesionalSchema.parse(input);
+    updateProfesionalSchema.parse(
+      input
+    );
 
   const profesional =
-    await getProfesionalById(id);
+    await getProfesionalById(
+      id
+    );
 
   if (!profesional) {
     return null;
   }
 
+  // Verifica la disponibilidad de la nueva matrícula.
+  if (
+    validated.matricula !==
+    undefined
+  ) {
+    await ensureMatriculaAvailable(
+      validated.matricula,
+      id
+    );
+  }
+
+  // Separa los datos personales de los datos profesionales.
   const {
     matricula,
     activo,
@@ -68,9 +152,13 @@ export const actualizarProfesional = async (
     ...personData
   } = validated;
 
+  // Actualiza la persona solamente si existen cambios.
   if (
-    Object.values(personData).some(
-      (value) => value !== undefined
+    Object.values(
+      personData
+    ).some(
+      (value) =>
+        value !== undefined
     )
   ) {
     await editPerson(
@@ -79,6 +167,7 @@ export const actualizarProfesional = async (
     );
   }
 
+  // Construye únicamente los campos propios del profesional.
   const profesionalData: {
     matricula?: string;
     activo?: boolean;
@@ -86,34 +175,57 @@ export const actualizarProfesional = async (
     fecha_baja?: string | null;
   } = {};
 
-  if (matricula !== undefined) {
-    profesionalData.matricula = matricula;
+  if (
+    matricula !== undefined
+  ) {
+    profesionalData.matricula =
+      matricula;
   }
 
-  if (activo !== undefined) {
-    profesionalData.activo = activo;
+  if (
+    activo !== undefined
+  ) {
+    profesionalData.activo =
+      activo;
   }
 
-  if (fecha_alta !== undefined) {
-    profesionalData.fecha_alta = fecha_alta;
+  if (
+    fecha_alta !== undefined
+  ) {
+    profesionalData.fecha_alta =
+      fecha_alta;
   }
 
-  if (fecha_baja !== undefined) {
-    profesionalData.fecha_baja = fecha_baja;
+  if (
+    fecha_baja !== undefined
+  ) {
+    profesionalData.fecha_baja =
+      fecha_baja;
   }
 
-  if (Object.keys(profesionalData).length > 0) {
+  // Actualiza los datos profesionales si existen cambios.
+  if (
+    Object.keys(
+      profesionalData
+    ).length > 0
+  ) {
     return await updateProfesional(
       id,
       profesionalData
     );
   }
 
-  return await getProfesionalById(id);
+  // Devuelve el profesional actualizado cuando solo cambió la persona.
+  return await getProfesionalById(
+    id
+  );
 };
 
+// Elimina un profesional por su identificador.
 export const eliminarProfesional = async (
   id: string
 ) => {
-  return await deleteProfesional(id);
+  return await deleteProfesional(
+    id
+  );
 };

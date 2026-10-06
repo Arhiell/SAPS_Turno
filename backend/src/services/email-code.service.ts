@@ -1,3 +1,4 @@
+import { duplicateMessages } from "../utils/duplicate-error.js";
 import {
   hashEmailVerificationCode,
 } from './email-verification-token.service.js';
@@ -51,7 +52,7 @@ export const consumeVerificationCode = async (
   // El nuevo correo ya se encuentra ocupado.
   if (result === 'OCUPADO') {
     throw new AppError(
-      'No se puede utilizar ese correo.',
+      duplicateMessages.email,
       409
     );
   }

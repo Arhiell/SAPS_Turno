@@ -1,3 +1,4 @@
+import { duplicateMessages } from "../utils/duplicate-error.js";
 import { env } from "../config/env.js";
 
 import {
@@ -75,7 +76,7 @@ export const registerUser = async (
 
   if (existingEmail) {
     throw new AppError(
-      "El correo electrónico ya está registrado",
+      duplicateMessages.email,
       409,
     );
   }
@@ -85,7 +86,7 @@ export const registerUser = async (
 
   if (existingUsername) {
     throw new AppError(
-      "El nombre de usuario ya está registrado",
+      duplicateMessages.username,
       409,
     );
   }
@@ -132,10 +133,7 @@ export const registerUser = async (
   };
 };
 
-// ========================================
 // LOGIN
-// ========================================
-
 export const loginUser = async (
   input: LoginInput,
   metadata: {
@@ -178,10 +176,7 @@ export const loginUser = async (
   let failedAttempts =
     user.intentos_fallidos ?? 0;
 
-  // ========================================
   // BLOQUEO ACTIVO
-  // ========================================
-
   if (
     user.bloqueado_hasta &&
     new Date(user.bloqueado_hasta) > now
@@ -192,10 +187,7 @@ export const loginUser = async (
     );
   }
 
-  // ========================================
   // BLOQUEO VENCIDO
-  // ========================================
-
   if (
     user.bloqueado_hasta &&
     new Date(user.bloqueado_hasta) <= now
@@ -207,10 +199,7 @@ export const loginUser = async (
     failedAttempts = 0;
   }
 
-  // ========================================
   // COMPROBAR CONTRASEÑA
-  // ========================================
-
   const passwordIsValid =
     await verifyPassword(
       user.password_hash,
@@ -257,10 +246,7 @@ export const loginUser = async (
     );
   }
 
-  // ========================================
   // COMPROBAR ROL
-  // ========================================
-
   const role =
     await findRoleById(
       user.id_rol,
@@ -292,10 +278,7 @@ export const loginUser = async (
     rol: role.codigo,
   };
 
-  // ========================================
   // CORREO NO VERIFICADO
-  // ========================================
-
   if (!user.email_verificado) {
 
     /*
@@ -344,10 +327,7 @@ export const loginUser = async (
     };
   }
 
-  // ========================================
   // LOGIN NORMAL
-  // ========================================
-
   const accessToken =
     await generateAccessToken(
       authenticatedUser,

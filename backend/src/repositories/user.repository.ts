@@ -1,3 +1,4 @@
+import { literalLikePattern } from "../utils/like-pattern.js";
 import { supabase } from "../config/supabase.js";
 
 /**
@@ -81,7 +82,7 @@ export const findUserByEmail = async (
   const { data, error } = await supabase
     .from("usuarios")
     .select("id_usuario, email")
-    .ilike("email", email)
+    .ilike("email", literalLikePattern(email))
     .limit(1)
     .maybeSingle();
 
@@ -103,7 +104,7 @@ export const findUserByUsername = async (
   const { data, error } = await supabase
     .from("usuarios")
     .select("id_usuario, nombre_usuario")
-    .ilike("nombre_usuario", nombreUsuario)
+    .ilike("nombre_usuario", literalLikePattern(nombreUsuario))
     .limit(1)
     .maybeSingle();
 
@@ -172,9 +173,8 @@ export const createUser = async (
     .single();
 
   if (error) {
-    throw new Error(
-      `Error creando usuario: ${error.message}`
-    );
+    // Conserva code y constraint para el manejador de duplicados.
+    throw error;
   }
 
   return data;

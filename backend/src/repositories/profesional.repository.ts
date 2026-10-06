@@ -25,6 +25,14 @@ const profesionalSelect = `
   )
 `;
 
+// Incluye inactivos: sus identificadores también siguen siendo únicos.
+export const findProfesionalIdentity = async (field: "matricula" | "id_persona", value: string) => {
+  const { data, error } = await supabase.from("profesionales")
+    .select("id_profesional, id_persona").eq(field, value).maybeSingle();
+  if (error) throw error;
+  return data;
+};
+
 // GET todos
 export const getAllProfesionales = async (scope: string[] | null = null) => {
   let query = supabase
@@ -77,9 +85,8 @@ export const createProfesional = async (profesional: {
     .single();
 
   if (error) {
-    throw new Error(
-      `Error creando profesional: ${error.message}`
-    );
+    // Conserva el código UNIQUE para responder con un conflicto amigable.
+    throw error;
   }
 
   return data;
@@ -104,9 +111,8 @@ export const updateProfesional = async (
     .maybeSingle();
 
   if (error) {
-    throw new Error(
-      `Error actualizando profesional: ${error.message}`
-    );
+    // Conserva el código UNIQUE para responder con un conflicto amigable.
+    throw error;
   }
 
   return data;

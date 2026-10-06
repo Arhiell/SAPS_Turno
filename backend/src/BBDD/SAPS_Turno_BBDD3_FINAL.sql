@@ -146,6 +146,8 @@ CREATE INDEX ix_personas_nombre
     ON public.personas (lower(apellidos), lower(nombres));
 CREATE INDEX ix_personas_activo
     ON public.personas (activo);
+-- Un correo puede estar en la cuenta y su persona, pero no en dos personas.
+CREATE UNIQUE INDEX uq_personas_email_lower ON public.personas (lower(email));
 
 -- Cuentas propias de la aplicacion; no depende de auth.users de Supabase.
 CREATE TABLE public.usuarios (

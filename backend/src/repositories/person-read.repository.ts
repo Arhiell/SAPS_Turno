@@ -1,3 +1,4 @@
+import { literalLikePattern } from "../utils/like-pattern.js";
 import { supabase } from "../config/supabase.js";
 
 export const personSelect = `
@@ -21,7 +22,7 @@ export const findPersonById = async (idPerson: string) => {
 
 export const findPersonsByEmail = async (email: string) => {
   const { data, error } = await supabase.from("personas").select("id_persona")
-    .ilike("email", email.replace(/[%_]/g, "\\$&"));
+    .ilike("email", literalLikePattern(email));
   if (error) throw error;
   return data ?? [];
 };

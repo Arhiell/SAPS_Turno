@@ -1,3 +1,4 @@
+import { duplicateMessages } from "../utils/duplicate-error.js";
 import type {
   CreateAdminInput,
   CreatePatientAccountInput,
@@ -35,7 +36,7 @@ const ensureUserDoesNotExist = async (
 ) => {
   if (await findUserByEmail(email)) {
     throw new AppError(
-      "El email ya está registrado",
+      duplicateMessages.email,
       409
     );
   }
@@ -44,7 +45,7 @@ const ensureUserDoesNotExist = async (
     await findUserByUsername(username)
   ) {
     throw new AppError(
-      "El nombre de usuario ya está registrado",
+      duplicateMessages.username,
       409
     );
   }
