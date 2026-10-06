@@ -1,5 +1,6 @@
 import PasswordInput from './PasswordInput';
 import {
+  useEffect,
   useState,
   type FormEvent,
 } from 'react';
@@ -7,6 +8,8 @@ import {
 import {
   Link,
   Navigate,
+  useLocation,
+  useNavigate,
   useSearchParams,
 } from 'react-router-dom';
 
@@ -39,6 +42,8 @@ export default function PasswordRecoveryPage({
 }: PasswordRecoveryPageProps) {
   const [params] =
     useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   // Datos utilizados durante la recuperación.
   const [email, setEmail] =
@@ -79,6 +84,24 @@ export default function PasswordRecoveryPage({
 
   const token =
     params.get('token') ?? '';
+
+  // Sends the user back to login after a successful password reset.
+  useEffect(() => {
+    if (!completed) {
+      return;
+    }
+
+    const timeout = window.setTimeout(
+      () =>
+        navigate('/login', {
+          replace: true,
+        }),
+      1500
+    );
+
+    return () =>
+      window.clearTimeout(timeout);
+  }, [completed, navigate]);
 
   // Valida y procesa la recuperación o verificación.
   const submit = async (
@@ -184,10 +207,17 @@ export default function PasswordRecoveryPage({
 
         setPassword('');
         setConfirmation('');
+        setCode('');
+        setEmail('');
+        setRequested(false);
         setCompleted(true);
+        // Removes the recovery token from the address bar.
+        navigate(location.pathname, {
+          replace: true,
+        });
 
         setSuccess(
-          'Contraseña actualizada. Ya podés iniciar sesión.'
+          'Contraseña actualizada correctamente. Serás redirigido al inicio de sesión.'
         );
       } else if (mode === 'reset') {
         // Restablece la contraseña mediante token.
@@ -198,10 +228,16 @@ export default function PasswordRecoveryPage({
 
         setPassword('');
         setConfirmation('');
+        setCode('');
+        setEmail('');
         setCompleted(true);
+        // Removes the recovery token from the address bar.
+        navigate(location.pathname, {
+          replace: true,
+        });
 
         setSuccess(
-          'Contraseña actualizada. Ya podés iniciar sesión.'
+          'Contraseña actualizada correctamente. Serás redirigido al inicio de sesión.'
         );
       } else if (token) {
         // Verifica el correo mediante token.
