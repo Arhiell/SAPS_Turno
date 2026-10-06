@@ -5,6 +5,7 @@ import {
 } from 'react';
 
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
+import ValidatedInput from '../../components/ui/ValidatedInput';
 
 import {
   useAuth,
@@ -38,41 +39,52 @@ import {
 export default function AccountManagementPage() {
   const { user } = useAuth();
 
+  // Tipo de cuenta que se desea crear.
   const [kind, setKind] = useState<
     'admins' | 'professionals'
-  >(
-    'professionals'
-  );
+  >('professionals');
 
-  const [salitas, setSalitas] = useState<
-    Salita[]
-  >([]);
+  // Listados disponibles para asociar la cuenta.
+  const [salitas, setSalitas] =
+    useState<Salita[]>([]);
 
   const [professionals, setProfessionals] =
     useState<Professional[]>([]);
 
-  const [target, setTarget] = useState('');
+  // Identificador de la salita o profesional seleccionado.
+  const [target, setTarget] =
+    useState('');
 
-  const [email, setEmail] = useState('');
+  // Datos de acceso de la nueva cuenta.
+  const [email, setEmail] =
+    useState('');
 
-  const [username, setUsername] = useState('');
+  const [username, setUsername] =
+    useState('');
 
-  const [password, setPassword] = useState('');
+  const [password, setPassword] =
+    useState('');
 
   const [confirmation, setConfirmation] =
     useState('');
 
-  const [busy, setBusy] = useState(false);
+  // Estados de carga y mensajes.
+  const [busy, setBusy] =
+    useState(false);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
-  const [error, setError] = useState('');
+  const [error, setError] =
+    useState('');
 
-  const [success, setSuccess] = useState('');
+  const [success, setSuccess] =
+    useState('');
 
   const [confirmOpen, setConfirmOpen] =
     useState(false);
 
+  // Carga las salitas y profesionales activos.
   useEffect(() => {
     let active = true;
 
@@ -113,6 +125,7 @@ export default function AccountManagementPage() {
     };
   }, []);
 
+  // Valida y crea la nueva cuenta de acceso.
   const submit = async (
     event?: FormEvent
   ) => {
@@ -122,10 +135,11 @@ export default function AccountManagementPage() {
       return;
     }
 
-    const validation = passwordError(
-      password,
-      confirmation
-    );
+    const validation =
+      passwordError(
+        password,
+        confirmation
+      );
 
     setError(validation);
     setSuccess('');
@@ -140,9 +154,13 @@ export default function AccountManagementPage() {
       await createInternalAccount(
         kind,
         {
-          nombre_usuario: username,
+          nombre_usuario:
+            username,
+
           email,
+
           password,
+
           [
             kind === 'admins'
               ? 'id_salita'
@@ -218,7 +236,8 @@ export default function AccountManagementPage() {
         >
           <fieldset
             disabled={
-              busy || loading
+              busy ||
+              loading
             }
           >
             <label className="form-label w-100">
@@ -227,9 +246,9 @@ export default function AccountManagementPage() {
               <select
                 className="form-select"
                 value={kind}
-                onChange={(e) => {
+                onChange={(event) => {
                   setKind(
-                    e.target.value ===
+                    event.target.value ===
                       'admins'
                       ? 'admins'
                       : 'professionals'
@@ -261,9 +280,9 @@ export default function AccountManagementPage() {
                 className="form-select"
                 required
                 value={target}
-                onChange={(e) =>
+                onChange={(event) =>
                   setTarget(
-                    e.target.value
+                    event.target.value
                   )
                 }
               >
@@ -272,33 +291,47 @@ export default function AccountManagementPage() {
                 </option>
 
                 {kind === 'admins'
-                  ? salitas.map((s) => (
-                      <option
-                        key={s.id_salita}
-                        value={s.id_salita}
-                      >
-                        {s.nombre}
-                      </option>
-                    ))
-                  : professionals.map(
-                      (p) => (
+                  ? salitas.map(
+                      (salita) => (
                         <option
                           key={
-                            p.id_profesional
+                            salita.id_salita
                           }
                           value={
-                            p.id_profesional
+                            salita.id_salita
+                          }
+                        >
+                          {salita.nombre}
+                        </option>
+                      )
+                    )
+                  : professionals.map(
+                      (professional) => (
+                        <option
+                          key={
+                            professional
+                              .id_profesional
+                          }
+                          value={
+                            professional
+                              .id_profesional
                           }
                         >
                           {
-                            p.persona
+                            professional
+                              .persona
                               .apellidos
                           }{' '}
                           {
-                            p.persona
+                            professional
+                              .persona
                               .nombres
                           }{' '}
-                          — {p.matricula}
+                          —{' '}
+                          {
+                            professional
+                              .matricula
+                          }
                         </option>
                       )
                     )}
@@ -308,16 +341,17 @@ export default function AccountManagementPage() {
             <label className="form-label w-100">
               Usuario
 
-              <input
+              <ValidatedInput
+                field="nombre_usuario"
                 className="form-control"
                 required
                 minLength={3}
                 maxLength={60}
                 autoComplete="off"
                 value={username}
-                onChange={(e) =>
+                onChange={(event) =>
                   setUsername(
-                    e.target.value
+                    event.target.value
                   )
                 }
               />
@@ -326,14 +360,14 @@ export default function AccountManagementPage() {
             <label className="form-label w-100">
               Correo electrónico
 
-              <input
+              <ValidatedInput
                 className="form-control"
                 required
                 type="email"
                 value={email}
-                onChange={(e) =>
+                onChange={(event) =>
                   setEmail(
-                    e.target.value
+                    event.target.value
                   )
                 }
               />
@@ -350,9 +384,9 @@ export default function AccountManagementPage() {
                 minLength={8}
                 maxLength={12}
                 value={password}
-                onChange={(e) =>
+                onChange={(event) =>
                   setPassword(
-                    e.target.value
+                    event.target.value
                   )
                 }
               />
@@ -375,9 +409,9 @@ export default function AccountManagementPage() {
                 minLength={8}
                 maxLength={12}
                 value={confirmation}
-                onChange={(e) =>
+                onChange={(event) =>
                   setConfirmation(
-                    e.target.value
+                    event.target.value
                   )
                 }
               />

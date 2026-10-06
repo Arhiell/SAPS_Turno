@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+
+import ValidatedInput from '../ui/ValidatedInput';
 import ConfirmationModal from '../ui/ConfirmationModal';
-import { authError } from '../../utils/auth-errors';
 
 import { getBarrios } from '../../services/barrios.service';
 
-import type { Barrio } from '../../types/barrio.types';
+import { authError } from '../../utils/auth-errors';
+
+import type {
+  Barrio,
+} from '../../types/barrio.types';
 
 import type {
   CreateSalitaRequest,
@@ -19,7 +24,7 @@ interface SalitaFormProps {
   loading?: boolean;
   showActive?: boolean;
   onSubmit: (
-    data: CreateSalitaRequest,
+    data: CreateSalitaRequest
   ) => Promise<void>;
   onCancel: () => void;
 }
@@ -35,14 +40,33 @@ const SalitaForm = ({
   const [barrios, setBarrios] =
     useState<Barrio[]>([]);
 
-  const [loadingBarrios, setLoadingBarrios] =
-    useState(true);
+  const [
+    loadingBarrios,
+    setLoadingBarrios,
+  ] = useState(true);
 
-  const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [barriosRevision, setBarriosRevision] = useState(0);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingData, setPendingData] = useState<CreateSalitaRequest | null>(null);
+  const [error, setError] =
+    useState('');
+
+  const [saving, setSaving] =
+    useState(false);
+
+  const [
+    barriosRevision,
+    setBarriosRevision,
+  ] = useState(0);
+
+  const [
+    confirmOpen,
+    setConfirmOpen,
+  ] = useState(false);
+
+  const [
+    pendingData,
+    setPendingData,
+  ] = useState<CreateSalitaRequest | null>(
+    null
+  );
 
   const [form, setForm] =
     useState<CreateSalitaRequest>({
@@ -80,6 +104,7 @@ const SalitaForm = ({
         initialData?.activo ?? true,
     });
 
+  // Carga los barrios activos disponibles.
   useEffect(() => {
     const loadBarrios = async () => {
       try {
@@ -91,14 +116,15 @@ const SalitaForm = ({
 
         setBarrios(
           response.data.barrios.filter(
-            (barrio) => barrio.activo,
-          ),
+            (barrio) =>
+              barrio.activo
+          )
         );
       } catch (error) {
         console.error(error);
 
         setError(
-          'No se pudieron cargar los barrios.',
+          'No se pudieron cargar los barrios.'
         );
       } finally {
         setLoadingBarrios(false);
@@ -108,13 +134,17 @@ const SalitaForm = ({
     void loadBarrios();
   }, [barriosRevision]);
 
+  // Actualiza los campos del formulario.
   const handleChange = (
     event: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement
-    >,
+      HTMLInputElement |
+      HTMLSelectElement
+    >
   ) => {
-    const { name, value } =
-      event.target;
+    const {
+      name,
+      value,
+    } = event.target;
 
     if (
       name === 'latitud' ||
@@ -137,16 +167,26 @@ const SalitaForm = ({
     }));
   };
 
+  // Valida los datos antes de solicitar confirmación.
   const handleSubmit = async (
-    event: React.FormEvent,
+    event: React.FormEvent
   ) => {
     event.preventDefault();
-    if (saving || loading || loadingBarrios) return;
+
+    if (
+      saving ||
+      loading ||
+      loadingBarrios
+    ) {
+      return;
+    }
 
     setError('');
 
     const codigo =
-      form.codigo.trim().toUpperCase();
+      form.codigo
+        .trim()
+        .toUpperCase();
 
     const nombre =
       form.nombre.trim();
@@ -156,15 +196,19 @@ const SalitaForm = ({
 
     if (!codigo) {
       setError(
-        'El código de la salita es obligatorio.',
+        'El código de la salita es obligatorio.'
       );
 
       return;
     }
 
-    if (!/^[A-Z0-9_-]+$/.test(codigo)) {
+    if (
+      !/^[A-Z0-9_-]+$/.test(
+        codigo
+      )
+    ) {
       setError(
-        'El código solo puede contener letras mayúsculas, números, guiones y guiones bajos.',
+        'El código solo puede contener letras mayúsculas, números, guiones y guiones bajos.'
       );
 
       return;
@@ -172,7 +216,7 @@ const SalitaForm = ({
 
     if (!nombre) {
       setError(
-        'El nombre de la salita es obligatorio.',
+        'El nombre de la salita es obligatorio.'
       );
 
       return;
@@ -180,7 +224,7 @@ const SalitaForm = ({
 
     if (!direccion) {
       setError(
-        'La dirección es obligatoria.',
+        'La dirección es obligatoria.'
       );
 
       return;
@@ -188,14 +232,20 @@ const SalitaForm = ({
 
     if (!form.id_barrio) {
       setError(
-        'Debe seleccionar un barrio.',
+        'Debe seleccionar un barrio.'
       );
 
       return;
     }
 
-    if (Boolean(form.horario_apertura) !== Boolean(form.horario_cierre)) {
-      setError('Completá ambos horarios de apertura y cierre, o dejá ambos vacíos.');
+    if (
+      Boolean(form.horario_apertura) !==
+      Boolean(form.horario_cierre)
+    ) {
+      setError(
+        'Completá ambos horarios de apertura y cierre, o dejá ambos vacíos.'
+      );
+
       return;
     }
 
@@ -206,7 +256,7 @@ const SalitaForm = ({
         form.horario_cierre
     ) {
       setError(
-        'El horario de apertura debe ser anterior al horario de cierre.',
+        'El horario de apertura debe ser anterior al horario de cierre.'
       );
 
       return;
@@ -220,45 +270,67 @@ const SalitaForm = ({
       direccion,
 
       telefono:
-        form.telefono?.trim() || null,
+        form.telefono?.trim() ||
+        null,
 
       email:
-        form.email?.trim() || null,
+        form.email?.trim() ||
+        null,
 
       latitud:
         form.latitud === null ||
         form.latitud === undefined
           ? null
-          : Number(form.latitud),
+          : Number(
+              form.latitud
+            ),
 
       longitud:
         form.longitud === null ||
         form.longitud === undefined
           ? null
-          : Number(form.longitud),
+          : Number(
+              form.longitud
+            ),
 
       horario_apertura:
-        form.horario_apertura || null,
+        form.horario_apertura ||
+        null,
 
       horario_cierre:
-        form.horario_cierre || null,
+        form.horario_cierre ||
+        null,
     };
 
     setPendingData(data);
     setConfirmOpen(true);
   };
 
+  // Confirma y envía los datos de la salita.
   const confirmSubmit = async () => {
-    if (!pendingData || saving || loading) return;
+    if (
+      !pendingData ||
+      saving ||
+      loading
+    ) {
+      return;
+    }
 
     try {
       setSaving(true);
-      await onSubmit(pendingData);
+
+      await onSubmit(
+        pendingData
+      );
+
       setPendingData(null);
       setConfirmOpen(false);
     } catch (error) {
       console.error(error);
-      setError(authError(error));
+
+      setError(
+        authError(error)
+      );
     } finally {
       setSaving(false);
     }
@@ -268,29 +340,61 @@ const SalitaForm = ({
     <div className="salitas-page">
       <ConfirmationModal
         open={confirmOpen}
-        title={initialData ? 'Guardar cambios de la salita' : 'Crear salita'}
-        message={initialData ? '¿Querés guardar los cambios de esta salita?' : '¿Querés crear esta salita?'}
+        title={
+          initialData
+            ? 'Guardar cambios de la salita'
+            : 'Crear salita'
+        }
+        message={
+          initialData
+            ? '¿Querés guardar los cambios de esta salita?'
+            : '¿Querés crear esta salita?'
+        }
         detail={
           <>
-            <div className="fw-semibold">{pendingData?.nombre || form.nombre}</div>
+            <div className="fw-semibold">
+              {pendingData?.nombre ||
+                form.nombre}
+            </div>
+
             <div className="text-muted small mt-1">
-              Código: {pendingData?.codigo || form.codigo} · {barrios.find((barrio) => barrio.id_barrio === (pendingData?.id_barrio || form.id_barrio))?.nombre || 'Barrio sin nombre'}
+              Código:{' '}
+              {pendingData?.codigo ||
+                form.codigo}
+              {' · '}
+              {barrios.find(
+                (barrio) =>
+                  barrio.id_barrio ===
+                  (
+                    pendingData?.id_barrio ||
+                    form.id_barrio
+                  )
+              )?.nombre ||
+                'Barrio sin nombre'}
             </div>
           </>
         }
-        confirmText={initialData ? 'Guardar cambios' : 'Crear salita'}
+        confirmText={
+          initialData
+            ? 'Guardar cambios'
+            : 'Crear salita'
+        }
         variant="primary"
         icon="bi-hospital"
-        loading={saving || loading}
+        loading={
+          saving ||
+          loading
+        }
         onClose={() => {
           setConfirmOpen(false);
           setPendingData(null);
         }}
-        onConfirm={() => void confirmSubmit()}
+        onConfirm={() =>
+          void confirmSubmit()
+        }
       />
 
       <form onSubmit={handleSubmit}>
-
         {error && (
           <div
             className="alert alert-danger mb-4"
@@ -301,11 +405,8 @@ const SalitaForm = ({
         )}
 
         <div className="row g-4">
-
-          {/* DATOS PRINCIPALES */}
           <div className="col-12">
             <section className="salitas-section">
-
               <div className="salitas-section-header">
                 <h2>
                   Datos de la salita
@@ -318,9 +419,7 @@ const SalitaForm = ({
               </div>
 
               <div className="salitas-section-body">
-
                 <div className="row salitas-form-grid">
-
                   <div className="col-md-4">
                     <label
                       htmlFor="codigo"
@@ -336,7 +435,9 @@ const SalitaForm = ({
                       className="form-control"
                       placeholder="SAPS-01"
                       value={form.codigo}
-                      onChange={handleChange}
+                      onChange={
+                        handleChange
+                      }
                       maxLength={30}
                       required
                     />
@@ -361,7 +462,9 @@ const SalitaForm = ({
                       className="form-control"
                       placeholder="SAPS Barrio Norte"
                       value={form.nombre}
-                      onChange={handleChange}
+                      onChange={
+                        handleChange
+                      }
                       maxLength={150}
                       required
                     />
@@ -375,14 +478,19 @@ const SalitaForm = ({
                       Dirección *
                     </label>
 
-                    <input
+                    <ValidatedInput
+                      field="direccion"
                       id="direccion"
                       name="direccion"
                       type="text"
                       className="form-control"
                       placeholder="Av. Principal 123"
-                      value={form.direccion}
-                      onChange={handleChange}
+                      value={
+                        form.direccion
+                      }
+                      onChange={
+                        handleChange
+                      }
                       maxLength={250}
                       required
                     />
@@ -400,9 +508,15 @@ const SalitaForm = ({
                       id="id_barrio"
                       name="id_barrio"
                       className="form-select"
-                      value={form.id_barrio}
-                      onChange={handleChange}
-                      disabled={loadingBarrios}
+                      value={
+                        form.id_barrio
+                      }
+                      onChange={
+                        handleChange
+                      }
+                      disabled={
+                        loadingBarrios
+                      }
                       required
                     >
                       <option value="">
@@ -421,16 +535,51 @@ const SalitaForm = ({
                               barrio.id_barrio
                             }
                           >
-                            {barrio.nombre}
+                            {
+                              barrio.nombre
+                            }
                           </option>
-                        ),
+                        )
                       )}
                     </select>
+
                     <div className="d-flex flex-wrap gap-2 mt-2">
-                      <Link to="/configuracion/barrios" target="_blank" rel="noopener noreferrer">Administrar barrios (otra pestaña)</Link>
-                      <button type="button" className="btn btn-sm btn-outline-success" disabled={loadingBarrios || saving} onClick={() => setBarriosRevision((v) => v + 1)}>Actualizar listado</button>
+                      <Link
+                        to="/configuracion/barrios"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Administrar barrios
+                        (otra pestaña)
+                      </Link>
+
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-success"
+                        disabled={
+                          loadingBarrios ||
+                          saving
+                        }
+                        onClick={() =>
+                          setBarriosRevision(
+                            (value) =>
+                              value + 1
+                          )
+                        }
+                      >
+                        Actualizar listado
+                      </button>
                     </div>
-                    {!loadingBarrios && !barrios.length && <p className="small text-muted mt-2">Primero cargá una zona y un barrio activo en Configuración.</p>}
+
+                    {!loadingBarrios &&
+                      !barrios.length && (
+                        <p className="small text-muted mt-2">
+                          Primero cargá una
+                          zona y un barrio
+                          activo en
+                          Configuración.
+                        </p>
+                      )}
                   </div>
 
                   <div className="col-md-6">
@@ -441,16 +590,20 @@ const SalitaForm = ({
                       Teléfono
                     </label>
 
-                    <input
+                    <ValidatedInput
+                      field="telefono"
                       id="telefono"
                       name="telefono"
                       type="text"
                       className="form-control"
                       placeholder="3794..."
                       value={
-                        form.telefono ?? ''
+                        form.telefono ??
+                        ''
                       }
-                      onChange={handleChange}
+                      onChange={
+                        handleChange
+                      }
                       maxLength={30}
                     />
                   </div>
@@ -463,7 +616,8 @@ const SalitaForm = ({
                       Email
                     </label>
 
-                    <input
+                    <ValidatedInput
+                      field="email"
                       id="email"
                       name="email"
                       type="email"
@@ -472,20 +626,19 @@ const SalitaForm = ({
                       value={
                         form.email ?? ''
                       }
-                      onChange={handleChange}
+                      onChange={
+                        handleChange
+                      }
                       maxLength={254}
                     />
                   </div>
-
                 </div>
               </div>
             </section>
           </div>
 
-          {/* HORARIO */}
           <div className="col-lg-6">
             <section className="salitas-section h-100">
-
               <div className="salitas-section-header">
                 <h2>
                   Horario de atención
@@ -498,9 +651,7 @@ const SalitaForm = ({
               </div>
 
               <div className="salitas-section-body">
-
                 <div className="row g-3">
-
                   <div className="col-md-6">
                     <label
                       htmlFor="horario_apertura"
@@ -509,7 +660,8 @@ const SalitaForm = ({
                       Apertura
                     </label>
 
-                    <input
+                    <ValidatedInput
+                      field="horario_apertura"
                       id="horario_apertura"
                       name="horario_apertura"
                       type="time"
@@ -518,7 +670,9 @@ const SalitaForm = ({
                         form.horario_apertura ??
                         ''
                       }
-                      onChange={handleChange}
+                      onChange={
+                        handleChange
+                      }
                     />
                   </div>
 
@@ -530,7 +684,8 @@ const SalitaForm = ({
                       Cierre
                     </label>
 
-                    <input
+                    <ValidatedInput
+                      field="horario_cierre"
                       id="horario_cierre"
                       name="horario_cierre"
                       type="time"
@@ -539,19 +694,18 @@ const SalitaForm = ({
                         form.horario_cierre ??
                         ''
                       }
-                      onChange={handleChange}
+                      onChange={
+                        handleChange
+                      }
                     />
                   </div>
-
                 </div>
               </div>
             </section>
           </div>
 
-          {/* UBICACION */}
           <div className="col-lg-6">
             <section className="salitas-section h-100">
-
               <div className="salitas-section-header">
                 <h2>
                   Ubicación
@@ -564,9 +718,7 @@ const SalitaForm = ({
               </div>
 
               <div className="salitas-section-body">
-
                 <div className="row g-3">
-
                   <div className="col-md-6">
                     <label
                       htmlFor="latitud"
@@ -575,7 +727,8 @@ const SalitaForm = ({
                       Latitud
                     </label>
 
-                    <input
+                    <ValidatedInput
+                      field="latitud"
                       id="latitud"
                       name="latitud"
                       type="number"
@@ -587,7 +740,9 @@ const SalitaForm = ({
                       value={
                         form.latitud ?? ''
                       }
-                      onChange={handleChange}
+                      onChange={
+                        handleChange
+                      }
                     />
                   </div>
 
@@ -599,7 +754,8 @@ const SalitaForm = ({
                       Longitud
                     </label>
 
-                    <input
+                    <ValidatedInput
+                      field="longitud"
                       id="longitud"
                       name="longitud"
                       type="number"
@@ -611,21 +767,20 @@ const SalitaForm = ({
                       value={
                         form.longitud ?? ''
                       }
-                      onChange={handleChange}
+                      onChange={
+                        handleChange
+                      }
                     />
                   </div>
-
                 </div>
               </div>
             </section>
           </div>
 
-          {/* ESTADO */}
           {showActive && (
             <div className="col-12">
               <section className="salitas-section">
                 <div className="salitas-section-body py-3">
-
                   <div className="form-check form-switch">
                     <input
                       id="activo"
@@ -633,16 +788,22 @@ const SalitaForm = ({
                       type="checkbox"
                       className="form-check-input"
                       checked={
-                        form.activo !== false
+                        form.activo !==
+                        false
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event
+                      ) =>
                         setForm(
-                          (current) => ({
+                          (
+                            current
+                          ) => ({
                             ...current,
                             activo:
-                              event.target
+                              event
+                                .target
                                 .checked,
-                          }),
+                          })
                         )
                       }
                     />
@@ -654,21 +815,21 @@ const SalitaForm = ({
                       Salita activa
                     </label>
                   </div>
-
                 </div>
               </section>
             </div>
           )}
-
         </div>
 
         <div className="salitas-form-actions">
-
           <button
             type="button"
             className="btn btn-outline-secondary"
             onClick={onCancel}
-            disabled={loading || saving}
+            disabled={
+              loading ||
+              saving
+            }
           >
             Cancelar
           </button>
@@ -688,20 +849,16 @@ const SalitaForm = ({
                   className="spinner-border spinner-border-sm me-2"
                   role="status"
                 />
-
                 Guardando...
               </>
             ) : (
               <>
                 <i className="bi bi-check-lg me-2" />
-
                 {submitLabel}
               </>
             )}
           </button>
-
         </div>
-
       </form>
     </div>
   );

@@ -1,3 +1,6 @@
+import ValidatedInput from '../../components/ui/ValidatedInput';
+import { personFieldsError } from '../../utils/field-validation';
+import { authError } from '../../utils/auth-errors';
 import { useEffect, useState } from 'react';
 import {
   useNavigate,
@@ -115,6 +118,8 @@ const PacienteDetallePage = () => {
   };
 
   const handleSave = async () => {
+    const validationError = personFieldsError(form);
+    if (validationError) { setError(validationError); return; }
     if (!id) {
       return;
     }
@@ -139,9 +144,7 @@ const PacienteDetallePage = () => {
     } catch (error) {
       console.error(error);
 
-      setError(
-        'No se pudieron actualizar los datos del paciente.',
-      );
+      setError(authError(error));
     } finally {
       setSaving(false);
     }
@@ -424,7 +427,7 @@ const PacienteDetallePage = () => {
                 Nombres
               </label>
 
-              <input
+              <ValidatedInput field="nombres"
                 type="text"
                 className="form-control"
                 disabled={!editing}
@@ -443,7 +446,7 @@ const PacienteDetallePage = () => {
                 Apellidos
               </label>
 
-              <input
+              <ValidatedInput field="apellidos"
                 type="text"
                 className="form-control"
                 disabled={!editing}
@@ -462,7 +465,7 @@ const PacienteDetallePage = () => {
                 Fecha de nacimiento
               </label>
 
-              <input
+              <ValidatedInput field="fecha_nacimiento"
                 type="date"
                 className="form-control"
                 disabled={!editing}
@@ -523,7 +526,7 @@ const PacienteDetallePage = () => {
                 Teléfono
               </label>
 
-              <input
+              <ValidatedInput field="telefono"
                 type="text"
                 className="form-control"
                 disabled={!editing}
@@ -542,7 +545,7 @@ const PacienteDetallePage = () => {
                 Email
               </label>
 
-              <input
+              <ValidatedInput field="email"
                 type="email"
                 className="form-control"
                 disabled={!editing}
@@ -561,7 +564,7 @@ const PacienteDetallePage = () => {
                 Dirección
               </label>
 
-              <input
+              <ValidatedInput field="direccion"
                 type="text"
                 className="form-control"
                 disabled={!editing}
@@ -713,7 +716,7 @@ const PacienteDetallePage = () => {
                 Nombre
               </label>
 
-              <input
+              <ValidatedInput field="contacto_emergencia_nombre"
                 type="text"
                 className="form-control"
                 disabled={!editing}
@@ -735,7 +738,7 @@ const PacienteDetallePage = () => {
                 Teléfono
               </label>
 
-              <input
+              <ValidatedInput field="contacto_emergencia_telefono"
                 type="text"
                 className="form-control"
                 disabled={!editing}
@@ -771,7 +774,11 @@ const PacienteDetallePage = () => {
           <button
             type="button"
             className="btn btn-saps"
-            onClick={() => setSaveConfirmOpen(true)}
+            onClick={() => {
+              const validationError = personFieldsError(form);
+              setError(validationError);
+              if (!validationError) setSaveConfirmOpen(true);
+            }}
             disabled={saving}
           >
             {saving ? (

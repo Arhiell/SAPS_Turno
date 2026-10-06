@@ -1,49 +1,73 @@
-import { z } from "zod";
+import { z } from 'zod';
 
-/**
- * Valida los datos necesarios para registrar
- * una cuenta nueva.
- */
+import {
+  usernamePattern,
+  fieldMessages,
+} from './field-rules.js';
+
+// Valida los datos necesarios para registrar una cuenta nueva.
 export const registerSchema = z.object({
   nombre_usuario: z
     .string()
     .trim()
-    .min(3, "El nombre de usuario debe tener al menos 3 caracteres")
-    .max(60, "El nombre de usuario no puede superar 60 caracteres")
+    .min(
+      3,
+      'El nombre de usuario debe tener al menos 3 caracteres'
+    )
+    .max(
+      60,
+      'El nombre de usuario no puede superar 60 caracteres'
+    )
     .regex(
-      /^[a-zA-Z0-9._-]+$/,
-      "El usuario solo puede contener letras, números, punto, guion y guion bajo"
-    ).optional(),
+      usernamePattern,
+      fieldMessages.username
+    )
+    .optional(),
 
   email: z
     .string()
     .trim()
-    .email("El correo electrónico no es válido")
-    .max(254, "El correo electrónico es demasiado largo"),
+    .email(
+      'El correo electrónico no es válido'
+    )
+    .max(
+      254,
+      'El correo electrónico es demasiado largo'
+    ),
 
   password: z
     .string()
-    .min(8, "La contraseña debe tener al menos 8 caracteres")
-    .max(128, "La contraseña es demasiado larga")
-    .regex(/[A-Z]/, "Debe contener al menos una letra mayúscula")
-    .regex(/[a-z]/, "Debe contener al menos una letra minúscula")
-    .regex(/[0-9]/, "Debe contener al menos un número")
+    .min(
+      8,
+      'La contraseña debe tener al menos 8 caracteres'
+    )
+    .max(
+      128,
+      'La contraseña es demasiado larga'
+    )
+    .regex(
+      /[A-Z]/,
+      'Debe contener al menos una letra mayúscula'
+    )
+    .regex(
+      /[a-z]/,
+      'Debe contener al menos una letra minúscula'
+    )
+    .regex(
+      /[0-9]/,
+      'Debe contener al menos un número'
+    )
     .regex(
       /[^A-Za-z0-9]/,
-      "Debe contener al menos un carácter especial"
-    )
+      'Debe contener al menos un carácter especial'
+    ),
 });
 
-/**
- * TypeScript obtiene automáticamente el tipo
- * a partir del esquema de Zod.
- */
-export type RegisterInput = 
+// Obtiene el tipo a partir del esquema de registro.
+export type RegisterInput =
   z.infer<typeof registerSchema>;
 
-/**
- * Login mediante email o nombre de usuario.
- */
+// Valida el inicio de sesión mediante email o nombre de usuario.
 export const loginSchema = z
   .object({
     identifier: z
@@ -53,23 +77,21 @@ export const loginSchema = z
 
     password: z
       .string()
-      .min(1)
+      .min(1),
   })
   .strict();
 
 export type LoginInput =
   z.infer<typeof loginSchema>;
 
-// Refresh y logout reciben el refresh token actual.
+// Valida el refresh token utilizado para renovar o cerrar sesión.
 export const refreshTokenSchema = z
   .object({
     refreshToken: z
       .string()
       .min(
         64,
-        "Refresh token inválido"
-      )
+        'Refresh token inválido'
+      ),
   })
   .strict();
-
-

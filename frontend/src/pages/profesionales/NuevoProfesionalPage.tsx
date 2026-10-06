@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { authError } from '../../utils/auth-errors';
 import { useNavigate } from 'react-router-dom';
 
 import ProfesionalForm, {
@@ -51,9 +52,7 @@ const NuevoProfesionalPage = () => {
     } catch (error) {
       console.error(error);
 
-      setError(
-        'No se pudo registrar el profesional. Verifique los datos e intente nuevamente.',
-      );
+      setError(authError(error));
     } finally {
       setSaving(false);
     }

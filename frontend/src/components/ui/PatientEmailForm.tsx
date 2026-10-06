@@ -1,3 +1,4 @@
+import ValidatedInput from './ValidatedInput';
 import {
   useState,
   type FormEvent,
@@ -41,9 +42,7 @@ export default function PatientEmailForm() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
-  // ========================================
   // ENVÍO DEL CÓDIGO
-  // ========================================
 
   const send = async () => {
     setBusy(true);
@@ -71,10 +70,7 @@ export default function PatientEmailForm() {
     }
   };
 
-  // ========================================
   // CONFIRMACIÓN DEL CAMBIO
-  // ========================================
-
   const submit = async (
     event: FormEvent
   ) => {
@@ -123,10 +119,7 @@ export default function PatientEmailForm() {
     }
   };
 
-  // ========================================
   // INTERFAZ
-  // ========================================
-
   return (
     <section className="patient-section mt-4">
       <h2 className="h5">
@@ -186,7 +179,7 @@ export default function PatientEmailForm() {
             <label className="form-label w-100">
               Nuevo correo
 
-              <input
+              <ValidatedInput
                 type="email"
                 className="form-control mt-1"
                 required

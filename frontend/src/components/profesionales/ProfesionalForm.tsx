@@ -1,4 +1,9 @@
-import { useEffect, useState } from 'react';
+import ValidatedInput from '../ui/ValidatedInput';
+
+import {
+  useEffect,
+  useState,
+} from 'react';
 
 import type {
   Professional,
@@ -24,11 +29,12 @@ interface ProfesionalFormProps {
   professional?: Professional | null;
   loading?: boolean;
   onSubmit: (
-    data: ProfessionalFormData,
+    data: ProfessionalFormData
   ) => Promise<void>;
   onCancel: () => void;
 }
 
+// Valores iniciales del formulario.
 const emptyForm: ProfessionalFormData = {
   dni: '',
   nombres: '',
@@ -52,16 +58,18 @@ const ProfesionalForm = ({
 }: ProfesionalFormProps) => {
   const [form, setForm] =
     useState<ProfessionalFormData>(
-      emptyForm,
+      emptyForm
     );
 
+  // Carga los datos cuando se edita un profesional.
   useEffect(() => {
     if (!professional) {
       setForm(emptyForm);
       return;
     }
 
-    const persona = professional.persona;
+    const persona =
+      professional.persona;
 
     setForm({
       dni: persona.dni,
@@ -69,21 +77,29 @@ const ProfesionalForm = ({
       apellidos: persona.apellidos,
       fecha_nacimiento:
         persona.fecha_nacimiento ?? '',
-      sexo: persona.sexo ?? 'NO_INFORMA',
-      telefono: persona.telefono ?? '',
-      email: persona.email ?? '',
-      direccion: persona.direccion ?? '',
-      localidad: persona.localidad ?? '',
-      provincia: persona.provincia ?? '',
+      sexo:
+        persona.sexo ?? 'NO_INFORMA',
+      telefono:
+        persona.telefono ?? '',
+      email:
+        persona.email ?? '',
+      direccion:
+        persona.direccion ?? '',
+      localidad:
+        persona.localidad ?? '',
+      provincia:
+        persona.provincia ?? '',
       codigo_postal:
         persona.codigo_postal ?? '',
-      matricula: professional.matricula,
+      matricula:
+        professional.matricula,
     });
   }, [professional]);
 
+  // Actualiza un campo del formulario.
   const handleChange = (
     field: keyof ProfessionalFormData,
-    value: string,
+    value: string
   ) => {
     setForm((current) => ({
       ...current,
@@ -91,8 +107,9 @@ const ProfesionalForm = ({
     }));
   };
 
+  // Normaliza y envía los datos del formulario.
   const handleSubmit = async (
-    event: React.FormEvent<HTMLFormElement>,
+    event: React.FormEvent<HTMLFormElement>
   ) => {
     event.preventDefault();
 
@@ -108,7 +125,8 @@ const ProfesionalForm = ({
       provincia: form.provincia.trim(),
       codigo_postal:
         form.codigo_postal.trim(),
-      matricula: form.matricula.trim(),
+      matricula:
+        form.matricula.trim(),
     });
   };
 
@@ -129,14 +147,15 @@ const ProfesionalForm = ({
                 Matrícula *
               </label>
 
-              <input
+              <ValidatedInput
+                field="matricula"
                 type="text"
                 className="form-control"
                 value={form.matricula}
                 onChange={(event) =>
                   handleChange(
                     'matricula',
-                    event.target.value,
+                    event.target.value
                   )
                 }
                 required
@@ -148,14 +167,15 @@ const ProfesionalForm = ({
                 DNI *
               </label>
 
-              <input
+              <ValidatedInput
+                field="dni"
                 type="text"
                 className="form-control"
                 value={form.dni}
                 onChange={(event) =>
                   handleChange(
                     'dni',
-                    event.target.value,
+                    event.target.value
                   )
                 }
                 required
@@ -186,14 +206,15 @@ const ProfesionalForm = ({
                 Nombres *
               </label>
 
-              <input
+              <ValidatedInput
+                field="nombres"
                 type="text"
                 className="form-control"
                 value={form.nombres}
                 onChange={(event) =>
                   handleChange(
                     'nombres',
-                    event.target.value,
+                    event.target.value
                   )
                 }
                 required
@@ -205,14 +226,15 @@ const ProfesionalForm = ({
                 Apellidos *
               </label>
 
-              <input
+              <ValidatedInput
+                field="apellidos"
                 type="text"
                 className="form-control"
                 value={form.apellidos}
                 onChange={(event) =>
                   handleChange(
                     'apellidos',
-                    event.target.value,
+                    event.target.value
                   )
                 }
                 required
@@ -224,14 +246,15 @@ const ProfesionalForm = ({
                 Fecha de nacimiento
               </label>
 
-              <input
+              <ValidatedInput
+                field="fecha_nacimiento"
                 type="date"
                 className="form-control"
                 value={form.fecha_nacimiento}
                 onChange={(event) =>
                   handleChange(
                     'fecha_nacimiento',
-                    event.target.value,
+                    event.target.value
                   )
                 }
               />
@@ -248,7 +271,7 @@ const ProfesionalForm = ({
                 onChange={(event) =>
                   handleChange(
                     'sexo',
-                    event.target.value,
+                    event.target.value
                   )
                 }
               >
@@ -275,14 +298,15 @@ const ProfesionalForm = ({
                 Teléfono
               </label>
 
-              <input
+              <ValidatedInput
+                field="telefono"
                 type="text"
                 className="form-control"
                 value={form.telefono}
                 onChange={(event) =>
                   handleChange(
                     'telefono',
-                    event.target.value,
+                    event.target.value
                   )
                 }
               />
@@ -293,14 +317,15 @@ const ProfesionalForm = ({
                 Email
               </label>
 
-              <input
+              <ValidatedInput
+                field="email"
                 type="email"
                 className="form-control"
                 value={form.email}
                 onChange={(event) =>
                   handleChange(
                     'email',
-                    event.target.value,
+                    event.target.value
                   )
                 }
               />
@@ -311,14 +336,15 @@ const ProfesionalForm = ({
                 Dirección
               </label>
 
-              <input
+              <ValidatedInput
+                field="direccion"
                 type="text"
                 className="form-control"
                 value={form.direccion}
                 onChange={(event) =>
                   handleChange(
                     'direccion',
-                    event.target.value,
+                    event.target.value
                   )
                 }
               />
@@ -336,7 +362,7 @@ const ProfesionalForm = ({
                 onChange={(event) =>
                   handleChange(
                     'localidad',
-                    event.target.value,
+                    event.target.value
                   )
                 }
               />
@@ -354,7 +380,7 @@ const ProfesionalForm = ({
                 onChange={(event) =>
                   handleChange(
                     'provincia',
-                    event.target.value,
+                    event.target.value
                   )
                 }
               />
@@ -372,7 +398,7 @@ const ProfesionalForm = ({
                 onChange={(event) =>
                   handleChange(
                     'codigo_postal',
-                    event.target.value,
+                    event.target.value
                   )
                 }
               />

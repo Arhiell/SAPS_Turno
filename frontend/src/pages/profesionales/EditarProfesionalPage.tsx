@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { authError } from '../../utils/auth-errors';
 import {
   useLocation,
   useNavigate,
@@ -241,9 +242,7 @@ const EditarProfesionalPage = () => {
     } catch (cause) {
       console.error(cause);
 
-      setError(
-        'No se pudieron guardar los cambios.',
-      );
+      setError(authError(cause));
     } finally {
       setSaving(false);
     }

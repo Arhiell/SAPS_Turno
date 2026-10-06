@@ -1,3 +1,4 @@
+import ValidatedInput from '../../components/ui/ValidatedInput';
 import {
   useEffect,
   useRef,
@@ -467,7 +468,7 @@ export default function BloqueosPage() {
             <label className="col-md-4 form-label">
               Fecha
 
-              <input
+              <ValidatedInput field="fecha"
                 type="date"
                 className="form-control"
                 required
@@ -520,7 +521,7 @@ export default function BloqueosPage() {
                 <label className="col-md-6 form-label">
                   Desde
 
-                  <input
+                  <ValidatedInput field="hora_inicio"
                     type="time"
                     className="form-control"
                     required
@@ -536,7 +537,7 @@ export default function BloqueosPage() {
                 <label className="col-md-6 form-label">
                   Hasta
 
-                  <input
+                  <ValidatedInput field="hora_fin"
                     type="time"
                     className="form-control"
                     required
@@ -598,7 +599,7 @@ export default function BloqueosPage() {
           <label className="form-label w-100">
             Filtrar fecha
 
-            <input
+            <ValidatedInput
               type="date"
               className="form-control"
               value={filter}

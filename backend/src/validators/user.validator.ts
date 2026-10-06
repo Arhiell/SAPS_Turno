@@ -1,3 +1,4 @@
+import { registerSchema } from "./auth.validator.js";
 import { z } from "zod";
 
 /**
@@ -5,16 +6,9 @@ import { z } from "zod";
  */
 export const createAdminSchema = z
   .object({
-    nombre_usuario: z
-      .string()
-      .trim()
-      .min(3)
-      .max(60),
+    nombre_usuario: registerSchema.shape.nombre_usuario.unwrap(),
 
-    email: z
-      .string()
-      .trim()
-      .email(),
+    email: registerSchema.shape.email,
 
     password: z
       .string()
@@ -36,16 +30,9 @@ export const createAdminSchema = z
  */
 export const createPatientAccountSchema = z
   .object({
-    nombre_usuario: z
-      .string()
-      .trim()
-      .min(3)
-      .max(60),
+    nombre_usuario: registerSchema.shape.nombre_usuario.unwrap(),
 
-    email: z
-      .string()
-      .trim()
-      .email(),
+    email: registerSchema.shape.email,
 
     password: z
       .string()
@@ -63,16 +50,9 @@ export const createPatientAccountSchema = z
 export const createProfessionalAccountSchema = z
   .object({
     id_profesional: z.string().uuid(),
-    nombre_usuario: z
-      .string()
-      .trim()
-      .min(3)
-      .max(60),
+    nombre_usuario: registerSchema.shape.nombre_usuario.unwrap(),
 
-    email: z
-      .string()
-      .trim()
-      .email(),
+    email: registerSchema.shape.email,
 
     password: z
       .string()

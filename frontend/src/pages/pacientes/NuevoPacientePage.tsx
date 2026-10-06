@@ -9,14 +9,15 @@ import {
 } from 'react-router-dom';
 
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
-
-import {
-  createPatient,
-} from '../../services/patients.service';
+import ValidatedInput from '../../components/ui/ValidatedInput';
 
 import {
   getBarrios,
 } from '../../services/barrios.service';
+
+import {
+  createPatient,
+} from '../../services/patients.service';
 
 import {
   getAdminSalitas,
@@ -27,39 +28,49 @@ import type {
 } from '../../types/barrio.types';
 
 import type {
-  Salita,
-} from '../../types/salita.types';
-
-import type {
   CreatePatientRequest,
   PatientSex,
 } from '../../types/patient.types';
+
+import type {
+  Salita,
+} from '../../types/salita.types';
+
+import {
+  authError,
+} from '../../utils/auth-errors';
 
 const NuevoPacientePage = () => {
   const navigate =
     useNavigate();
 
+  // Listados disponibles para asignar al paciente.
   const [barrios, setBarrios] =
     useState<Barrio[]>([]);
 
   const [salitas, setSalitas] =
     useState<Salita[]>([]);
 
+  // Estados de carga y guardado.
   const [loading, setLoading] =
     useState(true);
 
   const [saving, setSaving] =
     useState(false);
 
-  const [confirmOpen, setConfirmOpen] =
-    useState(false);
+  const [
+    confirmOpen,
+    setConfirmOpen,
+  ] = useState(false);
 
+  // Mensajes del formulario.
   const [error, setError] =
     useState('');
 
   const [message, setMessage] =
     useState('');
 
+  // Datos del nuevo paciente.
   const [form, setForm] =
     useState<CreatePatientRequest>({
       dni: '',
@@ -81,6 +92,7 @@ const NuevoPacientePage = () => {
       contacto_emergencia_telefono: '',
     });
 
+  // Carga los barrios y las salitas activas.
   useEffect(() => {
     const loadData =
       async () => {
@@ -99,21 +111,21 @@ const NuevoPacientePage = () => {
           setBarrios(
             barriosResponse.data.barrios.filter(
               (barrio) =>
-                barrio.activo,
-            ),
+                barrio.activo
+            )
           );
 
           setSalitas(
             salitasResponse.data.filter(
               (salita) =>
-                salita.activo,
-            ),
+                salita.activo
+            )
           );
         } catch (error) {
           console.error(error);
 
           setError(
-            'No se pudieron cargar los barrios y las salitas.',
+            'No se pudieron cargar los barrios y las salitas.'
           );
         } finally {
           setLoading(false);
@@ -123,6 +135,7 @@ const NuevoPacientePage = () => {
     void loadData();
   }, []);
 
+  // Filtra las salitas según el barrio seleccionado.
   const salitasDisponibles =
     useMemo(() => {
       if (!form.id_barrio) {
@@ -132,40 +145,43 @@ const NuevoPacientePage = () => {
       return salitas.filter(
         (salita) =>
           salita.id_barrio ===
-          form.id_barrio,
+          form.id_barrio
       );
     }, [
       salitas,
       form.id_barrio,
     ]);
 
+  // Actualiza un campo del formulario.
   const handleChange = (
     field: keyof CreatePatientRequest,
-    value: string,
+    value: string
   ) => {
     setForm(
       (current) => ({
         ...current,
         [field]: value,
-      }),
+      })
     );
   };
 
+  // Cambia el barrio y limpia la salita seleccionada.
   const handleBarrioChange = (
-    value: string,
+    value: string
   ) => {
     setForm(
       (current) => ({
         ...current,
         id_barrio: value,
         id_salita_asignada: '',
-      }),
+      })
     );
   };
 
+  // Normaliza y registra los datos del paciente.
   const handleSubmit =
     async (
-      event?: React.FormEvent<HTMLFormElement>,
+      event?: React.FormEvent<HTMLFormElement>
     ) => {
       event?.preventDefault();
 
@@ -228,7 +244,7 @@ const NuevoPacientePage = () => {
         });
 
         setMessage(
-          'Paciente registrado correctamente.',
+          'Paciente registrado correctamente.'
         );
 
         setTimeout(() => {
@@ -236,22 +252,21 @@ const NuevoPacientePage = () => {
             '/pacientes',
             {
               replace: true,
-            },
+            }
           );
         }, 700);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error(error);
 
-        const message =
-          error?.response?.data?.message ||
-          'No se pudo registrar el paciente.';
-
-        setError(message);
+        setError(
+          authError(error)
+        );
       } finally {
         setSaving(false);
       }
     };
 
+  // Muestra un indicador mientras se cargan los datos.
   if (loading) {
     return (
       <div className="text-center py-5">
@@ -275,22 +290,29 @@ const NuevoPacientePage = () => {
         message="¿Querés registrar este paciente?"
         detail={
           <>
-            <div className="fw-semibold">{form.apellidos}, {form.nombres}</div>
-            <div className="text-muted small mt-1">DNI: {form.dni}</div>
+            <div className="fw-semibold">
+              {form.apellidos},{' '}
+              {form.nombres}
+            </div>
+
+            <div className="text-muted small mt-1">
+              DNI: {form.dni}
+            </div>
           </>
         }
         confirmText="Registrar paciente"
         variant="primary"
         icon="bi-person-plus"
         loading={saving}
-        onClose={() => setConfirmOpen(false)}
+        onClose={() =>
+          setConfirmOpen(false)
+        }
         onConfirm={() => {
           setConfirmOpen(false);
           void handleSubmit();
         }}
       />
 
-      {/* ENCABEZADO */}
       <div className="mb-4">
         <button
           type="button"
@@ -338,7 +360,6 @@ const NuevoPacientePage = () => {
           setConfirmOpen(true);
         }}
       >
-        {/* DATOS PERSONALES */}
         <div className="card border-0 shadow-sm mb-4">
           <div className="card-header bg-white py-3">
             <h5 className="mb-0 fw-bold">
@@ -349,20 +370,20 @@ const NuevoPacientePage = () => {
 
           <div className="card-body">
             <div className="row g-3">
-
               <div className="col-md-4">
                 <label className="form-label">
                   DNI *
                 </label>
 
-                <input
+                <ValidatedInput
+                  field="dni"
                   type="text"
                   className="form-control"
                   value={form.dni}
                   onChange={(event) =>
                     handleChange(
                       'dni',
-                      event.target.value,
+                      event.target.value
                     )
                   }
                   required
@@ -374,14 +395,15 @@ const NuevoPacientePage = () => {
                   Nombres *
                 </label>
 
-                <input
+                <ValidatedInput
+                  field="nombres"
                   type="text"
                   className="form-control"
                   value={form.nombres}
                   onChange={(event) =>
                     handleChange(
                       'nombres',
-                      event.target.value,
+                      event.target.value
                     )
                   }
                   required
@@ -393,14 +415,15 @@ const NuevoPacientePage = () => {
                   Apellidos *
                 </label>
 
-                <input
+                <ValidatedInput
+                  field="apellidos"
                   type="text"
                   className="form-control"
                   value={form.apellidos}
                   onChange={(event) =>
                     handleChange(
                       'apellidos',
-                      event.target.value,
+                      event.target.value
                     )
                   }
                   required
@@ -412,7 +435,8 @@ const NuevoPacientePage = () => {
                   Fecha de nacimiento *
                 </label>
 
-                <input
+                <ValidatedInput
+                  field="fecha_nacimiento"
                   type="date"
                   className="form-control"
                   value={
@@ -421,7 +445,7 @@ const NuevoPacientePage = () => {
                   onChange={(event) =>
                     handleChange(
                       'fecha_nacimiento',
-                      event.target.value,
+                      event.target.value
                     )
                   }
                   required
@@ -439,7 +463,8 @@ const NuevoPacientePage = () => {
                   onChange={(event) =>
                     handleChange(
                       'sexo',
-                      event.target.value as PatientSex,
+                      event.target
+                        .value as PatientSex
                     )
                   }
                   required
@@ -467,7 +492,8 @@ const NuevoPacientePage = () => {
                   Teléfono
                 </label>
 
-                <input
+                <ValidatedInput
+                  field="telefono"
                   type="text"
                   className="form-control"
                   value={
@@ -476,7 +502,7 @@ const NuevoPacientePage = () => {
                   onChange={(event) =>
                     handleChange(
                       'telefono',
-                      event.target.value,
+                      event.target.value
                     )
                   }
                 />
@@ -487,7 +513,8 @@ const NuevoPacientePage = () => {
                   Email
                 </label>
 
-                <input
+                <ValidatedInput
+                  field="email"
                   type="email"
                   className="form-control"
                   value={
@@ -496,7 +523,7 @@ const NuevoPacientePage = () => {
                   onChange={(event) =>
                     handleChange(
                       'email',
-                      event.target.value,
+                      event.target.value
                     )
                   }
                 />
@@ -507,14 +534,15 @@ const NuevoPacientePage = () => {
                   Dirección *
                 </label>
 
-                <input
+                <ValidatedInput
+                  field="direccion"
                   type="text"
                   className="form-control"
                   value={form.direccion}
                   onChange={(event) =>
                     handleChange(
                       'direccion',
-                      event.target.value,
+                      event.target.value
                     )
                   }
                   required
@@ -535,7 +563,7 @@ const NuevoPacientePage = () => {
                   onChange={(event) =>
                     handleChange(
                       'localidad',
-                      event.target.value,
+                      event.target.value
                     )
                   }
                 />
@@ -555,7 +583,7 @@ const NuevoPacientePage = () => {
                   onChange={(event) =>
                     handleChange(
                       'provincia',
-                      event.target.value,
+                      event.target.value
                     )
                   }
                 />
@@ -575,17 +603,15 @@ const NuevoPacientePage = () => {
                   onChange={(event) =>
                     handleChange(
                       'codigo_postal',
-                      event.target.value,
+                      event.target.value
                     )
                   }
                 />
               </div>
-
             </div>
           </div>
         </div>
 
-        {/* ASIGNACIÓN */}
         <div className="card border-0 shadow-sm mb-4">
           <div className="card-header bg-white py-3">
             <h5 className="mb-0 fw-bold">
@@ -596,7 +622,6 @@ const NuevoPacientePage = () => {
 
           <div className="card-body">
             <div className="row g-3">
-
               <div className="col-md-6">
                 <label className="form-label">
                   Barrio *
@@ -607,7 +632,7 @@ const NuevoPacientePage = () => {
                   value={form.id_barrio}
                   onChange={(event) =>
                     handleBarrioChange(
-                      event.target.value,
+                      event.target.value
                     )
                   }
                   required
@@ -628,7 +653,7 @@ const NuevoPacientePage = () => {
                       >
                         {barrio.nombre}
                       </option>
-                    ),
+                    )
                   )}
                 </select>
               </div>
@@ -646,7 +671,7 @@ const NuevoPacientePage = () => {
                   onChange={(event) =>
                     handleChange(
                       'id_salita_asignada',
-                      event.target.value,
+                      event.target.value
                     )
                   }
                   disabled={
@@ -672,16 +697,14 @@ const NuevoPacientePage = () => {
                       >
                         {salita.nombre}
                       </option>
-                    ),
+                    )
                   )}
                 </select>
               </div>
-
             </div>
           </div>
         </div>
 
-        {/* OBRA SOCIAL */}
         <div className="card border-0 shadow-sm mb-4">
           <div className="card-header bg-white py-3">
             <h5 className="mb-0 fw-bold">
@@ -692,7 +715,6 @@ const NuevoPacientePage = () => {
 
           <div className="card-body">
             <div className="row g-3">
-
               <div className="col-md-6">
                 <label className="form-label">
                   Obra social
@@ -707,7 +729,7 @@ const NuevoPacientePage = () => {
                   onChange={(event) =>
                     handleChange(
                       'obra_social',
-                      event.target.value,
+                      event.target.value
                     )
                   }
                 />
@@ -728,17 +750,15 @@ const NuevoPacientePage = () => {
                   onChange={(event) =>
                     handleChange(
                       'numero_afiliado',
-                      event.target.value,
+                      event.target.value
                     )
                   }
                 />
               </div>
-
             </div>
           </div>
         </div>
 
-        {/* CONTACTO DE EMERGENCIA */}
         <div className="card border-0 shadow-sm mb-4">
           <div className="card-header bg-white py-3">
             <h5 className="mb-0 fw-bold">
@@ -749,23 +769,24 @@ const NuevoPacientePage = () => {
 
           <div className="card-body">
             <div className="row g-3">
-
               <div className="col-md-6">
                 <label className="form-label">
                   Nombre
                 </label>
 
-                <input
+                <ValidatedInput
+                  field="contacto_emergencia_nombre"
                   type="text"
                   className="form-control"
                   value={
-                    form.contacto_emergencia_nombre ??
+                    form
+                      .contacto_emergencia_nombre ??
                     ''
                   }
                   onChange={(event) =>
                     handleChange(
                       'contacto_emergencia_nombre',
-                      event.target.value,
+                      event.target.value
                     )
                   }
                 />
@@ -776,27 +797,27 @@ const NuevoPacientePage = () => {
                   Teléfono
                 </label>
 
-                <input
+                <ValidatedInput
+                  field="contacto_emergencia_telefono"
                   type="text"
                   className="form-control"
                   value={
-                    form.contacto_emergencia_telefono ??
+                    form
+                      .contacto_emergencia_telefono ??
                     ''
                   }
                   onChange={(event) =>
                     handleChange(
                       'contacto_emergencia_telefono',
-                      event.target.value,
+                      event.target.value
                     )
                   }
                 />
               </div>
-
             </div>
           </div>
         </div>
 
-        {/* BOTONES */}
         <div className="d-flex justify-content-end gap-2 mb-4">
           <button
             type="button"

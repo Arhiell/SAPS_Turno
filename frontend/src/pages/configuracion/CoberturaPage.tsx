@@ -1,3 +1,4 @@
+import ValidatedInput from '../../components/ui/ValidatedInput';
 import {
   useEffect,
   useRef,
@@ -375,7 +376,7 @@ export default function CoberturaPage() {
             <label className="col-md-6 form-label">
               Desde
 
-              <input
+              <ValidatedInput field="fecha_desde"
                 className="form-control"
                 type="date"
                 required
@@ -391,7 +392,7 @@ export default function CoberturaPage() {
             <label className="col-md-6 form-label">
               Hasta (opcional)
 
-              <input
+              <ValidatedInput field="fecha_hasta"
                 className="form-control"
                 type="date"
                 min={form.fecha_desde}

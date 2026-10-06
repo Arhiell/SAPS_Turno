@@ -1,3 +1,4 @@
+import ValidatedInput from '../../components/ui/ValidatedInput';
 import {
   useEffect,
   useMemo,
@@ -684,7 +685,7 @@ const NuevoTurnoPage = () => {
                       Fecha *
                     </label>
 
-                    <input
+                    <ValidatedInput
                       type="date"
                       className="form-control"
                       value={fecha}

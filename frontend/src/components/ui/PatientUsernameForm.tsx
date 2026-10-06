@@ -1,3 +1,4 @@
+import ValidatedInput from './ValidatedInput';
 import {
   useState,
   type FormEvent,
@@ -58,10 +59,7 @@ export default function PatientUsernameForm() {
 
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // ========================================
   // GUARDAR NOMBRE DE USUARIO
-  // ========================================
-
   const save = async (
     event?: FormEvent
   ) => {
@@ -100,10 +98,7 @@ export default function PatientUsernameForm() {
     }
   };
 
-  // ========================================
   // INTERFAZ
-  // ========================================
-
   return (
     <section className="patient-section h-100">
       <ConfirmationModal
@@ -185,7 +180,7 @@ export default function PatientUsernameForm() {
             <label className="form-label w-100">
               Nuevo nombre de usuario
 
-              <input
+              <ValidatedInput field="nombre_usuario"
                 className="form-control mt-1"
                 autoComplete="username"
                 required
@@ -207,7 +202,7 @@ export default function PatientUsernameForm() {
               className="small text-muted"
               id="username-help"
             >
-              Entre 3 y 60 caracteres. Letras sin
+              Entre 3 y 10 caracteres. Letras sin
               acentos, números, punto, guion o guion
               bajo.
             </p>

@@ -1,3 +1,4 @@
+import ValidatedInput from '../../components/ui/ValidatedInput';
 import {
   useEffect,
   useRef,
@@ -212,6 +213,7 @@ export default function ParametrosPage() {
     if (
       selected.numeric &&
       (
+        !/^[0-9]+$/.test(valor.trim()) ||
         !Number.isSafeInteger(Number(valor)) ||
         Number(valor) < 0
       )
@@ -415,7 +417,7 @@ export default function ParametrosPage() {
             <label className="col-md-6 form-label">
               Valor
 
-              <input
+              <ValidatedInput
                 className="form-control"
                 required
                 type={

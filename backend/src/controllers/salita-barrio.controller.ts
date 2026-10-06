@@ -1,4 +1,13 @@
-import type { Request, Response, NextFunction } from "express";
+import type {
+  Request,
+  Response,
+  NextFunction,
+} from 'express';
+
+import {
+  createCoberturaSchema,
+  updateCoberturaSchema,
+} from '../validators/catalogo.validator.js';
 
 import {
   getSalitaBarrios,
@@ -6,10 +15,10 @@ import {
   getSalitasDeBarrio,
   crearSalitaBarrio,
   actualizarSalitaBarrio,
-  eliminarSalitaBarrio
-} from "../services/salita-barrio.service.js";
+  eliminarSalitaBarrio,
+} from '../services/salita-barrio.service.js';
 
-// GET /
+// Obtiene todas las relaciones entre salitas y barrios.
 export const getAllSalitaBarrios = async (
   _req: Request,
   res: Response,
@@ -20,14 +29,14 @@ export const getAllSalitaBarrios = async (
 
     return res.status(200).json({
       success: true,
-      data: relaciones
+      data: relaciones,
     });
   } catch (error) {
     next(error);
   }
 };
 
-// GET /salita/:id
+// Obtiene los barrios asociados a una salita.
 export const getBarriosBySalita = async (
   req: Request,
   res: Response,
@@ -40,14 +49,14 @@ export const getBarriosBySalita = async (
 
     return res.status(200).json({
       success: true,
-      data: relaciones
+      data: relaciones,
     });
   } catch (error) {
     next(error);
   }
 };
 
-// GET /barrio/:id
+// Obtiene las salitas asociadas a un barrio.
 export const getSalitasByBarrio = async (
   req: Request,
   res: Response,
@@ -60,38 +69,48 @@ export const getSalitasByBarrio = async (
 
     return res.status(200).json({
       success: true,
-      data: relaciones
+      data: relaciones,
     });
   } catch (error) {
     next(error);
   }
 };
 
-// POST /
+// Crea una relación entre una salita y un barrio.
 export const createSalitaBarrio = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const relacion = await crearSalitaBarrio(req.body);
+    req.body = createCoberturaSchema.parse(
+      req.body
+    );
+
+    const relacion = await crearSalitaBarrio(
+      req.body
+    );
 
     return res.status(201).json({
       success: true,
-      data: relacion
+      data: relacion,
     });
   } catch (error) {
     next(error);
   }
 };
 
-// PUT /:idSalita/:idBarrio
+// Actualiza una relación entre una salita y un barrio.
 export const updateSalitaBarrio = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
+    req.body = updateCoberturaSchema.parse(
+      req.body
+    );
+
     const relacion = await actualizarSalitaBarrio(
       String(req.params.idSalita),
       String(req.params.idBarrio),
@@ -101,20 +120,20 @@ export const updateSalitaBarrio = async (
     if (!relacion) {
       return res.status(404).json({
         success: false,
-        message: "Relación salita-barrio no encontrada"
+        message: 'Relación salita-barrio no encontrada',
       });
     }
 
     return res.status(200).json({
       success: true,
-      data: relacion
+      data: relacion,
     });
   } catch (error) {
     next(error);
   }
 };
 
-// DELETE /:idSalita/:idBarrio
+// Elimina una relación entre una salita y un barrio.
 export const deleteSalitaBarrio = async (
   req: Request,
   res: Response,
@@ -129,14 +148,14 @@ export const deleteSalitaBarrio = async (
     if (!relacion) {
       return res.status(404).json({
         success: false,
-        message: "Relación salita-barrio no encontrada"
+        message: 'Relación salita-barrio no encontrada',
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: "Relación eliminada correctamente",
-      data: relacion
+      message: 'Relación eliminada correctamente',
+      data: relacion,
     });
   } catch (error) {
     next(error);

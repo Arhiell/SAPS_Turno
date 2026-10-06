@@ -1,7 +1,18 @@
-﻿import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import {
+  useState,
+  type FormEvent,
+} from 'react';
 
-import { registerPatient } from '../../services/auth.service';
+import {
+  Link,
+  useNavigate,
+} from 'react-router-dom';
+
+import ValidatedInput from '../../components/ui/ValidatedInput';
+
+import {
+  registerPatient,
+} from '../../services/auth.service';
 
 import {
   authError,
@@ -9,50 +20,85 @@ import {
 } from '../../utils/auth-errors';
 
 import AuthForm from './AuthForm';
-import PasswordInput from './PasswordInput';
 import GoogleButton from './GoogleButton';
+import PasswordInput from './PasswordInput';
 
 export default function RegisterPage() {
-  const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmation, setConfirmation] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [validation, setValidation] = useState('');
+  const navigate =
+    useNavigate();
 
-  const submit = async (event: FormEvent) => {
+  // Datos principales para registrar la cuenta.
+  const [email, setEmail] =
+    useState('');
+
+  const [password, setPassword] =
+    useState('');
+
+  const [
+    confirmation,
+    setConfirmation,
+  ] = useState('');
+
+  // Estados del formulario.
+  const [busy, setBusy] =
+    useState(false);
+
+  const [error, setError] =
+    useState('');
+
+  const [
+    validation,
+    setValidation,
+  ] = useState('');
+
+  // Valida los datos y registra la cuenta del paciente.
+  const submit = async (
+    event: FormEvent
+  ) => {
     event.preventDefault();
 
-    if (busy) return;
+    if (busy) {
+      return;
+    }
 
-    const message = passwordError(
-      password,
-      confirmation
-    );
+    const message =
+      passwordError(
+        password,
+        confirmation
+      );
 
     setValidation(message);
     setError('');
 
-    if (message) return;
+    if (message) {
+      return;
+    }
 
     setBusy(true);
 
     try {
-      const result = await registerPatient({
-        email,
-        password,
-      });
+      const result =
+        await registerPatient({
+          email,
+          password,
+        });
 
-      navigate('/verificar-codigo', {
-        replace: true,
-        state: {
-          email: email.trim(),
-          verificationExpiresAt: result.verificationExpiresAt,
-        },
-      });
+      // Redirige a la verificación del correo.
+      navigate(
+        '/verificar-codigo',
+        {
+          replace: true,
+          state: {
+            email: email.trim(),
+            verificationExpiresAt:
+              result.verificationExpiresAt,
+          },
+        }
+      );
     } catch (cause) {
-      setError(authError(cause));
+      setError(
+        authError(cause)
+      );
     } finally {
       setBusy(false);
     }
@@ -72,110 +118,122 @@ export default function RegisterPage() {
       }
     >
       <>
-          <form
-            onSubmit={submit}
-            aria-busy={busy}
-          >
-            <fieldset disabled={busy}>
-              <div className="mb-3">
-                <label
-                  className="form-label"
-                  htmlFor="register-email"
-                >
-                  Correo electrónico
-                </label>
-
-                <input
-                  id="register-email"
-                  name="email"
-                  className="form-control"
-                  type="email"
-                  required
-                  maxLength={254}
-                  autoComplete="email"
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  value={email}
-                  onChange={(e) =>
-                    setEmail(e.target.value)
-                  }
-                />
-              </div>
-
-              <PasswordInput
-                id="register-password"
-                label="Contraseña"
-                required
-                autoComplete="new-password"
-                maxLength={128}
-                aria-describedby="password-help"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  setValidation('');
-                }}
-              />
-
-              <p
-                id="password-help"
-                className="small text-muted"
+        <form
+          onSubmit={submit}
+          aria-busy={busy}
+        >
+          <fieldset disabled={busy}>
+            <div className="mb-3">
+              <label
+                className="form-label"
+                htmlFor="register-email"
               >
-                Usá entre 8 y 128 caracteres, con mayúscula,
-                minúscula, número y símbolo.
-              </p>
+                Correo electrónico
+              </label>
 
-              <PasswordInput
-                id="register-confirmation"
-                label="Confirmar contraseña"
+              <ValidatedInput
+                field="email"
+                id="register-email"
+                name="email"
+                className="form-control"
+                type="email"
                 required
-                autoComplete="new-password"
-                maxLength={128}
-                value={confirmation}
-                error={validation}
-                onChange={(e) => {
-                  setConfirmation(e.target.value);
-                  setValidation('');
-                }}
+                maxLength={254}
+                autoComplete="email"
+                autoCapitalize="none"
+                spellCheck={false}
+                value={email}
+                onChange={(event) =>
+                  setEmail(
+                    event.target.value
+                  )
+                }
               />
+            </div>
 
-              {error && (
-                <div
-                  className="alert alert-danger"
-                  role="alert"
-                >
-                  <i
-                    className="bi bi-exclamation-circle me-2"
-                    aria-hidden="true"
-                  />
+            <PasswordInput
+              id="register-password"
+              label="Contraseña"
+              required
+              autoComplete="new-password"
+              maxLength={128}
+              aria-describedby="password-help"
+              value={password}
+              onChange={(event) => {
+                setPassword(
+                  event.target.value
+                );
 
-                  {error}
-                </div>
+                setValidation('');
+              }}
+            />
+
+            <p
+              id="password-help"
+              className="small text-muted"
+            >
+              Usá entre 8 y 128 caracteres,
+              con mayúscula, minúscula,
+              número y símbolo.
+            </p>
+
+            <PasswordInput
+              id="register-confirmation"
+              label="Confirmar contraseña"
+              required
+              autoComplete="new-password"
+              maxLength={128}
+              value={confirmation}
+              error={validation}
+              onChange={(event) => {
+                setConfirmation(
+                  event.target.value
+                );
+
+                setValidation('');
+              }}
+            />
+
+            {error && (
+              <div
+                className="alert alert-danger"
+                role="alert"
+              >
+                <i
+                  className="bi bi-exclamation-circle me-2"
+                  aria-hidden="true"
+                />
+
+                {error}
+              </div>
+            )}
+
+            <button
+              disabled={busy}
+              className="btn btn-saps w-100"
+              type="submit"
+            >
+              {busy && (
+                <span
+                  className="spinner-border spinner-border-sm me-2"
+                  aria-hidden="true"
+                />
               )}
 
-              <button
-                disabled={busy}
-                className="btn btn-saps w-100"
-                type="submit"
-              >
-                {busy && (
-                  <span
-                    className="spinner-border spinner-border-sm me-2"
-                    aria-hidden="true"
-                  />
-                )}
+              {busy
+                ? 'Creando cuenta…'
+                : 'Crear cuenta'}
+            </button>
+          </fieldset>
+        </form>
 
-                {busy
-                  ? 'Creando cuenta…'
-                  : 'Crear cuenta'}
-              </button>
-            </fieldset>
-          </form>
+        <div className="auth-divider">
+          o registrate con
+        </div>
 
-          <div className="auth-divider">
-            o registrate con
-          </div>
-
-          <GoogleButton disabled={busy} />
+        <GoogleButton
+          disabled={busy}
+        />
       </>
     </AuthForm>
   );

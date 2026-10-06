@@ -1,3 +1,4 @@
+import ValidatedInput from '../ui/ValidatedInput';
 import { useState, type FormEvent } from 'react';
 
 import {
@@ -145,7 +146,7 @@ export default function AsignacionVigencia({
             <label className="form-label w-100">
               Desde
 
-              <input
+              <ValidatedInput
                 className="form-control"
                 type="date"
                 required
@@ -159,7 +160,7 @@ export default function AsignacionVigencia({
             <label className="form-label w-100">
               Hasta (opcional)
 
-              <input
+              <ValidatedInput
                 className="form-control"
                 type="date"
                 min={start}

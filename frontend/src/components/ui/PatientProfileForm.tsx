@@ -1,3 +1,4 @@
+import ValidatedInput from './ValidatedInput';
 import {
   useState,
   type FormEvent,
@@ -26,9 +27,7 @@ import {
   authError,
 } from '../../utils/auth-errors';
 
-// ========================================
 // CAMPOS EDITABLES DEL PACIENTE
-// ========================================
 
 // Define el nombre del campo, su etiqueta
 // y la cantidad máxima de caracteres.
@@ -92,9 +91,7 @@ export default function PatientProfileForm({
     reloadProfile,
   } = useAuth();
 
-  // ========================================
   // ESTADO DEL FORMULARIO
-  // ========================================
 
   // Inicializa el formulario con los datos
   // actuales del paciente.
@@ -126,9 +123,7 @@ export default function PatientProfileForm({
   ] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // ========================================
   // COBERTURA DEL BARRIO
-  // ========================================
 
   // Obtiene las salitas que cubren
   // el barrio actualmente seleccionado.
@@ -151,9 +146,7 @@ export default function PatientProfileForm({
     draft.id_barrio !==
     patient.id_barrio;
 
-  // ========================================
   // GUARDAR CAMBIOS
-  // ========================================
 
   const submit = async (
     event?: FormEvent
@@ -210,10 +203,7 @@ export default function PatientProfileForm({
     }
   };
 
-  // ========================================
   // INTERFAZ
-  // ========================================
-
   return (
     <>
       <ConfirmationModal
@@ -279,7 +269,7 @@ export default function PatientProfileForm({
                 <label className="form-label w-100">
                   {label}
 
-                  <input
+                  <ValidatedInput field={key}
                     className="form-control mt-1"
                     value={
                       draft[key] ?? ''

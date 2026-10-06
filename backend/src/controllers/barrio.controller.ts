@@ -1,8 +1,13 @@
 import type {
   Request,
   Response,
-  NextFunction
-} from "express";
+  NextFunction,
+} from 'express';
+
+import {
+  createBarrioSchema,
+  updateBarrioSchema,
+} from '../validators/catalogo.validator.js';
 
 import {
   getBarrios,
@@ -10,10 +15,14 @@ import {
   crearBarrio,
   actualizarBarrio,
   eliminarBarrio,
-} from "../services/barrio.service.js";
+} from '../services/barrio.service.js';
 
-// GET /
-export const getAllBarrios = async (_req: Request, res: Response, next: NextFunction) => {
+// Obtiene todos los barrios.
+export const getAllBarrios = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const barrios = await getBarrios();
 
@@ -26,15 +35,21 @@ export const getAllBarrios = async (_req: Request, res: Response, next: NextFunc
   }
 };
 
-// GET /:id
-export const getBarrioById = async (req: Request, res: Response, next: NextFunction) => {
+// Obtiene un barrio por su identificador.
+export const getBarrioById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    const barrio = await getBarrio(String(req.params.id));
+    const barrio = await getBarrio(
+      String(req.params.id)
+    );
 
     if (!barrio) {
       return res.status(404).json({
         success: false,
-        message: "Barrio no encontrado",
+        message: 'Barrio no encontrado',
       });
     }
 
@@ -47,10 +62,20 @@ export const getBarrioById = async (req: Request, res: Response, next: NextFunct
   }
 };
 
-// POST /
-export const createBarrio = async (req: Request, res: Response, next: NextFunction) => {
+// Crea un nuevo barrio.
+export const createBarrio = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    const barrio = await crearBarrio(req.body);
+    req.body = createBarrioSchema.parse(
+      req.body
+    );
+
+    const barrio = await crearBarrio(
+      req.body
+    );
 
     return res.status(201).json({
       success: true,
@@ -61,15 +86,26 @@ export const createBarrio = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
-// PUT /:id
-export const updateBarrio = async (req: Request, res: Response, next: NextFunction) => {
+// Actualiza los datos de un barrio.
+export const updateBarrio = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    const barrio = await actualizarBarrio(String(req.params.id), req.body);
+    req.body = updateBarrioSchema.parse(
+      req.body
+    );
+
+    const barrio = await actualizarBarrio(
+      String(req.params.id),
+      req.body
+    );
 
     if (!barrio) {
       return res.status(404).json({
         success: false,
-        message: "Barrio no encontrado",
+        message: 'Barrio no encontrado',
       });
     }
 
@@ -82,21 +118,27 @@ export const updateBarrio = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
-// DELETE /:id
-export const deleteBarrio = async (req: Request, res: Response, next: NextFunction) => {
+// Elimina un barrio por su identificador.
+export const deleteBarrio = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    const barrio = await eliminarBarrio(String(req.params.id));
+    const barrio = await eliminarBarrio(
+      String(req.params.id)
+    );
 
     if (!barrio) {
       return res.status(404).json({
         success: false,
-        message: "Barrio no encontrado",
+        message: 'Barrio no encontrado',
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: "Barrio eliminado correctamente",
+      message: 'Barrio eliminado correctamente',
       data: barrio,
     });
   } catch (error) {

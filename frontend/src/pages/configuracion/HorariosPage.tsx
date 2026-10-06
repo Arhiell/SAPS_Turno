@@ -1,3 +1,4 @@
+import ValidatedInput from '../../components/ui/ValidatedInput';
 import {
   useEffect,
   useRef,
@@ -862,7 +863,7 @@ export default function HorariosPage() {
             <label className="col-sm-6 col-lg-4 form-label">
               Inicio
 
-              <input
+              <ValidatedInput field="hora_inicio"
                 className="form-control"
                 type="time"
                 required
@@ -879,7 +880,7 @@ export default function HorariosPage() {
             <label className="col-sm-6 col-lg-4 form-label">
               Fin
 
-              <input
+              <ValidatedInput field="hora_fin"
                 className="form-control"
                 type="time"
                 required
@@ -896,7 +897,7 @@ export default function HorariosPage() {
             <label className="col-sm-6 col-lg-3 form-label">
               Duración del turno (minutos)
 
-              <input
+              <ValidatedInput field="duracion_turno_minutos"
                 className="form-control"
                 type="number"
                 min={5}
@@ -922,7 +923,7 @@ export default function HorariosPage() {
             <label className="col-sm-6 col-lg-3 form-label">
               Cupo diario (opcional)
 
-              <input
+              <ValidatedInput field="cupo_maximo_diario"
                 className="form-control"
                 type="number"
                 min={1}
@@ -947,7 +948,7 @@ export default function HorariosPage() {
             <label className="col-sm-6 col-lg-3 form-label">
               Vigente desde
 
-              <input
+              <ValidatedInput field="vigencia_desde"
                 className="form-control"
                 type="date"
                 required
@@ -964,7 +965,7 @@ export default function HorariosPage() {
             <label className="col-sm-6 col-lg-3 form-label">
               Vigente hasta (opcional)
 
-              <input
+              <ValidatedInput field="vigencia_hasta"
                 className="form-control"
                 type="date"
                 min={form.vigencia_desde}
@@ -1101,7 +1102,7 @@ export default function HorariosPage() {
               <label className="form-label mb-0">
                 Fecha
 
-                <input
+                <ValidatedInput
                   className="form-control"
                   type="date"
                   value={date}

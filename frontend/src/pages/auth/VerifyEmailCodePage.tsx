@@ -12,6 +12,8 @@ import {
   useNavigate,
 } from 'react-router-dom';
 
+import ValidatedInput from '../../components/ui/ValidatedInput';
+
 import {
   requestEmailVerification,
   verifyEmail,
@@ -35,19 +37,21 @@ interface VerificationLocationState {
 const RESEND_COOLDOWN_MS =
   60_000;
 
+// Convierte los segundos al formato MM:SS.
 const formatTime = (
-  totalSeconds: number,
+  totalSeconds: number
 ) =>
   `${String(
     Math.floor(
-      totalSeconds / 60,
-    ),
+      totalSeconds / 60
+    )
   ).padStart(2, '0')}:${String(
-    totalSeconds % 60,
+    totalSeconds % 60
   ).padStart(2, '0')}`;
 
+// Obtiene un mensaje apropiado según el error recibido.
 const messageForError = (
-  cause: unknown,
+  cause: unknown
 ) => {
   if (
     !axios.isAxiosError<{
@@ -64,7 +68,7 @@ const messageForError = (
   if (
     cause.response?.status === 401 &&
     message.includes(
-      'inicio de sesión',
+      'inicio de sesión'
     )
   ) {
     return 'La verificación de inicio de sesión expiró. Volvé a iniciar sesión.';
@@ -73,7 +77,7 @@ const messageForError = (
   if (
     cause.response?.status === 429 &&
     message.includes(
-      'intentos',
+      'intentos'
     )
   ) {
     return 'Superaste los intentos. Podés solicitar un nuevo código.';
@@ -87,7 +91,7 @@ const messageForError = (
 
   if (
     message.includes(
-      'expir',
+      'expir'
     )
   ) {
     return 'El código expiró. Solicitá uno nuevo.';
@@ -120,43 +124,50 @@ export default function VerifyEmailCodePage() {
       | VerificationLocationState
       | null;
 
+  // Correo utilizado para la verificación.
   const [
     email,
     setEmail,
   ] = useState(
-    initialState?.email ?? '',
+    initialState?.email ?? ''
   );
 
+  // Token temporal utilizado durante la verificación del login.
   const loginVerificationToken =
     initialState
       ?.loginVerificationToken ??
     '';
 
+  // Indica si la verificación proviene del inicio de sesión.
   const [fromLogin] =
     useState(
       Boolean(
-        initialState?.fromLogin,
-      ),
+        initialState?.fromLogin
+      )
     );
 
+  // Indica si el código ya fue solicitado.
   const [
     requested,
     setRequested,
   ] = useState(
     Boolean(
-      initialState?.email,
-    ),
+      initialState?.email
+    )
   );
 
+  // Momento en que vence el código actual.
   const [
     expiresAt,
     setExpiresAt,
   ] = useState(() => {
     if (
-      initialState?.verificationExpiresAt
+      initialState
+        ?.verificationExpiresAt
     ) {
       return new Date(
-        initialState.verificationExpiresAt,
+        initialState
+          .verificationExpiresAt
       ).getTime();
     }
 
@@ -166,15 +177,18 @@ export default function VerifyEmailCodePage() {
       : 0;
   });
 
+  // Momento a partir del cual se puede reenviar el código.
   const [
     resendAvailableAt,
     setResendAvailableAt,
   ] = useState(() => {
     if (
-      initialState?.resendAvailableAt
+      initialState
+        ?.resendAvailableAt
     ) {
       return new Date(
-        initialState.resendAvailableAt,
+        initialState
+          .resendAvailableAt
       ).getTime();
     }
 
@@ -188,7 +202,7 @@ export default function VerifyEmailCodePage() {
     now,
     setNow,
   ] = useState(
-    Date.now(),
+    Date.now()
   );
 
   const [
@@ -221,58 +235,63 @@ export default function VerifyEmailCodePage() {
     setResendAfterAttempts,
   ] = useState(false);
 
+  // Actualiza el reloj utilizado por los contadores.
   useEffect(() => {
     const timer =
       window.setInterval(
         () => {
           setNow(
-            Date.now(),
+            Date.now()
           );
         },
-        1000,
+        1000
       );
 
     return () =>
       window.clearInterval(
-        timer,
+        timer
       );
   }, []);
 
+  // Calcula el tiempo restante del código.
   const secondsLeft =
     requested
       ? Math.max(
           0,
           Math.ceil(
             (expiresAt - now) /
-              1000,
-          ),
+              1000
+          )
         )
       : 0;
 
+  // Calcula el tiempo restante para solicitar otro código.
   const resendSecondsLeft =
     requested
       ? Math.max(
           0,
           Math.ceil(
-            (resendAvailableAt -
-              now) /
-              1000,
-          ),
+            (
+              resendAvailableAt -
+              now
+            ) / 1000
+          )
         )
       : 0;
 
   const formattedTime =
     formatTime(
-      secondsLeft,
+      secondsLeft
     );
 
   const formattedResendTime =
     formatTime(
-      resendSecondsLeft,
+      resendSecondsLeft
     );
 
+  // Solicita o verifica el código ingresado.
   const submit = async (
-    event: FormEvent,
+    event: FormEvent
   ) => {
     event.preventDefault();
 
@@ -285,15 +304,11 @@ export default function VerifyEmailCodePage() {
     setNotice('');
 
     try {
-      /**
-       * Flujo manual:
-       * el usuario llega a esta pantalla
-       * desde "Verificar mi correo".
-       */
+      // Solicita el código en la verificación manual.
       if (!requested) {
         const result =
           await requestEmailVerification(
-            email.trim(),
+            email.trim()
           );
 
         setRequested(true);
@@ -301,55 +316,44 @@ export default function VerifyEmailCodePage() {
         setExpiresAt(
           result.verificationExpiresAt
             ? new Date(
-                result.verificationExpiresAt,
+                result.verificationExpiresAt
               ).getTime()
             : Date.now() +
-                10 * 60_000,
+                10 * 60_000
         );
 
         setResendAvailableAt(
           result.resendAvailableAt
             ? new Date(
-                result.resendAvailableAt,
+                result.resendAvailableAt
               ).getTime()
             : Date.now() +
-                RESEND_COOLDOWN_MS,
+                RESEND_COOLDOWN_MS
         );
 
         setNotice(
-          'Si corresponde, te enviamos un código a ese correo.',
+          'Si corresponde, te enviamos un código a ese correo.'
         );
 
         return;
       }
 
+      // Verifica que el código tenga cuatro dígitos.
       if (code.length !== 4) {
         setError(
-          'Ingresá los 4 dígitos del código.',
+          'Ingresá los 4 dígitos del código.'
         );
 
         return;
       }
 
-      /**
-       * ========================================
-       * FLUJO DE LOGIN
-       * ========================================
-       *
-       * Acá NO volvemos a pedir usuario
-       * ni contraseña.
-       *
-       * El backend ya verificó las credenciales
-       * antes de generar loginVerificationToken.
-       *
-       * El código solamente completa el login.
-       */
+      // Completa la verificación durante el inicio de sesión.
       if (fromLogin) {
         if (
           !loginVerificationToken
         ) {
           setError(
-            'La sesión de verificación no es válida. Volvé a iniciar sesión.',
+            'La sesión de verificación no es válida. Volvé a iniciar sesión.'
           );
 
           return;
@@ -361,61 +365,40 @@ export default function VerifyEmailCodePage() {
             code,
           });
 
-        if (
-          !result.data
-        ) {
+        if (!result.data) {
           setError(
-            'No pudimos completar el inicio de sesión. Volvé a intentarlo.',
+            'No pudimos completar el inicio de sesión. Volvé a intentarlo.'
           );
 
           return;
         }
 
-        /**
-         * El backend devuelve ahora
-         * Access Token + Refresh Token.
-         *
-         * Guardamos la sesión directamente.
-         */
+        // Guarda los tokens y el usuario de la nueva sesión.
         saveAuthSession(
           result.data.accessToken,
           result.data.refreshToken,
-          result.data.user,
+          result.data.user
         );
 
-        /**
-         * Avisamos al AuthContext que
-         * existe una nueva sesión.
-         */
+        // Notifica al contexto de autenticación sobre la nueva sesión.
         window.dispatchEvent(
           new Event(
-            'saps-session',
-          ),
+            'saps-session'
+          )
         );
 
-        /**
-         * Entramos directamente al sistema.
-         *
-         * NO volvemos al login.
-         */
+        // Ingresa directamente al sistema.
         navigate(
           '/',
           {
             replace: true,
-          },
+          }
         );
 
         return;
       }
 
-      /**
-       * ========================================
-       * VERIFICACIÓN NORMAL
-       * ========================================
-       *
-       * Este flujo sigue funcionando
-       * como antes.
-       */
+      // Realiza la verificación normal del correo.
       await verifyEmail({
         email:
           email.trim(),
@@ -425,25 +408,23 @@ export default function VerifyEmailCodePage() {
       setVerified(true);
 
       setNotice(
-        'Correo verificado correctamente.',
+        'Correo verificado correctamente.'
       );
     } catch (cause) {
       const message =
         messageForError(
-          cause,
+          cause
         );
 
-      setError(
-        message,
-      );
+      setError(message);
 
       if (
         message.startsWith(
-          'Superaste los intentos',
+          'Superaste los intentos'
         )
       ) {
         setResendAfterAttempts(
-          true,
+          true
         );
       }
     } finally {
@@ -451,6 +432,7 @@ export default function VerifyEmailCodePage() {
     }
   };
 
+  // Solicita un nuevo código de verificación.
   const resend =
     async () => {
       if (
@@ -470,59 +452,52 @@ export default function VerifyEmailCodePage() {
       try {
         const result =
           await requestEmailVerification(
-            email.trim(),
+            email.trim()
           );
 
         setExpiresAt(
           result.verificationExpiresAt
             ? new Date(
-                result.verificationExpiresAt,
+                result.verificationExpiresAt
               ).getTime()
             : Date.now() +
-                10 * 60_000,
+                10 * 60_000
         );
 
         setResendAvailableAt(
           result.resendAvailableAt
             ? new Date(
-                result.resendAvailableAt,
+                result.resendAvailableAt
               ).getTime()
             : Date.now() +
-                RESEND_COOLDOWN_MS,
+                RESEND_COOLDOWN_MS
         );
 
         setNow(
-          Date.now(),
+          Date.now()
         );
 
         setCode('');
 
         setResendAfterAttempts(
-          false,
+          false
         );
 
         setNotice(
-          'Te enviamos un nuevo código. El anterior dejó de ser válido.',
+          'Te enviamos un nuevo código. El anterior dejó de ser válido.'
         );
       } catch (cause) {
         setError(
           messageForError(
-            cause,
-          ),
+            cause
+          )
         );
       } finally {
         setBusy(false);
       }
     };
 
-  /**
-   * Pantalla final para la verificación
-   * manual del correo.
-   *
-   * El flujo de login NO pasa por acá,
-   * porque después de verificar entra
-   * directamente al sistema.
-   */
+  // Muestra el resultado de la verificación manual.
   if (verified) {
     return (
       <AuthForm
@@ -539,7 +514,8 @@ export default function VerifyEmailCodePage() {
           />
 
           <p className="mt-3">
-            Correo verificado correctamente.
+            Correo verificado
+            correctamente.
           </p>
 
           <Link
@@ -578,7 +554,7 @@ export default function VerifyEmailCodePage() {
                 Correo electrónico
               </label>
 
-              <input
+              <ValidatedInput
                 id="verify-email"
                 className="form-control"
                 type="email"
@@ -588,7 +564,7 @@ export default function VerifyEmailCodePage() {
                 value={email}
                 onChange={(event) =>
                   setEmail(
-                    event.target.value,
+                    event.target.value
                   )
                 }
               />
@@ -633,7 +609,8 @@ export default function VerifyEmailCodePage() {
                 </p>
               ) : (
                 <p className="small text-muted">
-                  El código expiró. Podés solicitar uno nuevo.
+                  El código expiró. Podés
+                  solicitar uno nuevo.
                 </p>
               )}
             </>

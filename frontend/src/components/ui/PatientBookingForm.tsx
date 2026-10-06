@@ -1,3 +1,4 @@
+import ValidatedInput from './ValidatedInput';
 import {
   useEffect,
   useState,
@@ -78,9 +79,7 @@ export default function PatientBookingForm({
     setRevision,
   ] = useState(0);
 
-  // ========================================
   // CARGA DE PROFESIONALES
-  // ========================================
 
   useEffect(() => {
     let active = true;
@@ -136,9 +135,7 @@ export default function PatientBookingForm({
     revision,
   ]);
 
-  // ========================================
   // ESPECIALIDADES DISPONIBLES
-  // ========================================
 
   // Obtiene las especialidades disponibles
   // evitando elementos duplicados.
@@ -157,9 +154,7 @@ export default function PatientBookingForm({
     ).values(),
   ];
 
-  // ========================================
   // PROFESIONALES HABILITADOS
-  // ========================================
 
   // Filtra los profesionales que atienden
   // la especialidad seleccionada.
@@ -173,9 +168,7 @@ export default function PatientBookingForm({
         )
     );
 
-  // ========================================
   // INTERFAZ
-  // ========================================
 
   return (
     <section className="patient-section">
@@ -187,7 +180,7 @@ export default function PatientBookingForm({
       <label className="form-label w-100">
         Fecha
 
-        <input
+        <ValidatedInput
           className="form-control mt-1"
           type="date"
           value={date}
