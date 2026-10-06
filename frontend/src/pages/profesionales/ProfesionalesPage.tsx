@@ -1,3 +1,4 @@
+import AccountSummary from '../../components/ui/AccountSummary';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -851,6 +852,7 @@ const ProfesionalesPage = () => {
                                     .nombres
                                 }
                               </strong>
+                              <AccountSummary account={professional.persona.cuenta} />
 
                               <small>
                                 {

@@ -1,3 +1,4 @@
+import AccountSummary from '../../components/ui/AccountSummary';
 import { useEffect, useState } from 'react';
 
 import AsignacionVigencia from '../../components/profesionales/AsignacionVigencia';
@@ -479,6 +480,7 @@ const ProfesionalDetallePage = () => {
             Matrícula:{' '}
             {professional.matricula}
           </p>
+          <AccountSummary account={person.cuenta} />
         </div>
 
         <button

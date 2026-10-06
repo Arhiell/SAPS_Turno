@@ -1,6 +1,4 @@
-// ========================================
 // SEXO DEL PROFESIONAL
-// ========================================
 
 export type ProfessionalSex =
   | 'FEMENINO'
@@ -9,13 +7,12 @@ export type ProfessionalSex =
   | 'NO_INFORMA';
 
 
-// ========================================
 // DATOS PERSONALES DEL PROFESIONAL
-// ========================================
 
 // Información personal asociada
 // al registro del profesional.
 export interface ProfessionalPerson {
+  cuenta?: import('./account-display.types').AccountDisplay | null;
   id_persona: string;
   dni: string;
   nombres: string;
@@ -32,9 +29,7 @@ export interface ProfessionalPerson {
 }
 
 
-// ========================================
 // PROFESIONAL
-// ========================================
 
 // Representa un profesional registrado
 // junto con sus datos personales.
@@ -57,9 +52,7 @@ export interface Professional {
 }
 
 
-// ========================================
 // RESPUESTAS DE PROFESIONALES
-// ========================================
 
 // Respuesta para un único profesional.
 export interface ProfessionalResponse {
@@ -76,9 +69,7 @@ export interface ProfessionalsResponse {
 }
 
 
-// ========================================
 // CREAR PROFESIONAL
-// ========================================
 
 // Datos enviados para registrar
 // un nuevo profesional.
@@ -98,9 +89,7 @@ export interface CreateProfessionalRequest {
 }
 
 
-// ========================================
 // ACTUALIZAR PROFESIONAL
-// ========================================
 
 // Campos permitidos al modificar
 // un profesional existente.
@@ -123,9 +112,7 @@ export interface UpdateProfessionalRequest {
 }
 
 
-// ========================================
 // ESPECIALIDADES DEL PROFESIONAL
-// ========================================
 
 // Relación entre un profesional
 // y una especialidad.
@@ -167,9 +154,7 @@ export interface UpdateProfessionalSpecialtyRequest {
 }
 
 
-// ========================================
 // SALITAS DEL PROFESIONAL
-// ========================================
 
 // Relación entre un profesional
 // y una salita.
@@ -220,9 +205,7 @@ export interface UpdateProfessionalClinicRequest {
 }
 
 
-// ========================================
 // CATÁLOGO DE ESPECIALIDADES
-// ========================================
 
 // Representa una especialidad disponible
 // dentro del sistema.
@@ -246,9 +229,7 @@ export interface SpecialtiesResponse {
 }
 
 
-// ========================================
 // PROFESIONAL VISIBLE PARA PACIENTES
-// ========================================
 
 // Datos públicos del equipo habilitado
 // para solicitar un turno.

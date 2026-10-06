@@ -1,3 +1,4 @@
+import AccountSummary from '../../components/ui/AccountSummary';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -280,6 +281,7 @@ const PacientesPage = () => {
                           {patient.apellidos},{' '}
                           {patient.nombres}
                         </strong>
+                        <AccountSummary account={patient.cuenta} />
                       </td>
 
                       <td data-label="Teléfono">

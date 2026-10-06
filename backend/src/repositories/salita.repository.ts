@@ -1,140 +1,184 @@
-import { supabase } from "../config/supabase.js";
+import {
+  supabase,
+} from '../config/supabase.js';
 
-// GET todos
-export const getAllSalitas = async () => {
-  const { data, error } = await supabase
-    .from("salitas")
-    .select(`
-      id_salita,
-      codigo,
-      nombre,
-      direccion,
-      id_barrio,
-      telefono,
-      email,
-      latitud,
-      longitud,
-      horario_apertura,
-      horario_cierre,
-      activo,
-      fecha_creacion,
-      fecha_actualizacion
-    `)
-    .order("nombre", { ascending: true });
+import {
+  accountDisplaySelect,
+  type AccountDisplay,
+} from './account-display.select.js';
 
-  if (error) {
-    throw new Error(`Error consultando salitas: ${error.message}`);
-  }
+// Define los campos visibles de una salita.
+const salitaSelect = `
+  id_salita,
+  codigo,
+  nombre,
+  direccion,
+  id_barrio,
+  telefono,
+  email,
+  latitud,
+  longitud,
+  horario_apertura,
+  horario_cierre,
+  activo,
+  fecha_creacion,
+  fecha_actualizacion
+`;
 
-  return data;
-};
+// Representa una salita con sus administradores cuando corresponde.
+type SalitaDisplayRow =
+  NonNullable<
+    Awaited<
+      ReturnType<
+        typeof getSalitaById
+      >
+    >
+  > & {
+    administradores?: {
+      cuenta:
+        AccountDisplay | null;
+    }[];
+  };
 
-export const getSalitasByIds = async (ids: string[]) => {
-  if (ids.length === 0) {
+// Agrega las cuentas de administradores solo para consultas autorizadas.
+const administrativeSalitaSelect = `
+  ${salitaSelect},
+  administradores:usuario_salita (
+    cuenta:usuarios!inner (
+      ${accountDisplaySelect}
+    )
+  )
+`;
+
+// Obtiene todas las salitas.
+export const getAllSalitas = async (
+  includeAccounts = false
+) =>
+  getSalitasByIds(
+    null,
+    includeAccounts
+  );
+
+// Obtiene las salitas indicadas o todas cuando no se especifican IDs.
+export const getSalitasByIds = async (
+  ids: string[] | null,
+  includeAccounts = false
+) => {
+  if (ids?.length === 0) {
     return [];
   }
 
-  const { data, error } = await supabase
-    .from("salitas")
-    .select(`
-      id_salita,
-      codigo,
-      nombre,
-      direccion,
-      id_barrio,
-      telefono,
-      email,
-      latitud,
-      longitud,
-      horario_apertura,
-      horario_cierre,
-      activo,
-      fecha_creacion,
-      fecha_actualizacion
-    `)
-    .in("id_salita", ids)
-    .order("nombre", { ascending: true });
+  let query =
+    supabase
+      .from('salitas')
+      .select(
+        includeAccounts
+          ? administrativeSalitaSelect
+          : salitaSelect
+      );
+
+  // Limita la consulta a las salitas solicitadas.
+  if (ids !== null) {
+    query = query.in(
+      'id_salita',
+      ids
+    );
+  }
+
+  // Incluye únicamente administradores activos de salita.
+  if (includeAccounts) {
+    query = query
+      .eq(
+        'administradores.activo',
+        true
+      )
+      .eq(
+        'administradores.cuenta.rol.codigo',
+        'ADMIN_SALITA'
+      );
+  }
+
+  const {
+    data,
+    error,
+  } = await query
+    .order(
+      'nombre',
+      {
+        ascending: true,
+      }
+    )
+    .returns<
+      SalitaDisplayRow[]
+    >();
 
   if (error) {
-    throw new Error(`Error consultando salitas: ${error.message}`);
+    throw error;
   }
 
   return data;
 };
 
-// GET por ID
-export const getSalitaById = async (id: string) => {
-  const { data, error } = await supabase
-    .from("salitas")
-    .select(`
-      id_salita,
-      codigo,
-      nombre,
-      direccion,
-      id_barrio,
-      telefono,
-      email,
-      latitud,
-      longitud,
-      horario_apertura,
-      horario_cierre,
-      activo,
-      fecha_creacion,
-      fecha_actualizacion
-    `)
-    .eq("id_salita", id)
+// Obtiene una salita por su identificador.
+export const getSalitaById = async (
+  id: string
+) => {
+  const {
+    data,
+    error,
+  } = await supabase
+    .from('salitas')
+    .select(salitaSelect)
+    .eq(
+      'id_salita',
+      id
+    )
     .maybeSingle();
 
   if (error) {
-    throw new Error(`Error consultando salita: ${error.message}`);
+    throw new Error(
+      `Error consultando salita: ${error.message}`
+    );
   }
 
   return data;
 };
 
-// POST
-export const createSalita = async (salita: {
-  codigo: string;
-  nombre: string;
-  direccion: string;
-  id_barrio: string;
-  telefono?: string | null;
-  email?: string | null;
-  latitud?: number | null;
-  longitud?: number | null;
-  horario_apertura?: string | null;
-  horario_cierre?: string | null;
-  activo?: boolean;
-}) => {
-  const { data, error } = await supabase
-    .from("salitas")
+// Crea una nueva salita.
+export const createSalita = async (
+  salita: {
+    codigo: string;
+    nombre: string;
+    direccion: string;
+    id_barrio: string;
+    telefono?: string | null;
+    email?: string | null;
+    latitud?: number | null;
+    longitud?: number | null;
+    horario_apertura?: string | null;
+    horario_cierre?: string | null;
+    activo?: boolean;
+  }
+) => {
+  const {
+    data,
+    error,
+  } = await supabase
+    .from('salitas')
     .insert(salita)
-    .select(`
-      id_salita,
-      codigo,
-      nombre,
-      direccion,
-      id_barrio,
-      telefono,
-      email,
-      latitud,
-      longitud,
-      horario_apertura,
-      horario_cierre,
-      activo,
-      fecha_creacion,
-      fecha_actualizacion
-    `)
+    .select(salitaSelect)
     .single();
 
   if (error) {
-    throw new Error(`Error creando salita: ${error.message}`);
+    throw new Error(
+      `Error creando salita: ${error.message}`
+    );
   }
 
   return data;
 };
 
-// PUT
+// Actualiza los datos de una salita.
 export const updateSalita = async (
   id: string,
   salita: {
@@ -151,61 +195,51 @@ export const updateSalita = async (
     activo?: boolean;
   }
 ) => {
-  const { data, error } = await supabase
-    .from("salitas")
+  const {
+    data,
+    error,
+  } = await supabase
+    .from('salitas')
     .update(salita)
-    .eq("id_salita", id)
-    .select(`
-      id_salita,
-      codigo,
-      nombre,
-      direccion,
-      id_barrio,
-      telefono,
-      email,
-      latitud,
-      longitud,
-      horario_apertura,
-      horario_cierre,
-      activo,
-      fecha_creacion,
-      fecha_actualizacion
-    `)
+    .eq(
+      'id_salita',
+      id
+    )
+    .select(salitaSelect)
     .maybeSingle();
 
   if (error) {
-    throw new Error(`Error actualizando salita: ${error.message}`);
+    throw new Error(
+      `Error actualizando salita: ${error.message}`
+    );
   }
 
   return data;
 };
 
-// DELETE lógico
-export const deleteSalita = async (id: string) => {
-  const { data, error } = await supabase
-    .from("salitas")
-    .update({ activo: false })
-    .eq("id_salita", id)
-    .select(`
-      id_salita,
-      codigo,
-      nombre,
-      direccion,
-      id_barrio,
-      telefono,
-      email,
-      latitud,
-      longitud,
-      horario_apertura,
-      horario_cierre,
-      activo,
-      fecha_creacion,
-      fecha_actualizacion
-    `)
+// Realiza la baja lógica de una salita.
+export const deleteSalita = async (
+  id: string
+) => {
+  const {
+    data,
+    error,
+  } = await supabase
+    .from('salitas')
+    .update({
+      activo: false,
+    })
+    .eq(
+      'id_salita',
+      id
+    )
+    .select(salitaSelect)
     .maybeSingle();
 
   if (error) {
-    throw new Error(`Error eliminando salita: ${error.message}`);
+    throw new Error(
+      `Error eliminando salita: ${error.message}`
+    );
   }
 
   return data;

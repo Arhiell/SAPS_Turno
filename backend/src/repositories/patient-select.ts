@@ -1,10 +1,11 @@
 import type { CreatePersonInput } from "../validators/person.validator.js";
 import type { PatientProfileInput } from "../validators/patient.validator.js";
 import { personSelect } from "./person-read.repository.js";
+import { personAccountSelect, type AccountDisplay } from "./account-display.select.js";
 
 type PersonDetails = {
   [K in keyof CreatePersonInput]-?: Exclude<CreatePersonInput[K], undefined> | null;
-} & { id_persona: string };
+} & { id_persona: string; cuenta?: AccountDisplay | null };
 
 export type PatientRow = PatientProfileInput & {
   id_paciente: string;
@@ -21,6 +22,9 @@ export const patientSelect = `
   contacto_emergencia_telefono, activo, fecha_registro, fecha_actualizacion,
   persona:personas!inner(${personSelect})
 `;
+
+// La cuenta se incluye solo en consultas administrativas autorizadas.
+export const patientAdminSelect = patientSelect.replace(personSelect, `${personSelect}, ${personAccountSelect}`);
 
 // El estado y las fechas expuestos pertenecen al perfil de paciente.
 export const flattenPatient = ({ persona, ...patient }: PatientRow) => ({

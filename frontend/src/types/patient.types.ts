@@ -1,6 +1,4 @@
-// ========================================
 // SEXO DEL PACIENTE
-// ========================================
 
 export type PatientSex =
   | 'FEMENINO'
@@ -14,9 +12,7 @@ export type PatientStatusFilter =
   | 'todos';
 
 
-// ========================================
 // ACTUALIZACIÓN DEL PERFIL PROPIO
-// ========================================
 
 // Campos que el paciente puede modificar
 // desde su propio perfil.
@@ -34,13 +30,12 @@ export type OwnPatientUpdate = Pick<
 >;
 
 
-// ========================================
 // PACIENTE
-// ========================================
 
 // Representa un paciente registrado
 // dentro del sistema.
 export interface Patient {
+  cuenta?: import('./account-display.types').AccountDisplay | null;
   id_paciente: string;
   id_persona: string;
 
@@ -76,9 +71,7 @@ export interface Patient {
 }
 
 
-// ========================================
 // PAGINACIÓN DE PACIENTES
-// ========================================
 
 // Información utilizada para paginar
 // el listado de pacientes.
@@ -90,9 +83,7 @@ export interface PatientPagination {
 }
 
 
-// ========================================
 // RESPUESTA DE LISTADO DE PACIENTES
-// ========================================
 
 export interface PatientsResponse {
   success: boolean;
@@ -105,9 +96,7 @@ export interface PatientsResponse {
 }
 
 
-// ========================================
 // RESPUESTA DE UN PACIENTE
-// ========================================
 
 export interface PatientResponse {
   success: boolean;
@@ -119,9 +108,7 @@ export interface PatientResponse {
 }
 
 
-// ========================================
 // ACTUALIZAR PACIENTE
-// ========================================
 
 // Campos permitidos al modificar
 // un paciente existente.
@@ -152,9 +139,7 @@ export interface UpdatePatientRequest {
 }
 
 
-// ========================================
 // CREAR PACIENTE
-// ========================================
 
 // Datos necesarios para registrar
 // un nuevo paciente.

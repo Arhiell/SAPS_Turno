@@ -54,7 +54,7 @@ export const getProfesionales = async (
   scope: string[] | null = null
 ) => {
   return await getAllProfesionales(
-    scope
+    scope, true
   );
 };
 
@@ -63,7 +63,7 @@ export const getProfesional = async (
   id: string
 ) => {
   return await getProfesionalById(
-    id
+    id, true
   );
 };
 

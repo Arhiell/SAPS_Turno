@@ -1,13 +1,16 @@
-import ValidatedInput from '../../components/ui/ValidatedInput';
-import { personFieldsError } from '../../utils/field-validation';
-import { authError } from '../../utils/auth-errors';
-import { useEffect, useState } from 'react';
+import {
+  useEffect,
+  useState,
+} from 'react';
+
 import {
   useNavigate,
   useParams,
 } from 'react-router-dom';
 
+import AccountSummary from '../../components/ui/AccountSummary';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
+import ValidatedInput from '../../components/ui/ValidatedInput';
 
 import {
   getPatientById,
@@ -21,212 +24,376 @@ import type {
   UpdatePatientRequest,
 } from '../../types/patient.types';
 
+import {
+  authError,
+} from '../../utils/auth-errors';
+
+import {
+  personFieldsError,
+} from '../../utils/field-validation';
+
 const PacienteDetallePage = () => {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const { id } =
+    useParams<{ id: string }>();
 
-  const [patient, setPatient] = useState<Patient | null>(null);
+  const navigate =
+    useNavigate();
 
-  const [editing, setEditing] = useState(false);
+  // Datos del paciente.
+  const [patient, setPatient] =
+    useState<Patient | null>(null);
 
   const [form, setForm] =
     useState<UpdatePatientRequest>({});
 
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [confirmTarget, setConfirmTarget] = useState<Patient | null>(null);
-  const [confirming, setConfirming] = useState(false);
-  const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
+  // Controla el modo de edición.
+  const [editing, setEditing] =
+    useState(false);
 
+  // Estados de carga y guardado.
+  const [loading, setLoading] =
+    useState(true);
+
+  const [saving, setSaving] =
+    useState(false);
+
+  const [
+    confirming,
+    setConfirming,
+  ] = useState(false);
+
+  // Mensajes mostrados al usuario.
+  const [error, setError] =
+    useState('');
+
+  const [success, setSuccess] =
+    useState('');
+
+  // Controla las confirmaciones.
+  const [
+    confirmTarget,
+    setConfirmTarget,
+  ] = useState<Patient | null>(
+    null
+  );
+
+  const [
+    saveConfirmOpen,
+    setSaveConfirmOpen,
+  ] = useState(false);
+
+  // Oculta automáticamente el mensaje de éxito.
   useEffect(() => {
     if (!success) {
       return;
     }
 
-    const timer = window.setTimeout(() => {
-      setSuccess('');
-    }, 3000);
+    const timer =
+      window.setTimeout(() => {
+        setSuccess('');
+      }, 3000);
 
     return () => {
-      window.clearTimeout(timer);
+      window.clearTimeout(
+        timer
+      );
     };
   }, [success]);
 
-  const loadPatient = async () => {
-    if (!id) {
-      setError('Paciente inválido.');
-      setLoading(false);
-      return;
-    }
+  // Carga los datos del paciente.
+  const loadPatient =
+    async () => {
+      if (!id) {
+        setError(
+          'Paciente inválido.'
+        );
 
-    try {
-      setLoading(true);
-      setError('');
+        setLoading(false);
+        return;
+      }
 
-      const response = await getPatientById(id);
+      try {
+        setLoading(true);
+        setError('');
 
-      setPatient(response.data.patient);
+        const response =
+          await getPatientById(
+            id
+          );
 
-      setForm({
-        nombres: response.data.patient.nombres,
-        apellidos: response.data.patient.apellidos,
-        fecha_nacimiento:
-          response.data.patient.fecha_nacimiento,
-        sexo: response.data.patient.sexo,
-        telefono: response.data.patient.telefono,
-        email: response.data.patient.email,
-        direccion: response.data.patient.direccion,
-        localidad:
-          response.data.patient.localidad ?? '',
-        provincia:
-          response.data.patient.provincia ?? '',
-        codigo_postal:
-          response.data.patient.codigo_postal,
-        obra_social:
-          response.data.patient.obra_social,
-        numero_afiliado:
-          response.data.patient.numero_afiliado,
-        contacto_emergencia_nombre:
+        setPatient(
           response.data.patient
-            .contacto_emergencia_nombre,
-        contacto_emergencia_telefono:
-          response.data.patient
-            .contacto_emergencia_telefono,
-      });
-    } catch (error) {
-      console.error(error);
-      setError('No se pudo cargar el paciente.');
-    } finally {
-      setLoading(false);
-    }
-  };
+        );
 
+        setForm({
+          nombres:
+            response.data.patient
+              .nombres,
+
+          apellidos:
+            response.data.patient
+              .apellidos,
+
+          fecha_nacimiento:
+            response.data.patient
+              .fecha_nacimiento,
+
+          sexo:
+            response.data.patient
+              .sexo,
+
+          telefono:
+            response.data.patient
+              .telefono,
+
+          email:
+            response.data.patient
+              .email,
+
+          direccion:
+            response.data.patient
+              .direccion,
+
+          localidad:
+            response.data.patient
+              .localidad ?? '',
+
+          provincia:
+            response.data.patient
+              .provincia ?? '',
+
+          codigo_postal:
+            response.data.patient
+              .codigo_postal,
+
+          obra_social:
+            response.data.patient
+              .obra_social,
+
+          numero_afiliado:
+            response.data.patient
+              .numero_afiliado,
+
+          contacto_emergencia_nombre:
+            response.data.patient
+              .contacto_emergencia_nombre,
+
+          contacto_emergencia_telefono:
+            response.data.patient
+              .contacto_emergencia_telefono,
+        });
+      } catch (error) {
+        console.error(error);
+
+        setError(
+          'No se pudo cargar el paciente.'
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+  // Recarga el paciente cuando cambia el identificador.
   useEffect(() => {
     void loadPatient();
   }, [id]);
 
+  // Actualiza un campo del formulario.
   const handleChange = (
-    field: keyof UpdatePatientRequest,
-    value: string | null,
+    field:
+      keyof UpdatePatientRequest,
+    value: string | null
   ) => {
-    setForm((current) => ({
-      ...current,
-      [field]: value,
-    }));
+    setForm(
+      (current) => ({
+        ...current,
+        [field]: value,
+      })
+    );
   };
 
-  const handleSave = async () => {
-    const validationError = personFieldsError(form);
-    if (validationError) { setError(validationError); return; }
-    if (!id) {
-      return;
-    }
+  // Valida y guarda los cambios del paciente.
+  const handleSave =
+    async () => {
+      const validationError =
+        personFieldsError(form);
 
-    try {
-      setSaving(true);
-      setError('');
-      setSuccess('');
-
-      const response = await updatePatient(
-        id,
-        form,
-      );
-
-      setPatient(response.data.patient);
-
-      setEditing(false);
-
-      setSuccess(
-        'Los datos del paciente se actualizaron correctamente.',
-      );
-    } catch (error) {
-      console.error(error);
-
-      setError(authError(error));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCancelEdit = () => {
-    if (!patient) {
-      return;
-    }
-
-    setForm({
-      nombres: patient.nombres,
-      apellidos: patient.apellidos,
-      fecha_nacimiento:
-        patient.fecha_nacimiento,
-      sexo: patient.sexo,
-      telefono: patient.telefono,
-      email: patient.email,
-      direccion: patient.direccion,
-      localidad: patient.localidad ?? '',
-      provincia: patient.provincia ?? '',
-      codigo_postal:
-        patient.codigo_postal,
-      obra_social: patient.obra_social,
-      numero_afiliado:
-        patient.numero_afiliado,
-      contacto_emergencia_nombre:
-        patient.contacto_emergencia_nombre,
-      contacto_emergencia_telefono:
-        patient.contacto_emergencia_telefono,
-    });
-
-    setEditing(false);
-    setError('');
-    setSuccess('');
-  };
-
-  const handleStatusChange = async () => {
-    if (!patient) {
-      return;
-    }
-
-    setConfirmTarget(patient);
-  };
-
-  const confirmStatusChange = async () => {
-    if (!confirmTarget) {
-      return;
-    }
-
-    try {
-      setConfirming(true);
-      setError('');
-      setSuccess('');
-
-      const response =
-        await updatePatientStatus(
-          confirmTarget.id_paciente,
-          !confirmTarget.activo,
+      if (validationError) {
+        setError(
+          validationError
         );
 
-      setPatient(response.data.patient);
-      setConfirmTarget(null);
+        return;
+      }
 
-      setSuccess(
-        `Paciente ${
-          response.data.patient.activo
-            ? 'activado'
-            : 'desactivado'
-        } correctamente.`,
+      if (!id) {
+        return;
+      }
+
+      try {
+        setSaving(true);
+        setError('');
+        setSuccess('');
+
+        const response =
+          await updatePatient(
+            id,
+            form
+          );
+
+        // Conserva los datos de cuenta si la actualización no los devuelve.
+        setPatient(
+          (current) => ({
+            ...response.data
+              .patient,
+            cuenta:
+              response.data
+                .patient.cuenta ??
+              current?.cuenta,
+          })
+        );
+
+        setEditing(false);
+
+        setSuccess(
+          'Los datos del paciente se actualizaron correctamente.'
+        );
+      } catch (error) {
+        console.error(error);
+
+        setError(
+          authError(error)
+        );
+      } finally {
+        setSaving(false);
+      }
+    };
+
+  // Cancela la edición y restaura los datos originales.
+  const handleCancelEdit =
+    () => {
+      if (!patient) {
+        return;
+      }
+
+      setForm({
+        nombres:
+          patient.nombres,
+
+        apellidos:
+          patient.apellidos,
+
+        fecha_nacimiento:
+          patient.fecha_nacimiento,
+
+        sexo:
+          patient.sexo,
+
+        telefono:
+          patient.telefono,
+
+        email:
+          patient.email,
+
+        direccion:
+          patient.direccion,
+
+        localidad:
+          patient.localidad ?? '',
+
+        provincia:
+          patient.provincia ?? '',
+
+        codigo_postal:
+          patient.codigo_postal,
+
+        obra_social:
+          patient.obra_social,
+
+        numero_afiliado:
+          patient.numero_afiliado,
+
+        contacto_emergencia_nombre:
+          patient
+            .contacto_emergencia_nombre,
+
+        contacto_emergencia_telefono:
+          patient
+            .contacto_emergencia_telefono,
+      });
+
+      setEditing(false);
+      setError('');
+      setSuccess('');
+    };
+
+  // Solicita confirmación antes de cambiar el estado.
+  const handleStatusChange =
+    async () => {
+      if (!patient) {
+        return;
+      }
+
+      setConfirmTarget(
+        patient
       );
-    } catch (error) {
-      console.error(error);
+    };
 
-      setError(
-        'No se pudo actualizar el estado del paciente.',
-      );
-    } finally {
-      setConfirming(false);
-    }
-  };
+  // Activa o desactiva al paciente.
+  const confirmStatusChange =
+    async () => {
+      if (!confirmTarget) {
+        return;
+      }
 
+      try {
+        setConfirming(true);
+        setError('');
+        setSuccess('');
+
+        const response =
+          await updatePatientStatus(
+            confirmTarget
+              .id_paciente,
+            !confirmTarget.activo
+          );
+
+        // Conserva los datos de cuenta si la respuesta no los incluye.
+        setPatient(
+          (current) => ({
+            ...response.data
+              .patient,
+            cuenta:
+              response.data
+                .patient.cuenta ??
+              current?.cuenta,
+          })
+        );
+
+        setConfirmTarget(
+          null
+        );
+
+        setSuccess(
+          `Paciente ${
+            response.data.patient
+              .activo
+              ? 'activado'
+              : 'desactivado'
+          } correctamente.`
+        );
+      } catch (error) {
+        console.error(error);
+
+        setError(
+          'No se pudo actualizar el estado del paciente.'
+        );
+      } finally {
+        setConfirming(false);
+      }
+    };
+
+  // Muestra un indicador mientras se carga el paciente.
   if (loading) {
     return (
       <div className="text-center py-5">
@@ -242,17 +409,23 @@ const PacienteDetallePage = () => {
     );
   }
 
+  // Muestra el error cuando el paciente no existe.
   if (!patient) {
     return (
       <div>
         <div className="alert alert-danger">
-          {error || 'Paciente no encontrado.'}
+          {error ||
+            'Paciente no encontrado.'}
         </div>
 
         <button
           type="button"
           className="btn btn-saps"
-          onClick={() => navigate('/pacientes')}
+          onClick={() =>
+            navigate(
+              '/pacientes'
+            )
+          }
         >
           <i className="bi bi-arrow-left me-2" />
           Volver a pacientes
@@ -270,8 +443,14 @@ const PacienteDetallePage = () => {
         message="¿Querés guardar los cambios del paciente?"
         detail={
           <>
-            <div className="fw-semibold">{patient?.apellidos}, {patient?.nombres}</div>
-            <div className="text-muted small mt-1">DNI: {patient?.dni}</div>
+            <div className="fw-semibold">
+              {patient.apellidos},{' '}
+              {patient.nombres}
+            </div>
+
+            <div className="text-muted small mt-1">
+              DNI: {patient.dni}
+            </div>
           </>
         }
         confirmText="Guardar cambios"
@@ -279,9 +458,16 @@ const PacienteDetallePage = () => {
         variant="primary"
         icon="bi-check-lg"
         loading={saving}
-        onClose={() => setSaveConfirmOpen(false)}
+        onClose={() =>
+          setSaveConfirmOpen(
+            false
+          )
+        }
         onConfirm={() => {
-          setSaveConfirmOpen(false);
+          setSaveConfirmOpen(
+            false
+          );
+
           void handleSave();
         }}
       />
@@ -289,38 +475,76 @@ const PacienteDetallePage = () => {
       {confirmTarget && (
         <ConfirmationModal
           open
-          title={confirmTarget.activo ? 'Desactivar paciente' : 'Activar paciente'}
+          title={
+            confirmTarget.activo
+              ? 'Desactivar paciente'
+              : 'Activar paciente'
+          }
           subtitle="Esta acción requiere confirmación."
-          message={confirmTarget.activo ? '¿Querés desactivar al paciente?' : '¿Querés volver a activar al paciente?'}
+          message={
+            confirmTarget.activo
+              ? '¿Querés desactivar al paciente?'
+              : '¿Querés volver a activar al paciente?'
+          }
           detail={
             <>
               <div className="fw-semibold">
-                {confirmTarget.apellidos}, {confirmTarget.nombres}
+                {
+                  confirmTarget.apellidos
+                }
+                ,{' '}
+                {
+                  confirmTarget.nombres
+                }
               </div>
 
               <div className="text-muted small mt-1">
-                DNI: {confirmTarget.dni}
+                DNI:{' '}
+                {
+                  confirmTarget.dni
+                }
               </div>
             </>
           }
-          confirmText={confirmTarget.activo ? 'Desactivar paciente' : 'Activar paciente'}
+          confirmText={
+            confirmTarget.activo
+              ? 'Desactivar paciente'
+              : 'Activar paciente'
+          }
           cancelText="Cancelar"
-          variant={confirmTarget.activo ? 'danger' : 'success'}
-          icon={confirmTarget.activo ? 'bi-person-dash' : 'bi-person-check'}
-          loading={confirming}
-          onClose={() => setConfirmTarget(null)}
-          onConfirm={() => void confirmStatusChange()}
+          variant={
+            confirmTarget.activo
+              ? 'danger'
+              : 'success'
+          }
+          icon={
+            confirmTarget.activo
+              ? 'bi-person-dash'
+              : 'bi-person-check'
+          }
+          loading={
+            confirming
+          }
+          onClose={() =>
+            setConfirmTarget(
+              null
+            )
+          }
+          onConfirm={() =>
+            void confirmStatusChange()
+          }
         />
       )}
 
-      {/* ENCABEZADO */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <button
             type="button"
             className="btn btn-link text-decoration-none p-0 mb-2"
             onClick={() =>
-              navigate('/pacientes')
+              navigate(
+                '/pacientes'
+              )
             }
           >
             <i className="bi bi-arrow-left me-2" />
@@ -378,7 +602,6 @@ const PacienteDetallePage = () => {
         </div>
       </div>
 
-      {/* MENSAJES */}
       {error && (
         <div
           className="alert alert-danger"
@@ -397,7 +620,14 @@ const PacienteDetallePage = () => {
         </div>
       )}
 
-      {/* DATOS PERSONALES */}
+      <div className="mb-3">
+        <AccountSummary
+          account={
+            patient.cuenta
+          }
+        />
+      </div>
+
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-header bg-white py-3">
           <h5 className="mb-0 fw-bold">
@@ -408,7 +638,6 @@ const PacienteDetallePage = () => {
 
         <div className="card-body">
           <div className="row g-3">
-
             <div className="col-md-4">
               <label className="form-label">
                 DNI
@@ -417,7 +646,9 @@ const PacienteDetallePage = () => {
               <input
                 type="text"
                 className="form-control"
-                value={patient.dni}
+                value={
+                  patient.dni
+                }
                 disabled
               />
             </div>
@@ -427,15 +658,24 @@ const PacienteDetallePage = () => {
                 Nombres
               </label>
 
-              <ValidatedInput field="nombres"
+              <ValidatedInput
+                field="nombres"
                 type="text"
                 className="form-control"
-                disabled={!editing}
-                value={form.nombres ?? ''}
-                onChange={(event) =>
+                disabled={
+                  !editing
+                }
+                value={
+                  form.nombres ??
+                  ''
+                }
+                onChange={(
+                  event
+                ) =>
                   handleChange(
                     'nombres',
-                    event.target.value,
+                    event.target
+                      .value
                   )
                 }
               />
@@ -446,15 +686,24 @@ const PacienteDetallePage = () => {
                 Apellidos
               </label>
 
-              <ValidatedInput field="apellidos"
+              <ValidatedInput
+                field="apellidos"
                 type="text"
                 className="form-control"
-                disabled={!editing}
-                value={form.apellidos ?? ''}
-                onChange={(event) =>
+                disabled={
+                  !editing
+                }
+                value={
+                  form.apellidos ??
+                  ''
+                }
+                onChange={(
+                  event
+                ) =>
                   handleChange(
                     'apellidos',
-                    event.target.value,
+                    event.target
+                      .value
                   )
                 }
               />
@@ -462,20 +711,29 @@ const PacienteDetallePage = () => {
 
             <div className="col-md-4">
               <label className="form-label">
-                Fecha de nacimiento
+                Fecha de
+                nacimiento
               </label>
 
-              <ValidatedInput field="fecha_nacimiento"
+              <ValidatedInput
+                field="fecha_nacimiento"
                 type="date"
                 className="form-control"
-                disabled={!editing}
-                value={
-                  form.fecha_nacimiento ?? ''
+                disabled={
+                  !editing
                 }
-                onChange={(event) =>
+                value={
+                  form.fecha_nacimiento ??
+                  ''
+                }
+                onChange={(
+                  event
+                ) =>
                   handleChange(
                     'fecha_nacimiento',
-                    event.target.value || null,
+                    event.target
+                      .value ||
+                      null
                   )
                 }
               />
@@ -488,14 +746,26 @@ const PacienteDetallePage = () => {
 
               <select
                 className="form-select"
-                disabled={!editing}
-                value={form.sexo ?? ''}
-                onChange={(event) =>
+                disabled={
+                  !editing
+                }
+                value={
+                  form.sexo ??
+                  ''
+                }
+                onChange={(
+                  event
+                ) =>
                   handleChange(
                     'sexo',
-                    event.target.value
-                      ? (event.target.value as PatientSex)
-                      : null,
+                    event.target
+                      .value
+                      ? (
+                          event
+                            .target
+                            .value as PatientSex
+                        )
+                      : null
                   )
                 }
               >
@@ -526,15 +796,25 @@ const PacienteDetallePage = () => {
                 Teléfono
               </label>
 
-              <ValidatedInput field="telefono"
+              <ValidatedInput
+                field="telefono"
                 type="text"
                 className="form-control"
-                disabled={!editing}
-                value={form.telefono ?? ''}
-                onChange={(event) =>
+                disabled={
+                  !editing
+                }
+                value={
+                  form.telefono ??
+                  ''
+                }
+                onChange={(
+                  event
+                ) =>
                   handleChange(
                     'telefono',
-                    event.target.value || null,
+                    event.target
+                      .value ||
+                      null
                   )
                 }
               />
@@ -545,15 +825,25 @@ const PacienteDetallePage = () => {
                 Email
               </label>
 
-              <ValidatedInput field="email"
+              <ValidatedInput
+                field="email"
                 type="email"
                 className="form-control"
-                disabled={!editing}
-                value={form.email ?? ''}
-                onChange={(event) =>
+                disabled={
+                  !editing
+                }
+                value={
+                  form.email ??
+                  ''
+                }
+                onChange={(
+                  event
+                ) =>
                   handleChange(
                     'email',
-                    event.target.value || null,
+                    event.target
+                      .value ||
+                      null
                   )
                 }
               />
@@ -564,15 +854,25 @@ const PacienteDetallePage = () => {
                 Dirección
               </label>
 
-              <ValidatedInput field="direccion"
+              <ValidatedInput
+                field="direccion"
                 type="text"
                 className="form-control"
-                disabled={!editing}
-                value={form.direccion ?? ''}
-                onChange={(event) =>
+                disabled={
+                  !editing
+                }
+                value={
+                  form.direccion ??
+                  ''
+                }
+                onChange={(
+                  event
+                ) =>
                   handleChange(
                     'direccion',
-                    event.target.value || null,
+                    event.target
+                      .value ||
+                      null
                   )
                 }
               />
@@ -586,12 +886,20 @@ const PacienteDetallePage = () => {
               <input
                 type="text"
                 className="form-control"
-                disabled={!editing}
-                value={form.localidad ?? ''}
-                onChange={(event) =>
+                disabled={
+                  !editing
+                }
+                value={
+                  form.localidad ??
+                  ''
+                }
+                onChange={(
+                  event
+                ) =>
                   handleChange(
                     'localidad',
-                    event.target.value,
+                    event.target
+                      .value
                   )
                 }
               />
@@ -605,12 +913,20 @@ const PacienteDetallePage = () => {
               <input
                 type="text"
                 className="form-control"
-                disabled={!editing}
-                value={form.provincia ?? ''}
-                onChange={(event) =>
+                disabled={
+                  !editing
+                }
+                value={
+                  form.provincia ??
+                  ''
+                }
+                onChange={(
+                  event
+                ) =>
                   handleChange(
                     'provincia',
-                    event.target.value,
+                    event.target
+                      .value
                   )
                 }
               />
@@ -624,24 +940,29 @@ const PacienteDetallePage = () => {
               <input
                 type="text"
                 className="form-control"
-                disabled={!editing}
-                value={
-                  form.codigo_postal ?? ''
+                disabled={
+                  !editing
                 }
-                onChange={(event) =>
+                value={
+                  form.codigo_postal ??
+                  ''
+                }
+                onChange={(
+                  event
+                ) =>
                   handleChange(
                     'codigo_postal',
-                    event.target.value || null,
+                    event.target
+                      .value ||
+                      null
                   )
                 }
               />
             </div>
-
           </div>
         </div>
       </div>
 
-      {/* DATOS DEL PACIENTE */}
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-header bg-white py-3">
           <h5 className="mb-0 fw-bold">
@@ -652,7 +973,6 @@ const PacienteDetallePage = () => {
 
         <div className="card-body">
           <div className="row g-3">
-
             <div className="col-md-6">
               <label className="form-label">
                 Obra social
@@ -661,14 +981,21 @@ const PacienteDetallePage = () => {
               <input
                 type="text"
                 className="form-control"
-                disabled={!editing}
-                value={
-                  form.obra_social ?? ''
+                disabled={
+                  !editing
                 }
-                onChange={(event) =>
+                value={
+                  form.obra_social ??
+                  ''
+                }
+                onChange={(
+                  event
+                ) =>
                   handleChange(
                     'obra_social',
-                    event.target.value || null,
+                    event.target
+                      .value ||
+                      null
                   )
                 }
               />
@@ -676,30 +1003,36 @@ const PacienteDetallePage = () => {
 
             <div className="col-md-6">
               <label className="form-label">
-                Número de afiliado
+                Número de
+                afiliado
               </label>
 
               <input
                 type="text"
                 className="form-control"
-                disabled={!editing}
-                value={
-                  form.numero_afiliado ?? ''
+                disabled={
+                  !editing
                 }
-                onChange={(event) =>
+                value={
+                  form.numero_afiliado ??
+                  ''
+                }
+                onChange={(
+                  event
+                ) =>
                   handleChange(
                     'numero_afiliado',
-                    event.target.value || null,
+                    event.target
+                      .value ||
+                      null
                   )
                 }
               />
             </div>
-
           </div>
         </div>
       </div>
 
-      {/* CONTACTO DE EMERGENCIA */}
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-header bg-white py-3">
           <h5 className="mb-0 fw-bold">
@@ -710,24 +1043,31 @@ const PacienteDetallePage = () => {
 
         <div className="card-body">
           <div className="row g-3">
-
             <div className="col-md-6">
               <label className="form-label">
                 Nombre
               </label>
 
-              <ValidatedInput field="contacto_emergencia_nombre"
+              <ValidatedInput
+                field="contacto_emergencia_nombre"
                 type="text"
                 className="form-control"
-                disabled={!editing}
+                disabled={
+                  !editing
+                }
                 value={
-                  form.contacto_emergencia_nombre ??
+                  form
+                    .contacto_emergencia_nombre ??
                   ''
                 }
-                onChange={(event) =>
+                onChange={(
+                  event
+                ) =>
                   handleChange(
                     'contacto_emergencia_nombre',
-                    event.target.value || null,
+                    event.target
+                      .value ||
+                      null
                   )
                 }
               />
@@ -738,34 +1078,42 @@ const PacienteDetallePage = () => {
                 Teléfono
               </label>
 
-              <ValidatedInput field="contacto_emergencia_telefono"
+              <ValidatedInput
+                field="contacto_emergencia_telefono"
                 type="text"
                 className="form-control"
-                disabled={!editing}
+                disabled={
+                  !editing
+                }
                 value={
-                  form.contacto_emergencia_telefono ??
+                  form
+                    .contacto_emergencia_telefono ??
                   ''
                 }
-                onChange={(event) =>
+                onChange={(
+                  event
+                ) =>
                   handleChange(
                     'contacto_emergencia_telefono',
-                    event.target.value || null,
+                    event.target
+                      .value ||
+                      null
                   )
                 }
               />
             </div>
-
           </div>
         </div>
       </div>
 
-      {/* BOTONES DE EDICIÓN */}
       {editing && (
         <div className="d-flex justify-content-end gap-2 mb-4">
           <button
             type="button"
             className="btn btn-outline-secondary"
-            onClick={handleCancelEdit}
+            onClick={
+              handleCancelEdit
+            }
             disabled={saving}
           >
             Cancelar
@@ -775,9 +1123,22 @@ const PacienteDetallePage = () => {
             type="button"
             className="btn btn-saps"
             onClick={() => {
-              const validationError = personFieldsError(form);
-              setError(validationError);
-              if (!validationError) setSaveConfirmOpen(true);
+              const validationError =
+                personFieldsError(
+                  form
+                );
+
+              setError(
+                validationError
+              );
+
+              if (
+                !validationError
+              ) {
+                setSaveConfirmOpen(
+                  true
+                );
+              }
             }}
             disabled={saving}
           >

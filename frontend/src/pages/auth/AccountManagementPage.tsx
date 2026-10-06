@@ -5,6 +5,8 @@ import {
 } from 'react';
 
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
+import AdminAccounts from '../../components/ui/AdminAccounts';
+import AccountSummary from '../../components/ui/AccountSummary';
 import ValidatedInput from '../../components/ui/ValidatedInput';
 
 import {
@@ -94,11 +96,7 @@ export default function AccountManagementPage() {
     ])
       .then(([s, p]) => {
         if (active) {
-          setSalitas(
-            s.data.filter(
-              (item) => item.activo
-            )
-          );
+          setSalitas(s.data);
 
           setProfessionals(
             p.data.filter(
@@ -151,7 +149,7 @@ export default function AccountManagementPage() {
     setBusy(true);
 
     try {
-      await createInternalAccount(
+      const account = await createInternalAccount(
         kind,
         {
           nombre_usuario:
@@ -169,6 +167,16 @@ export default function AccountManagementPage() {
         }
       );
 
+      // La respuesta del alta actualiza la vista sin repetir consultas.
+      if (kind === 'admins') {
+        setSalitas(current => current.map(salita => salita.id_salita === target
+          ? { ...salita, administradores: [...(salita.administradores ?? []), { cuenta: account }] }
+          : salita));
+      } else {
+        setProfessionals(current => current.map(professional => professional.id_profesional === target
+          ? { ...professional, persona: { ...professional.persona, cuenta: account } }
+          : professional));
+      }
       setPassword('');
       setConfirmation('');
 
@@ -291,7 +299,7 @@ export default function AccountManagementPage() {
                 </option>
 
                 {kind === 'admins'
-                  ? salitas.map(
+                  ? salitas.filter(salita => salita.activo).map(
                       (salita) => (
                         <option
                           key={
@@ -451,6 +459,10 @@ export default function AccountManagementPage() {
             </button>
           </fieldset>
         </form>
+        {kind === 'professionals' && (
+          <AccountSummary account={professionals.find(professional => professional.id_profesional === target)?.persona.cuenta} />
+        )}
+        <AdminAccounts salitas={salitas} loading={loading} />
       </div>
     </div>
   );

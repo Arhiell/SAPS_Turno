@@ -16,7 +16,7 @@ import {
  * Obtiene listado paginado.
  */
 export const getPatients = async (
-  query: PatientListQuery, scope: string[] | null = null
+  query: PatientListQuery, scope: string[] | null = null, includeAccount = false
 ) => {
   const {
     page,
@@ -32,7 +32,7 @@ export const getPatients = async (
   const result =
     await findPatients(
       from,
-      to, scope, query.search, query.estado
+      to, scope, query.search, query.estado, includeAccount
     );
 
   const totalPages =
@@ -58,11 +58,11 @@ export const getPatients = async (
  * Obtiene un paciente por ID.
  */
 export const getPatientById = async (
-  idPatient: string
+  idPatient: string, includeAccount = false
 ) => {
   const patient =
     await findPatientById(
-      idPatient
+      idPatient, includeAccount
     );
 
   if (!patient) {
@@ -79,11 +79,11 @@ export const getPatientById = async (
  * Obtiene un paciente por DNI.
  */
 export const getPatientByDni = async (
-  dni: string
+  dni: string, includeAccount = false
 ) => {
   const patient =
     await findPatientDetailsByDni(
-      dni
+      dni, includeAccount
     );
 
   if (!patient) {
