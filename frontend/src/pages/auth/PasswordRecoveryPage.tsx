@@ -1,3 +1,4 @@
+import PasswordInput from './PasswordInput';
 import {
   useState,
   type FormEvent,
@@ -330,12 +331,11 @@ export default function PasswordRecoveryPage({
             mode === 'reset'
           ) && (
             <>
-              <label className="form-label w-100">
-                Nueva contraseña
-
-                <input
-                  className="form-control"
-                  type="password"
+              {/* Reutiliza el control de visibilidad sin alterar las contraseñas. */}
+              <div>
+                <PasswordInput
+                  id="recovery-password"
+                  label="Nueva contraseña"
                   autoComplete="new-password"
                   required
                   maxLength={128}
@@ -346,14 +346,12 @@ export default function PasswordRecoveryPage({
                     )
                   }
                 />
-              </label>
+              </div>
 
-              <label className="form-label w-100">
-                Confirmar contraseña
-
-                <input
-                  className="form-control"
-                  type="password"
+              <div>
+                <PasswordInput
+                  id="recovery-confirmation"
+                  label="Confirmar contraseña"
                   autoComplete="new-password"
                   required
                   value={confirmation}
@@ -363,7 +361,7 @@ export default function PasswordRecoveryPage({
                     )
                   }
                 />
-              </label>
+              </div>
 
               <p className="small text-muted">
                 Entre 8 y 12 caracteres,

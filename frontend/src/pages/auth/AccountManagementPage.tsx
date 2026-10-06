@@ -1,3 +1,4 @@
+import PasswordInput from './PasswordInput';
 import {
   useEffect,
   useState,
@@ -381,13 +382,13 @@ export default function AccountManagementPage() {
               />
             </label>
 
-            <label className="form-label w-100">
-              Contraseña
-
-              <input
-                className="form-control"
+            {/* El mismo control de visibilidad se usa en todas las cuentas. */}
+            <div>
+              <PasswordInput
+                id="account-password"
+                label="Contraseña"
+                aria-describedby="account-password-help"
                 required
-                type="password"
                 autoComplete="new-password"
                 minLength={8}
                 maxLength={12}
@@ -399,20 +400,19 @@ export default function AccountManagementPage() {
                 }
               />
 
-              <small className="text-muted d-block mt-1">
+              <small id="account-password-help" className="text-muted d-block mt-1">
                 Entre 8 y 12 caracteres, con
                 mayúscula, minúscula, número y
                 símbolo.
               </small>
-            </label>
+            </div>
 
-            <label className="form-label w-100">
-              Confirmar contraseña
-
-              <input
-                className="form-control"
+            <div>
+              <PasswordInput
+                id="account-confirmation"
+                label="Confirmar contraseña"
+                aria-describedby="account-confirmation-help"
                 required
-                type="password"
                 autoComplete="new-password"
                 minLength={8}
                 maxLength={12}
@@ -424,12 +424,12 @@ export default function AccountManagementPage() {
                 }
               />
 
-              <small className="text-muted d-block mt-1">
+              <small id="account-confirmation-help" className="text-muted d-block mt-1">
                 Entre 8 y 12 caracteres, con
                 mayúscula, minúscula, número y
                 símbolo.
               </small>
-            </label>
+            </div>
 
             {error && (
               <div
