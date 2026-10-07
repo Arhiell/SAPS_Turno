@@ -1,5 +1,8 @@
 import app from "./app.js";
 import { env } from "./config/env.js";
+import { iniciarProcesadorNotificaciones } from "./services/notificacion-worker.service.js";
+
+const detenerNotificaciones = iniciarProcesadorNotificaciones();
 
 const server = app.listen(
   env.PORT,
@@ -18,7 +21,8 @@ const server = app.listen(
 const shutdown = () => {
   console.log("Cerrando SAPS Turno API...");
 
-  server.close(() => {
+  server.close(async () => {
+    await detenerNotificaciones();
     process.exit(0);
   });
 };

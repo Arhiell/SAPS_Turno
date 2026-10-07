@@ -1,42 +1,250 @@
-import { NavLink, useLocation } from 'react-router-dom';
-import { useEffect, useRef, useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { getMenuForRole } from './sidebar-menu';
+import {
+  NavLink,
+  useLocation,
+} from 'react-router-dom';
+
+import {
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+
+import {
+  useAuth,
+} from '../../context/AuthContext';
+
+import {
+  getMenuForRole,
+} from './sidebar-menu';
 
 export default function MobileBottomNav() {
-  const { user } = useAuth();
-  const { pathname } = useLocation();
-  const [open, setOpen] = useState(false);
-  const container = useRef<HTMLElement>(null);
-  const toggle = useRef<HTMLButtonElement>(null);
-  const items = getMenuForRole(user?.rol);
-  const hasMore = items.length > 4;
-  const primary = hasMore ? items.filter((item) => ['/', '/turnos', '/pacientes'].includes(item.path)) : items;
-  const secondary = items.filter((item) => !primary.includes(item));
-  useEffect(() => { setOpen(false); }, [pathname]);
+  const {
+    user,
+  } = useAuth();
+
+  const {
+    pathname,
+  } = useLocation();
+
+  // Controla la apertura del menú de opciones adicionales.
+  const [
+    open,
+    setOpen,
+  ] = useState(false);
+
+  const container =
+    useRef<HTMLElement>(
+      null
+    );
+
+  const toggle =
+    useRef<HTMLButtonElement>(
+      null
+    );
+
+  // Obtiene las opciones disponibles según el rol del usuario.
+  const items =
+    getMenuForRole(
+      user?.rol
+    );
+
+  const hasMore =
+    items.length > 4;
+
+  // Mantiene las opciones principales a un toque,
+  // incluso cuando existen elementos dentro de "Más".
+  const primaryPaths =
+    user?.rol === 'PACIENTE'
+      ? [
+          '/',
+          '/mis-turnos',
+          '/mis-notificaciones',
+        ]
+      : user?.rol ===
+          'PROFESIONAL'
+        ? [
+            '/',
+            '/mi-agenda',
+            '/mis-notificaciones',
+          ]
+        : [
+            '/',
+            '/turnos',
+            '/mis-notificaciones',
+          ];
+
+  // Obtiene las opciones principales del menú inferior.
+  const primary =
+    hasMore
+      ? primaryPaths.flatMap(
+          (path) =>
+            items.filter(
+              (item) =>
+                item.path ===
+                path
+            )
+        )
+      : items;
+
+  // Agrupa las opciones restantes dentro del menú "Más".
+  const secondary =
+    items.filter(
+      (item) =>
+        !primary.includes(
+          item
+        )
+    );
+
+  // Cierra el menú adicional al cambiar de página.
   useEffect(() => {
-    if (!open) return;
-    const close = (event: PointerEvent) => {
-      if (!container.current?.contains(event.target as Node)) setOpen(false);
+    setOpen(false);
+  }, [pathname]);
+
+  // Cierra el menú al pulsar fuera de él o presionar Escape.
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const close = (
+      event: PointerEvent
+    ) => {
+      if (
+        !container.current?.contains(
+          event.target as Node
+        )
+      ) {
+        setOpen(false);
+      }
     };
-    const escape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { setOpen(false); toggle.current?.focus(); }
+
+    const escape = (
+      event: KeyboardEvent
+    ) => {
+      if (
+        event.key ===
+        'Escape'
+      ) {
+        setOpen(false);
+
+        toggle.current?.focus();
+      }
     };
-    document.addEventListener('pointerdown', close);
-    document.addEventListener('keydown', escape);
-    return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', escape); };
+
+    document.addEventListener(
+      'pointerdown',
+      close
+    );
+
+    document.addEventListener(
+      'keydown',
+      escape
+    );
+
+    return () => {
+      document.removeEventListener(
+        'pointerdown',
+        close
+      );
+
+      document.removeEventListener(
+        'keydown',
+        escape
+      );
+    };
   }, [open]);
-  const link = (item: typeof items[number]) => (
-    <NavLink key={item.path} to={item.path} end={item.path === '/'} onClick={() => setOpen(false)}
-      className={({ isActive }) => `mobile-bottom-nav__link${isActive ? ' is-active' : ''}`}>
-      <i className={`bi ${item.icon}`} aria-hidden="true" /><span>{item.label}</span>
+
+  // Genera cada enlace del menú móvil.
+  const link = (
+    item:
+      typeof items[number]
+  ) => (
+    <NavLink
+      key={item.path}
+      to={item.path}
+      end={item.path === '/'}
+      onClick={() =>
+        setOpen(false)
+      }
+      className={({
+        isActive,
+      }) =>
+        `mobile-bottom-nav__link${
+          isActive
+            ? ' is-active'
+            : ''
+        }`
+      }
+    >
+      <i
+        className={`bi ${item.icon}`}
+        aria-hidden="true"
+      />
+
+      <span>
+        {item.path ===
+        '/mis-notificaciones'
+          ? 'Notificaciones'
+          : item.label}
+      </span>
     </NavLink>
   );
-  return <nav ref={container} className="mobile-bottom-nav" aria-label="Navegación móvil">
-    {open && <div id="mobile-more" className="mobile-bottom-nav__more">{secondary.map(link)}</div>}
-    {primary.map(link)}
-    {hasMore && <button ref={toggle} type="button" aria-expanded={open} aria-controls="mobile-more"
-      className={`mobile-bottom-nav__link${secondary.some((item) => pathname.startsWith(item.path)) ? ' is-active' : ''}`}
-      onClick={() => setOpen(!open)}><i className="bi bi-grid" aria-hidden="true" /><span>Más</span></button>}
-  </nav>;
+
+  return (
+    <nav
+      ref={container}
+      className="mobile-bottom-nav"
+      aria-label="Navegación móvil"
+    >
+      {open && (
+        <div
+          id="mobile-more"
+          className="mobile-bottom-nav__more"
+        >
+          {secondary.map(
+            link
+          )}
+        </div>
+      )}
+
+      {primary.map(
+        link
+      )}
+
+      {hasMore && (
+        <button
+          ref={toggle}
+          type="button"
+          aria-expanded={
+            open
+          }
+          aria-controls="mobile-more"
+          className={`mobile-bottom-nav__link${
+            secondary.some(
+              (item) =>
+                pathname.startsWith(
+                  item.path
+                )
+            )
+              ? ' is-active'
+              : ''
+          }`}
+          onClick={() =>
+            setOpen(
+              !open
+            )
+          }
+        >
+          <i
+            className="bi bi-grid"
+            aria-hidden="true"
+          />
+
+          <span>
+            Más
+          </span>
+        </button>
+      )}
+    </nav>
+  );
 }

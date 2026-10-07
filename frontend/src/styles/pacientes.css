@@ -1,6 +1,4 @@
-/* ========================================
-   BIENVENIDA DEL PACIENTE
-   ======================================== */
+/*BIENVENIDA DEL PACIENTE */
 
 /* Mantiene el panel dentro de la pantalla,
    incluso a 320 px. */
@@ -27,9 +25,7 @@
 }
 
 
-/* ========================================
-   NOTIFICACIONES
-   ======================================== */
+/* NOTIFICACIONES */
 
 /* Contenedor de la campana de notificaciones. */
 .notification-bell {
@@ -92,6 +88,73 @@
   overflow-wrap: anywhere;
 }
 
+.notification-message-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1060;
+  background: rgb(0 0 0 / 55%);
+}
+
+.notification-message-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1065;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.notification-message-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 600px);
+  max-height: min(85dvh, 720px);
+  overflow: hidden;
+  border-radius: var(--saps-radio);
+  background: var(--saps-superficie);
+  color: var(--saps-texto);
+  box-shadow: var(--saps-sombra-hover);
+}
+
+.notification-message-header,
+.notification-message-footer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+}
+
+.notification-message-header {
+  border-bottom: 1px solid var(--saps-borde);
+}
+
+.notification-message-header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  overflow-wrap: anywhere;
+}
+
+.notification-message-full {
+  margin: 0;
+  padding: 1.25rem;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border-left: 4px solid var(--saps-verde);
+}
+
+.notification-message-footer {
+  align-items: center;
+  border-top: 1px solid var(--saps-borde);
+}
+
+.notification-message-footer small {
+  color: var(--saps-texto-secundario);
+  overflow-wrap: anywhere;
+}
+
 /* Notificación todavía no leída. */
 .notification-item.is-unread {
   background: var(--saps-verde-claro);
@@ -104,9 +167,7 @@
 }
 
 
-/* ========================================
-   SECCIONES DEL PACIENTE
-   ======================================== */
+/*SECCIONES DEL PACIENTE */
 
 /* Tarjeta general utilizada en las
    distintas secciones del paciente. */
@@ -139,9 +200,7 @@
 }
 
 
-/* ========================================
-   HISTORIAL DEL PACIENTE
-   ======================================== */
+/* HISTORIAL DEL PACIENTE */
 
 /* Línea visual utilizada para representar
    el historial de cambios del turno. */
@@ -159,9 +218,7 @@
 }
 
 
-/* ========================================
-   ACCESIBILIDAD
-   ======================================== */
+/* ACCESIBILIDAD */
 
 /* Resalta botones utilizados como etiquetas
    cuando algún elemento interno recibe foco. */
@@ -171,13 +228,28 @@
 }
 
 
-/* ========================================
-   RESPONSIVE - MÓVILES
-   ======================================== */
+/* RESPONSIVE - MÓVILES= */
 
 @media (max-width: 767.98px) {
   /* El panel de notificaciones ocupa el ancho
      disponible de la pantalla móvil. */
+  .notification-message-modal {
+    padding: 0.75rem;
+  }
+
+  .notification-message-dialog {
+    max-height: 90dvh;
+  }
+
+  .notification-message-header,
+  .notification-message-footer {
+    padding: 0.875rem;
+  }
+
+  .notification-message-full {
+    padding: 1rem 0.875rem;
+  }
+
   .notification-panel {
     position: fixed;
 

@@ -73,8 +73,8 @@ const Navbar = () => {
 
       {/* Información del usuario */}
       <div className="navbar-user navbar-user-modern">
-        {/* Las notificaciones se muestran solamente al paciente. */}
-        {user?.rol === 'PACIENTE' && (
+        {/* Todos los roles tienen una bandeja personal. */}
+        {user && (
           <div className="navbar-notification">
             <NotificationBell
               key={user.id_usuario}

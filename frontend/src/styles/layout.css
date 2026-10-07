@@ -349,6 +349,11 @@
       transform .2s ease;
   }
 
+  .mobile-bottom-nav__link span {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
   .mobile-bottom-nav__link i {
     font-size: 21px;
     transition: transform .2s ease;

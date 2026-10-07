@@ -1,4 +1,5 @@
 import { Router } from "express";
+import administrativas from "./notificacion-admin.routes.js";
 
 import { authenticate } from
   "../middlewares/auth.middleware.js";
@@ -11,6 +12,7 @@ import {
 } from "../controllers/notificacion.controller.js";
 
 const router = Router();
+router.use("/administrativas", administrativas);
 
 // Cada usuario consulta únicamente sus propias notificaciones.
 router.get(

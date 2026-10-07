@@ -1,6 +1,8 @@
 import { supabase } from "../config/supabase.js";
 import { AppError } from "../utils/app-error.js";
 
+const bandejaSelect = "id_notificacion,id_turno,tipo,titulo,mensaje,fecha_creacion,fecha_envio,leida,remitente";
+
 import type {
   CreateNotificacionInput,
   NotificacionQuery,
@@ -45,9 +47,12 @@ export const findNotificacionesByUsuario = async (
 
   let query = supabase
     .from("notificaciones")
-    .select("*", { count: "exact" })
+    .select(bandejaSelect, { count: "exact" })
+    .eq("canal", "SISTEMA")
+    .eq("estado_envio", "ENVIADA")
     .eq("id_usuario", idUsuario)
-    .order("fecha_creacion", { ascending: false });
+    .order("fecha_envio", { ascending: false })
+    .order("id_notificacion");
 
   if (filters.leida) {
     query = query.eq(
@@ -78,7 +83,9 @@ export const findNotificacionById = async (
 ) => {
   const { data, error } = await supabase
     .from("notificaciones")
-    .select("*")
+    .select(bandejaSelect)
+    .eq("canal", "SISTEMA")
+    .eq("estado_envio", "ENVIADA")
     .eq("id_notificacion", id)
     .eq("id_usuario", idUsuario)
     .maybeSingle();
@@ -107,7 +114,9 @@ export const markNotificacionAsRead = async (
     .eq("id_notificacion", id)
     .eq("id_usuario", idUsuario)
     .eq("leida", false)
-    .select("*")
+    .eq("canal", "SISTEMA")
+    .eq("estado_envio", "ENVIADA")
+    .select(bandejaSelect)
     .maybeSingle();
 
   if (error) {
@@ -124,15 +133,16 @@ export const markNotificacionAsRead = async (
 export const markAllNotificacionesAsRead = async (
   idUsuario: string,
 ) => {
-  const { data, error } = await supabase
+  const { count, error } = await supabase
     .from("notificaciones")
     .update({
       leida: true,
       fecha_lectura: new Date().toISOString(),
-    })
+    }, { count: "exact" })
     .eq("id_usuario", idUsuario)
     .eq("leida", false)
-    .select("id_notificacion");
+    .eq("canal", "SISTEMA")
+    .eq("estado_envio", "ENVIADA");
 
   if (error) {
     throw new AppError(
@@ -141,5 +151,5 @@ export const markAllNotificacionesAsRead = async (
     );
   }
 
-  return data ?? [];
+  return count ?? 0;
 };

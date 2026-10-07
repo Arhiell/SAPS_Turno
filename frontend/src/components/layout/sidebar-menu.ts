@@ -12,6 +12,18 @@ export interface SidebarMenuItem {
 // Cada opción indica qué roles tienen permiso para verla.
 export const sidebarMenu: SidebarMenuItem[] = [
   {
+    label: "Mis notificaciones",
+    path: "/mis-notificaciones",
+    icon: "bi-bell",
+    roles: ["SUPER_ADMIN", "ADMIN_SALITA", "PACIENTE", "PROFESIONAL"],
+  },
+  {
+    label: "Administrar notificaciones",
+    path: "/notificaciones",
+    icon: "bi-megaphone",
+    roles: ["SUPER_ADMIN", "ADMIN_SALITA"],
+  },
+  {
     label: "Cuentas de acceso",
     path: "/administracion",
     icon: "bi-person-lock",
@@ -113,6 +125,7 @@ export const getMenuForRole = (role?: string) =>
 
 // Nombre legible que se muestra para cada rol.
 export const roleLabels: Record<string, string> = {
+  RECEPCION: "Recepción",
   SUPER_ADMIN: "Administración general",
   ADMIN_SALITA: "Administración de salita",
   PROFESIONAL: "Profesional",

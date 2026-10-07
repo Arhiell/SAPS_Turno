@@ -7,6 +7,7 @@ import {
 import {
   useNavigate,
 } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 
 import {
   getNotificaciones,
@@ -36,10 +37,6 @@ export default function NotificationBell() {
   // Cantidad total de notificaciones sin leer.
   const [unread, setUnread] = useState<number | null>(null);
 
-  // Control de paginación.
-  const [page, setPage] = useState(1);
-  const [pages, setPages] = useState(0);
-
   // Estados de carga y acciones.
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -47,6 +44,7 @@ export default function NotificationBell() {
   // Mensajes de respuesta.
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [mensajeAbierto, setMensajeAbierto] = useState<Notificacion | null>(null);
 
   // Permite recargar las notificaciones.
   const [revision, setRevision] = useState(0);
@@ -57,9 +55,14 @@ export default function NotificationBell() {
 
   const navigate = useNavigate();
 
-  // ========================================
+  // Sincroniza el badge cuando se lee desde la página de la bandeja.
+  useEffect(() => {
+    const refresh = () => setRevision(value => value + 1);
+    window.addEventListener('notificaciones-actualizadas', refresh);
+    return () => window.removeEventListener('notificaciones-actualizadas', refresh);
+  }, []);
+
   // CARGA DE NOTIFICACIONES
-  // ========================================
 
   useEffect(() => {
     let active = true;
@@ -69,10 +72,10 @@ export default function NotificationBell() {
     setItems([]);
 
     // Cuenta todas las pendientes,
-    // no solo las de la página visible.
+    // sin cargar más notificaciones de las visibles en la campana.
     void Promise.all([
-      getNotificaciones(page),
-      getNotificaciones(1, false),
+      getNotificaciones(1, undefined, 3),
+      getNotificaciones(1, false, 1),
     ])
       .then(([list, pending]) => {
         if (!active) {
@@ -80,7 +83,6 @@ export default function NotificationBell() {
         }
 
         setItems(list.notificaciones);
-        setPages(list.totalPages);
         setUnread(pending.total);
       })
       .catch(() => {
@@ -100,11 +102,9 @@ export default function NotificationBell() {
     return () => {
       active = false;
     };
-  }, [page, revision]);
+  }, [revision]);
 
-  // ========================================
   // ACTUALIZACIÓN AUTOMÁTICA
-  // ========================================
 
   useEffect(() => {
     // Actualiza las notificaciones cada minuto
@@ -124,9 +124,7 @@ export default function NotificationBell() {
       window.clearInterval(timer);
   }, [open]);
 
-  // ========================================
   // CIERRE DEL PANEL
-  // ========================================
 
   useEffect(() => {
     if (!open) {
@@ -139,7 +137,8 @@ export default function NotificationBell() {
     ) => {
       if (
         event.target instanceof Node &&
-        !container.current?.contains(event.target)
+        !container.current?.contains(event.target) &&
+        !(event.target instanceof Element && event.target.closest('.notification-message-modal, .notification-message-backdrop'))
       ) {
         setOpen(false);
       }
@@ -150,8 +149,12 @@ export default function NotificationBell() {
       event: KeyboardEvent
     ) => {
       if (event.key === 'Escape') {
-        setOpen(false);
-        trigger.current?.focus();
+        if (mensajeAbierto) {
+          setMensajeAbierto(null);
+        } else {
+          setOpen(false);
+          trigger.current?.focus();
+        }
       }
     };
 
@@ -176,12 +179,10 @@ export default function NotificationBell() {
         escape
       );
     };
-  }, [open]);
+  }, [open, mensajeAbierto]);
 
-  // ========================================
+
   // MARCAR COMO LEÍDA
-  // ========================================
-
   const read = async (
     item?: Notificacion
   ) => {
@@ -207,10 +208,6 @@ export default function NotificationBell() {
       }
 
       // Fuerza la actualización de la lista.
-      setRevision(
-        (v) => v + 1
-      );
-
       setSuccess(
         item
           ? 'Notificación leída.'
@@ -235,11 +232,10 @@ export default function NotificationBell() {
     }
   };
 
-  // ========================================
   // INTERFAZ
-  // ========================================
 
   return (
+    <>
     <div
       className="notification-bell"
       ref={container}
@@ -365,7 +361,7 @@ export default function NotificationBell() {
               {!error &&
                 !items.length && (
                   <p>
-                    No tenés notificaciones nuevas.
+                  No tenés notificaciones para mostrar.
                   </p>
                 )}
 
@@ -373,18 +369,13 @@ export default function NotificationBell() {
               <div className="d-grid gap-2">
                 {items.map(
                   (item) => (
-                    <button
+                    <article
                       key={item.id_notificacion}
-                      type="button"
-                      className={`notification-item text-start ${
+                      className={`notification-item ${
                         item.leida
                           ? ''
                           : 'is-unread'
                       }`}
-                      disabled={busy}
-                      onClick={() =>
-                        void read(item)
-                      }
                     >
                       <strong>
                         <i
@@ -398,70 +389,75 @@ export default function NotificationBell() {
                         {item.titulo}
                       </strong>
 
-                      <span>
-                        {item.mensaje}
+                      <span className="notification-message-preview-text">
+                        {item.mensaje.length > 160 ? `${item.mensaje.slice(0, 160)}…` : item.mensaje}
                       </span>
+
+                      <small>Enviado por: {item.remitente ?? 'SAPS Turno · Notificación automática'}</small>
 
                       <small>
                         {new Date(
-                          item.fecha_creacion
-                        ).toLocaleString(
-                          'es-AR'
-                        )}
+                          item.fecha_envio ?? item.fecha_creacion
+                        ).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}
                         {' · '}
                         {item.leida
                           ? 'Leída'
                           : 'Sin leer'}
                       </small>
-                    </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-success align-self-start"
+                        onClick={() => setMensajeAbierto(item)}
+                      >
+                        Ver notificación
+                      </button>
+                    </article>
                   )
                 )}
               </div>
             </>
           )}
 
-          {/* Controles de paginación. */}
-          {pages > 1 && (
-            <div className="d-flex justify-content-between gap-2 mt-3">
-              <button
-                className="btn btn-sm btn-outline-secondary"
-                disabled={
-                  loading ||
-                  busy ||
-                  page <= 1
-                }
-                onClick={() =>
-                  setPage(
-                    (v) => v - 1
-                  )
-                }
-              >
-                Anterior
-              </button>
+          <button className="btn btn-link w-100 mt-3" onClick={() => { setOpen(false); navigate('/mis-notificaciones'); }}>
+            Ver todas las notificaciones
+          </button>
 
-              <span>
-                {page} / {pages}
-              </span>
-
-              <button
-                className="btn btn-sm btn-outline-secondary"
-                disabled={
-                  loading ||
-                  busy ||
-                  page >= pages
-                }
-                onClick={() =>
-                  setPage(
-                    (v) => v + 1
-                  )
-                }
-              >
-                Siguiente
-              </button>
-            </div>
-          )}
         </section>
       )}
     </div>
+    {mensajeAbierto && createPortal(
+      <>
+        <div className="notification-message-backdrop" onMouseDown={() => setMensajeAbierto(null)} />
+        <section
+          className="notification-message-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="notification-message-title"
+          onMouseDown={event => {
+            if (event.target === event.currentTarget) setMensajeAbierto(null);
+          }}
+        >
+          <article className="notification-message-dialog">
+            <header className="notification-message-header">
+              <h2 id="notification-message-title">{mensajeAbierto.titulo}</h2>
+              <button type="button" className="btn-close" aria-label="Cerrar mensaje" onClick={() => setMensajeAbierto(null)} />
+            </header>
+            <p className="notification-message-full">{mensajeAbierto.mensaje}</p>
+            <footer className="notification-message-footer">
+              <small>
+                Enviado por: {mensajeAbierto.remitente ?? 'SAPS Turno · Notificación automática'}
+                <br />
+                {new Date(mensajeAbierto.fecha_envio ?? mensajeAbierto.fecha_creacion).toLocaleString('es-AR', {
+                  timeZone: 'America/Argentina/Buenos_Aires',
+                })}
+              </small>
+              <button type="button" className="btn btn-outline-secondary" onClick={() => setMensajeAbierto(null)}>Cerrar</button>
+            </footer>
+          </article>
+        </section>
+      </>,
+      document.body,
+    )}
+    </>
   );
 }

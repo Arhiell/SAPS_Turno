@@ -59,6 +59,10 @@ import ReportesPage from '../pages/reportes/ReportesPage';
 
 // Layout y protección de rutas
 import AppLayout from '../components/layout/AppLayout';
+import MisNotificacionesPage from '../pages/notificaciones/MisNotificacionesPage';
+import NuevaNotificacionPage from '../pages/notificaciones/NuevaNotificacionPage';
+import HistorialNotificacionesPage from '../pages/notificaciones/HistorialNotificacionesPage';
+import DetalleNotificacionPage from '../pages/notificaciones/DetalleNotificacionPage';
 import ProtectedRoute from './ProtectedRoute';
 
 /**
@@ -109,10 +113,8 @@ const AppRoutes = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* ======================================== */}
         {/* RUTAS PÚBLICAS */}
-        {/* ======================================== */}
-
+        
         <Route
           path="/registro"
           element={<RegisterPage />}
@@ -144,25 +146,25 @@ const AppRoutes = () => {
           element={<VerifyEmailCodePage />}
         />
 
-        {/* ======================================== */}
         {/* AUTENTICACIÓN */}
-        {/* ======================================== */}
-
         <Route
           path="/login"
           element={<Login />}
         />
 
-        {/* ======================================== */}
         {/* RUTAS PROTEGIDAS */}
-        {/* ======================================== */}
-
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
-            {/* ==================================== */}
-            {/* PACIENTE */}
-            {/* ==================================== */}
+            <Route path="/mis-notificaciones" element={<MisNotificacionesPage />} />
+            <Route element={<ProtectedRoute roles={['SUPER_ADMIN', 'ADMIN_SALITA']} />}>
+              <Route path="/notificaciones" element={<HistorialNotificacionesPage key="historial" />} />
+              <Route path="/notificaciones/programadas" element={<HistorialNotificacionesPage key="programadas" programadas />} />
+              <Route path="/notificaciones/nueva" element={<NuevaNotificacionPage key="nueva" />} />
+              <Route path="/notificaciones/:id/editar" element={<NuevaNotificacionPage key="editar" editar />} />
+              <Route path="/notificaciones/:id" element={<DetalleNotificacionPage />} />
+            </Route>
 
+            {/* PACIENTE */}
             <Route
               element={
                 <ProtectedRoute
@@ -189,10 +191,7 @@ const AppRoutes = () => {
               <Route path="/mis-turnos/:id" element={<PatientAppointmentDetailPage />} />
             </Route>
 
-            {/* ==================================== */}
             {/* PROFESIONAL */}
-            {/* ==================================== */}
-
             <Route
               element={
                 <ProtectedRoute
@@ -211,9 +210,7 @@ const AppRoutes = () => {
               />
             </Route>
 
-            {/* ==================================== */}
             {/* PACIENTE Y PROFESIONAL */}
-            {/* ==================================== */}
 
             <Route
               element={
@@ -231,19 +228,15 @@ const AppRoutes = () => {
               />
             </Route>
 
-            {/* ==================================== */}
             {/* DASHBOARD */}
-            {/* ==================================== */}
 
             <Route
               path="/"
               element={<RoleHome />}
             />
 
-            {/* ==================================== */}
             {/* ADMINISTRACIÓN */}
             {/* SUPER_ADMIN / ADMIN_SALITA */}
-            {/* ==================================== */}
 
             <Route
               element={
@@ -255,9 +248,7 @@ const AppRoutes = () => {
                 />
               }
             >
-              {/* ================================== */}
               {/* CONFIGURACIÓN */}
-              {/* ================================== */}
 
               <Route
                 path="/configuracion"
@@ -323,18 +314,14 @@ const AppRoutes = () => {
                 />
               </Route>
 
-              {/* ================================== */}
               {/* CUENTAS DE ACCESO */}
-              {/* ================================== */}
 
               <Route
                 path="/administracion"
                 element={<AccountManagementPage />}
               />
 
-              {/* ================================== */}
               {/* PACIENTES */}
-              {/* ================================== */}
 
               <Route
                 path="/pacientes"
@@ -351,10 +338,8 @@ const AppRoutes = () => {
                 element={<PacienteDetallePage />}
               />
 
-              {/* ================================== */}
               {/* SALITAS */}
               {/* Solo SUPER_ADMIN */}
-              {/* ================================== */}
 
               <Route
                 element={
@@ -395,9 +380,8 @@ const AppRoutes = () => {
                 />
               </Route>
 
-              {/* ================================== */}
+
               {/* PROFESIONALES */}
-              {/* ================================== */}
 
               <Route
                 path="/profesionales"
@@ -419,9 +403,7 @@ const AppRoutes = () => {
                 element={<EditarProfesionalPage />}
               />
 
-              {/* ================================== */}
               {/* TURNOS */}
-              {/* ================================== */}
 
               <Route
                 path="/turnos"
@@ -443,9 +425,7 @@ const AppRoutes = () => {
                 element={<TurnoDetallePage />}
               />
 
-              {/* ================================== */}
               {/* REPORTES */}
-              {/* ================================== */}
 
               <Route
                 path="/reportes"
@@ -455,9 +435,7 @@ const AppRoutes = () => {
           </Route>
         </Route>
 
-        {/* ======================================== */}
         {/* RUTA NO ENCONTRADA */}
-        {/* ======================================== */}
 
         <Route
           path="*"
