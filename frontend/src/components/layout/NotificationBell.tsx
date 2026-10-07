@@ -107,7 +107,7 @@ export default function NotificationBell() {
   // ACTUALIZACIÓN AUTOMÁTICA
 
   useEffect(() => {
-    // Actualiza las notificaciones cada minuto
+    // Actualiza las notificaciones cada 15 segundos
     // cuando la página está visible y el panel cerrado.
     const timer = window.setInterval(() => {
       if (
@@ -118,7 +118,7 @@ export default function NotificationBell() {
           (v) => v + 1
         );
       }
-    }, 60000);
+    }, 15000);
 
     return () =>
       window.clearInterval(timer);
