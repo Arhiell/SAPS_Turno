@@ -2,6 +2,10 @@ import {
   canViewAccount,
 } from '../repositories/account-display.select.js';
 
+export { 
+  publicSalitas as getPublicSalitas 
+} from '../repositories/public-salitas.repository.js';
+
 import {
   createSalita,
   deleteSalita,

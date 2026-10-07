@@ -92,7 +92,7 @@ const ProtectedRoute = ({
   ) {
     return (
       <Navigate
-        to="/"
+        to="/panel"
         replace
       />
     );

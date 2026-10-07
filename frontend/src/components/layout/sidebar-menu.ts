@@ -12,6 +12,12 @@ export interface SidebarMenuItem {
 // Cada opción indica qué roles tienen permiso para verla.
 export const sidebarMenu: SidebarMenuItem[] = [
   {
+    label: "Contenido público",
+    path: "/contenido",
+    icon: "bi-newspaper",
+    roles: ["SUPER_ADMIN", "ADMIN_SALITA"],
+  },
+  {
     label: "Mis notificaciones",
     path: "/mis-notificaciones",
     icon: "bi-bell",
@@ -61,7 +67,7 @@ export const sidebarMenu: SidebarMenuItem[] = [
   },
   {
     label: "Inicio",
-    path: "/",
+    path: "/panel",
     icon: "bi-house",
     roles: [
       "SUPER_ADMIN",
@@ -116,9 +122,9 @@ export const getMenuForRole = (role?: string) =>
       item.roles.some((allowed) => allowed === role)
     )
     .sort((a, b) =>
-      a.path === "/"
+      a.path === "/panel"
         ? -1
-        : b.path === "/"
+        : b.path === "/panel"
           ? 1
           : 0
     );

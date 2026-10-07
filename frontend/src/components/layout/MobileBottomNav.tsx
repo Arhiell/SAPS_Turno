@@ -56,19 +56,19 @@ export default function MobileBottomNav() {
   const primaryPaths =
     user?.rol === 'PACIENTE'
       ? [
-          '/',
+          '/panel',
           '/mis-turnos',
           '/mis-notificaciones',
         ]
       : user?.rol ===
           'PROFESIONAL'
         ? [
-            '/',
+            '/panel',
             '/mi-agenda',
             '/mis-notificaciones',
           ]
         : [
-            '/',
+            '/panel',
             '/turnos',
             '/mis-notificaciones',
           ];
@@ -162,7 +162,7 @@ export default function MobileBottomNav() {
     <NavLink
       key={item.path}
       to={item.path}
-      end={item.path === '/'}
+      end={item.path === '/panel'}
       onClick={() =>
         setOpen(false)
       }

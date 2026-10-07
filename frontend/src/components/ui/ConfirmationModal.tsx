@@ -1,6 +1,4 @@
-import type {
-  ReactNode,
-} from 'react';
+import type { ReactNode } from 'react';
 
 export type ConfirmationModalVariant =
   | 'success'
@@ -19,10 +17,13 @@ interface ConfirmationModalProps {
   variant?: ConfirmationModalVariant;
   icon?: string;
   loading?: boolean;
+  notice?: string | null;
+  hideCancel?: boolean;
   onClose: () => void;
   onConfirm: () => void;
 }
 
+// Clases del botón principal según el tipo de confirmación.
 const buttonClasses: Record<ConfirmationModalVariant, string> = {
   success: 'btn-success',
   danger: 'btn-danger',
@@ -30,6 +31,7 @@ const buttonClasses: Record<ConfirmationModalVariant, string> = {
   primary: 'btn-primary',
 };
 
+// Clases visuales del icono según el tipo de confirmación.
 const iconClasses: Record<ConfirmationModalVariant, string> = {
   success: 'bg-success-subtle text-success',
   danger: 'bg-danger-subtle text-danger',
@@ -48,15 +50,19 @@ export default function ConfirmationModal({
   variant = 'warning',
   icon = 'bi-exclamation-triangle',
   loading = false,
+  notice,
+  hideCancel = false,
   onClose,
   onConfirm,
 }: ConfirmationModalProps) {
+  // No renderiza el modal mientras permanece cerrado.
   if (!open) {
     return null;
   }
 
   return (
     <>
+      {/* Fondo del modal. */}
       <div
         className="modal-backdrop fade show"
         style={{
@@ -73,10 +79,9 @@ export default function ConfirmationModal({
           zIndex: 1055,
         }}
         onMouseDown={(event) => {
-          if (
-            event.target === event.currentTarget &&
-            !loading
-          ) {
+          // Permite cerrar al presionar fuera del contenido,
+          // excepto mientras una operación está en curso.
+          if (event.target === event.currentTarget && !loading) {
             onClose();
           }
         }}
@@ -92,6 +97,7 @@ export default function ConfirmationModal({
           }}
         >
           <div className="modal-content border-0 shadow-lg">
+            {/* Encabezado del modal. */}
             <div
               className="modal-header border-0 pb-2 position-relative"
               style={{
@@ -107,7 +113,10 @@ export default function ConfirmationModal({
                     flexShrink: 0,
                   }}
                 >
-                  <i className={`bi ${icon} fs-5`} />
+                  <i
+                    className={`bi ${icon} fs-5`}
+                    aria-hidden="true"
+                  />
                 </div>
 
                 <div>
@@ -137,6 +146,7 @@ export default function ConfirmationModal({
               />
             </div>
 
+            {/* Mensaje, detalle y advertencia de la acción. */}
             <div
               className="modal-body pt-2"
               style={{
@@ -144,25 +154,46 @@ export default function ConfirmationModal({
                 paddingRight: '20px',
               }}
             >
-              <p className="mb-2">{message}</p>
+              <p className="mb-2">
+                {message}
+              </p>
 
-              {detail && <div className="bg-light border rounded p-3">{detail}</div>}
+              {detail && (
+                <div className="bg-light border rounded p-3">
+                  {detail}
+                </div>
+              )}
 
-              <div
-                className={`alert alert-${variant === 'warning' ? 'warning' : variant === 'danger' ? 'danger' : variant === 'success' ? 'success' : 'primary'} d-flex align-items-start gap-2 mt-3 mb-0 py-2`}
-              >
-                <i className="bi bi-info-circle-fill mt-1" />
+              {notice !== null && (
+                <div
+                  className={`alert alert-${
+                    variant === 'warning'
+                      ? 'warning'
+                      : variant === 'danger'
+                        ? 'danger'
+                        : variant === 'success'
+                          ? 'success'
+                          : 'primary'
+                  } d-flex align-items-start gap-2 mt-3 mb-0 py-2`}
+                >
+                  <i
+                    className="bi bi-info-circle-fill mt-1"
+                    aria-hidden="true"
+                  />
 
-                <small>
-                  {variant === 'danger'
-                    ? 'Esta acción no se puede deshacer y puede afectar otros registros del sistema.'
-                    : variant === 'success'
-                      ? 'La acción quedará disponible para el usuario en el sistema.'
-                      : 'La operación se ejecutará solo si confirmás esta acción.'}
-                </small>
-              </div>
+                  <small>
+                    {notice ??
+                      (variant === 'danger'
+                        ? 'Esta acción no se puede deshacer y puede afectar otros registros del sistema.'
+                        : variant === 'success'
+                          ? 'La acción quedará disponible para el usuario en el sistema.'
+                          : 'La operación se ejecutará solo si confirmás esta acción.')}
+                  </small>
+                </div>
+              )}
             </div>
 
+            {/* Acciones disponibles para cancelar o confirmar. */}
             <div
               className="modal-footer border-0 pt-0"
               style={{
@@ -170,17 +201,19 @@ export default function ConfirmationModal({
                 gap: '8px',
               }}
             >
-              <button
-                type="button"
-                className="btn btn-outline-secondary"
-                disabled={loading}
-                style={{
-                  minWidth: '96px',
-                }}
-                onClick={onClose}
-              >
-                {cancelText}
-              </button>
+              {!hideCancel && (
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  disabled={loading}
+                  style={{
+                    minWidth: '96px',
+                  }}
+                  onClick={onClose}
+                >
+                  {cancelText}
+                </button>
+              )}
 
               <button
                 type="button"
@@ -202,7 +235,10 @@ export default function ConfirmationModal({
                   </>
                 ) : (
                   <>
-                    <i className={`bi ${icon} me-2`} />
+                    <i
+                      className={`bi ${icon} me-2`}
+                      aria-hidden="true"
+                    />
                     {confirmText}
                   </>
                 )}

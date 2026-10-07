@@ -1,4 +1,4 @@
-﻿import {
+import {
   useState,
   type FormEvent,
 } from 'react';
@@ -141,7 +141,7 @@ const Login = () => {
          * al inicio del sistema.
          */
         navigate(
-          '/',
+          '/panel',
           {
             replace: true,
           },
@@ -157,6 +157,7 @@ const Login = () => {
 
   return (
     <AuthForm
+      showSectionIcon={false}
       title="Te damos la bienvenida"
       subtitle="Ingresá a tu cuenta para continuar."
       footer={

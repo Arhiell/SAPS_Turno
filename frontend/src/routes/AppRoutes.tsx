@@ -64,9 +64,14 @@ import NuevaNotificacionPage from '../pages/notificaciones/NuevaNotificacionPage
 import HistorialNotificacionesPage from '../pages/notificaciones/HistorialNotificacionesPage';
 import DetalleNotificacionPage from '../pages/notificaciones/DetalleNotificacionPage';
 import ProtectedRoute from './ProtectedRoute';
+import PublicLayout from '../components/public/PublicLayout';
+import PublicHomePage from '../pages/public/PublicHomePage';
+import PublicNewsDetailPage from '../pages/public/PublicNewsDetailPage';
+import NewsAdminPage from '../pages/contenido/NewsAdminPage';
+import NewsEditorPage from '../pages/contenido/NewsEditorPage';
 
 /**
- * Decide qué pantalla mostrar en "/" según el rol.
+ * Decide qué pantalla mostrar en "/panel" según el rol.
  */
 const RoleHome = () => {
   const {
@@ -114,6 +119,11 @@ const AppRoutes = () => {
     <BrowserRouter>
       <Routes>
         {/* RUTAS PÚBLICAS */}
+        <Route element={<PublicLayout />}>
+          <Route path="/" element={<PublicHomePage />} />
+          <Route path="/noticias/:id" element={<PublicNewsDetailPage />} />
+        </Route>
+        <Route path="/acceso-personal" element={<Navigate to="/login" replace />} />
         
         <Route
           path="/registro"
@@ -157,6 +167,9 @@ const AppRoutes = () => {
           <Route element={<AppLayout />}>
             <Route path="/mis-notificaciones" element={<MisNotificacionesPage />} />
             <Route element={<ProtectedRoute roles={['SUPER_ADMIN', 'ADMIN_SALITA']} />}>
+              <Route path="/contenido" element={<NewsAdminPage />} />
+              <Route path="/contenido/nueva" element={<NewsEditorPage key="nueva-noticia" />} />
+              <Route path="/contenido/:id/editar" element={<NewsEditorPage key="editar-noticia" />} />
               <Route path="/notificaciones" element={<HistorialNotificacionesPage key="historial" />} />
               <Route path="/notificaciones/programadas" element={<HistorialNotificacionesPage key="programadas" programadas />} />
               <Route path="/notificaciones/nueva" element={<NuevaNotificacionPage key="nueva" />} />
@@ -231,7 +244,7 @@ const AppRoutes = () => {
             {/* DASHBOARD */}
 
             <Route
-              path="/"
+              path="/panel"
               element={<RoleHome />}
             />
 

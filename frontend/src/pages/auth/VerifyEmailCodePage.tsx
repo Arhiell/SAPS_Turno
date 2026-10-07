@@ -389,7 +389,7 @@ export default function VerifyEmailCodePage() {
 
         // Ingresa directamente al sistema.
         navigate(
-          '/',
+          '/panel',
           {
             replace: true,
           }

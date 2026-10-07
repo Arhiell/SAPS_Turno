@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { authError } from '../../utils/auth-errors';
 
+// Interfaz mínima utilizada del SDK de Google Identity Services.
 interface GoogleIdentity {
   initialize: (options: {
     client_id: string;
@@ -21,6 +22,7 @@ interface GoogleIdentity {
   ) => void;
 }
 
+// Extiende Window con la API cargada por Google Identity Services.
 declare global {
   interface Window {
     google?: {
@@ -31,8 +33,10 @@ declare global {
   }
 }
 
+// Conserva una única promesa para evitar cargar el SDK varias veces.
 let googleScript: Promise<void> | null = null;
 
+// Carga el SDK de Google Identity Services de forma dinámica.
 const loadGoogle = () =>
   googleScript ??=
     new Promise<void>((resolve, reject) => {
@@ -64,20 +68,27 @@ const loadGoogle = () =>
       document.head.appendChild(script);
     });
 
+interface GoogleButtonProps {
+  disabled?: boolean;
+}
+
+// Botón de autenticación mediante Google.
 export default function GoogleButton({
   disabled = false,
-}: {
-  disabled?: boolean;
-}) {
+}: GoogleButtonProps) {
   const container = useRef<HTMLDivElement>(null);
 
   const { loginWithGoogle } = useAuth();
 
+  // Mantiene disponible la versión más reciente de la función de login
+  // sin obligar a reinicializar el SDK de Google.
   const loginRef = useRef(loginWithGoogle);
   loginRef.current = loginWithGoogle;
 
+  // Evita procesar más de un intento de autenticación simultáneamente.
   const locked = useRef(false);
 
+  // Mantiene actualizado el estado disabled dentro del callback de Google.
   const disabledRef = useRef(disabled);
   disabledRef.current = disabled;
 
@@ -90,8 +101,11 @@ export default function GoogleButton({
     | string
     | undefined;
 
+  // Inicializa Google Identity Services y renderiza su botón oficial.
   useEffect(() => {
-    if (!clientId) return;
+    if (!clientId) {
+      return;
+    }
 
     let active = true;
 
@@ -124,13 +138,15 @@ export default function GoogleButton({
             void loginRef
               .current(result.credential)
               .then(() =>
-                navigate('/', {
+                navigate('/panel', {
                   replace: true,
                 })
               )
               .catch((cause) => {
                 if (active) {
-                  setError(authError(cause));
+                  setError(
+                    authError(cause)
+                  );
                 }
               })
               .finally(() => {
@@ -155,10 +171,13 @@ export default function GoogleButton({
       })
       .catch((cause) => {
         if (active) {
-          setError(authError(cause));
+          setError(
+            authError(cause)
+          );
         }
       });
 
+    // Ignora respuestas posteriores al desmontaje del componente.
     return () => {
       active = false;
     };
@@ -170,6 +189,7 @@ export default function GoogleButton({
       aria-busy={busy}
     >
       {clientId ? (
+        // Contenedor donde Google renderiza su botón oficial.
         <div
           className="auth-google-control"
           ref={container}
@@ -178,6 +198,7 @@ export default function GoogleButton({
         />
       ) : (
         <>
+          {/* Alternativa visual cuando Google no está configurado. */}
           <button
             type="button"
             className="btn btn-outline-secondary w-100"
@@ -196,12 +217,14 @@ export default function GoogleButton({
         </>
       )}
 
+      {/* Estado del proceso de autenticación. */}
       {busy && (
         <p role="status">
           Ingresando con Google…
         </p>
       )}
 
+      {/* Error de carga o autenticación con Google. */}
       {error && (
         <div
           className="alert alert-danger mt-2"

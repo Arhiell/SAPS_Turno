@@ -11,6 +11,7 @@ import {
 
 import {
   getSalitas,
+  getPublicSalitas,
   getSalitasAdministrativas,
   getSalita,
   crearSalita,
@@ -20,12 +21,12 @@ import {
 
 // Obtiene todas las salitas.
 export const getAllSalitas = async (
-  _req: Request,
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const salitas = await getSalitas();
+    const salitas = req.query.vista === 'publica' ? await getPublicSalitas() : await getSalitas();
 
     return res.status(200).json({
       success: true,
