@@ -1,18 +1,24 @@
 import api from './api';
-import type { OwnPatientUpdate } from '../types/patient.types';
-import type { ProfileResponse } from '../types/auth.types';
 
-export const updateOwnPatient = async (data: OwnPatientUpdate) =>
-  (await api.patch<ProfileResponse>('/auth/profile', data)).data;
+import { updateOwnProfile } from './auth.service';
 
 import type {
   CreatePatientRequest,
+  OwnPatientUpdate,
   PatientResponse,
   PatientStatusFilter,
   PatientsResponse,
   UpdatePatientRequest,
 } from '../types/patient.types';
 
+// Actualiza los datos personales del paciente autenticado.
+export const updateOwnPatient = async (
+  data: OwnPatientUpdate
+) => {
+  return updateOwnProfile(data);
+};
+
+// Obtiene la lista paginada de pacientes con filtros de búsqueda y estado.
 export const getPatients = async (
   page = 1,
   limit = 10,
@@ -28,64 +34,69 @@ export const getPatients = async (
         search: search || undefined,
         estado,
       },
-    },
+    }
   );
 
   return response.data;
 };
 
+// Busca un paciente mediante su número de DNI.
 export const getPatientByDni = async (
-  dni: string,
+  dni: string
 ): Promise<PatientResponse> => {
   const response = await api.get<PatientResponse>(
-    `/patients/dni/${dni}`,
+    `/patients/dni/${dni}`
   );
 
   return response.data;
 };
 
+// Obtiene los datos de un paciente mediante su identificador.
 export const getPatientById = async (
-  id: string,
+  id: string
 ): Promise<PatientResponse> => {
   const response = await api.get<PatientResponse>(
-    `/patients/${id}`,
+    `/patients/${id}`
   );
 
   return response.data;
 };
 
+// Registra un nuevo paciente en el sistema.
 export const createPatient = async (
-  data: CreatePatientRequest,
+  data: CreatePatientRequest
 ): Promise<PatientResponse> => {
   const response = await api.post<PatientResponse>(
     '/patients',
-    data,
+    data
   );
 
   return response.data;
 };
 
+// Actualiza el estado activo o inactivo de un paciente.
 export const updatePatientStatus = async (
   id: string,
-  activo: boolean,
+  activo: boolean
 ): Promise<PatientResponse> => {
   const response = await api.patch<PatientResponse>(
     `/patients/${id}/status`,
     {
       activo,
-    },
+    }
   );
 
   return response.data;
 };
 
+// Actualiza los datos de un paciente registrado.
 export const updatePatient = async (
   id: string,
-  data: UpdatePatientRequest,
+  data: UpdatePatientRequest
 ): Promise<PatientResponse> => {
   const response = await api.patch<PatientResponse>(
     `/patients/${id}`,
-    data,
+    data
   );
 
   return response.data;

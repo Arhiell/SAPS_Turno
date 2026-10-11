@@ -1,41 +1,35 @@
-import {
-  useNavigate,
-} from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
-import {
-  useAuth,
-} from '../../context/AuthContext';
-
-import {
-  roleLabels,
-} from './sidebar-menu';
+import { useAuth } from '../../context/AuthContext';
+import { roleLabels } from './sidebar-menu';
 
 import NotificationBell from './NotificationBell';
 
 import '../../styles/navbar.css';
 
+// Define la barra de navegación principal del sistema.
 const Navbar = () => {
-  // Obtiene el usuario autenticado y la función
-  // de cierre de sesión.
+  // Obtiene los datos del usuario y la función de cierre de sesión.
   const {
     user,
+    person,
     logout,
   } = useAuth();
 
   const navigate = useNavigate();
 
-  // Cierra la sesión y redirige al login.
+  // Cierra la sesión y redirige al inicio de sesión.
   const handleLogout = async () => {
     try {
       await logout();
     } catch {
-      // La sesión local ya fue eliminada
-      // por AuthContext.
+      // AuthContext ya eliminó la sesión local.
     } finally {
       navigate('/login');
     }
   };
 
+  // Obtiene el nombre del rol para mostrarlo en la interfaz.
   const roleLabel =
     roleLabels[user?.rol ?? ''] ??
     user?.rol ??
@@ -43,7 +37,7 @@ const Navbar = () => {
 
   return (
     <header className="navbar-saps navbar-saps-modern">
-      {/* Identidad del sistema */}
+      {/* Identidad del sistema. */}
       <div className="navbar-brand-saps">
         <div
           className="navbar-brand-icon"
@@ -71,17 +65,16 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Información del usuario */}
+      {/* Información del usuario autenticado. */}
       <div className="navbar-user navbar-user-modern">
-        {/* Todos los roles tienen una bandeja personal. */}
+        {/* Muestra las notificaciones del usuario. */}
         {user && (
           <div className="navbar-notification">
-            <NotificationBell
-              key={user.id_usuario}
-            />
+            <NotificationBell key={user.id_usuario} />
           </div>
         )}
 
+        {/* Muestra el nombre y rol del usuario. */}
         <div className="navbar-profile">
           <div
             className="navbar-profile-icon"
@@ -92,7 +85,9 @@ const Navbar = () => {
 
           <div className="navbar-profile-info">
             <strong>
-              {user?.nombre_usuario}
+              {person
+                ? `${person.nombres} ${person.apellidos}`
+                : user?.nombre_usuario}
             </strong>
 
             <small>
@@ -106,7 +101,7 @@ const Navbar = () => {
           aria-hidden="true"
         />
 
-        {/* Botón para cerrar la sesión. */}
+        {/* Permite cerrar la sesión actual. */}
         <button
           type="button"
           className="navbar-logout"

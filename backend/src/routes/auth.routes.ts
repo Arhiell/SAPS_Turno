@@ -1,6 +1,4 @@
-import {
-  Router,
-} from 'express';
+import { Router } from 'express';
 
 import {
   changeUsername,
@@ -9,11 +7,10 @@ import {
 
 import {
   authenticate,
+  authenticateForProfile,
 } from '../middlewares/auth.middleware.js';
 
-import {
-  requireRole,
-} from '../middlewares/role.middleware.js';
+import { requireRole } from '../middlewares/role.middleware.js';
 
 import {
   ownProfile,
@@ -28,79 +25,67 @@ import {
   register,
 } from '../controllers/auth.controller.js';
 
-// Crea el router para las rutas de autenticación y cuenta.
+// Crea el router de autenticación y gestión de cuentas.
 const router = Router();
 
-// ========================================
-// CUENTA DEL PACIENTE
-// ========================================
-
-// Permite al paciente cambiar su nombre de usuario.
+// Actualiza el nombre de usuario de la cuenta autenticada.
 router.patch(
   '/username',
   authenticate,
-  requireRole('PACIENTE'),
+  requireRole('PACIENTE', 'SUPER_ADMIN', 'ADMIN_SALITA', 'PROFESIONAL'),
   changeUsername
 );
 
-// Permite al paciente cambiar su contraseña.
+// Cambia la contraseña y revoca las sesiones correspondientes.
 router.patch(
   '/password',
   authenticate,
-  requireRole('PACIENTE'),
+  requireRole('PACIENTE', 'SUPER_ADMIN', 'ADMIN_SALITA', 'PROFESIONAL'),
   changePassword
 );
-
-// ========================================
-// PERFIL DEL USUARIO
-// ========================================
 
 // Obtiene el perfil del usuario autenticado.
 router.get(
   '/me',
-  authenticate,
+  authenticateForProfile,
   ownProfile
 );
 
-// Actualiza el perfil del paciente autenticado.
+// Actualiza los datos personales permitidos según el rol.
 router.patch(
   '/profile',
   authenticate,
-  requireRole('PACIENTE'),
+  requireRole('PACIENTE', 'SUPER_ADMIN', 'ADMIN_SALITA', 'PROFESIONAL'),
   updateOwnProfile
 );
 
-// Completa el perfil del paciente autenticado.
+// Completa el perfil del usuario autenticado.
 router.post(
   '/profile',
-  authenticate,
-  requireRole('PACIENTE'),
+  authenticateForProfile,
+  requireRole('PACIENTE', 'SUPER_ADMIN', 'ADMIN_SALITA'),
   completeProfile
 );
 
-// ========================================
-// AUTENTICACIÓN
-// ========================================
-
-// Registro público.
+// Registra una nueva cuenta de usuario.
 router.post(
   '/register',
   register
 );
 
-// Inicio de sesión.
+// Inicia sesión con las credenciales del usuario.
 router.post(
   '/login',
   login
 );
 
-// Renovación de tokens.
+// Renueva los tokens de autenticación.
 router.post(
   '/refresh',
   refresh
 );
 
-// Cierre de sesión.
+// Cierra la sesión del usuario.
 router.post(
   '/logout',
   logout

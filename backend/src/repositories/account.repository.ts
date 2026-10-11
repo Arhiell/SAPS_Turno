@@ -1,15 +1,27 @@
-import {
-  supabase,
-} from '../config/supabase.js';
+import { supabase } from '../config/supabase.js';
 
-// Busca las credenciales y el estado de seguridad de una cuenta.
+// Busca una cuenta asociada a una persona.
+export const findAccountByPersonId = async (
+  idPerson: string
+) => {
+  const { data, error } = await supabase
+    .from('usuarios')
+    .select('id_usuario')
+    .eq('id_persona', idPerson)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
+// Obtiene las credenciales y el estado de seguridad de una cuenta.
 export const findAccountCredentials = async (
   id: string
 ) => {
-  const {
-    data,
-    error,
-  } = await supabase
+  const { data, error } = await supabase
     .from('usuarios')
     .select(
       'password_hash, activo, email_verificado, intentos_fallidos, bloqueado_hasta'
@@ -29,10 +41,7 @@ export const updateUsername = async (
   id: string,
   username: string
 ) => {
-  const {
-    data,
-    error,
-  } = await supabase
+  const { data, error } = await supabase
     .from('usuarios')
     .update({
       nombre_usuario: username,
@@ -49,17 +58,13 @@ export const updateUsername = async (
   return data;
 };
 
-// Reemplaza la contraseña solamente si el hash anterior coincide.
-// Esto evita sobrescribir un cambio de contraseña concurrente.
+// Reemplaza la contraseña si el hash anterior coincide.
 export const replacePassword = async (
   id: string,
   previousHash: string,
   newHash: string
 ) => {
-  const {
-    data,
-    error,
-  } = await supabase
+  const { data, error } = await supabase
     .from('usuarios')
     .update({
       password_hash: newHash,

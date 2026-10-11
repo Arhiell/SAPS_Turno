@@ -14,6 +14,8 @@ import RegisterPage from '../pages/auth/RegisterPage';
 import PasswordRecoveryPage from '../pages/auth/PasswordRecoveryPage';
 import VerifyEmailCodePage from '../pages/auth/VerifyEmailCodePage';
 import CompletePatientProfilePage from '../pages/auth/CompletePatientProfilePage';
+import CompleteAdminProfilePage from '../pages/auth/CompleteAdminProfilePage';
+import AdminProfilePage from '../pages/auth/AdminProfilePage';
 
 // Dashboard
 import Dashboard from '../pages/dashboard/Dashboard';
@@ -57,74 +59,77 @@ import BloqueosPage from '../pages/configuracion/BloqueosPage';
 // Reportes
 import ReportesPage from '../pages/reportes/ReportesPage';
 
-// Layout y protección de rutas
-import AppLayout from '../components/layout/AppLayout';
+// Notificaciones
 import MisNotificacionesPage from '../pages/notificaciones/MisNotificacionesPage';
 import NuevaNotificacionPage from '../pages/notificaciones/NuevaNotificacionPage';
 import HistorialNotificacionesPage from '../pages/notificaciones/HistorialNotificacionesPage';
 import DetalleNotificacionPage from '../pages/notificaciones/DetalleNotificacionPage';
-import ProtectedRoute from './ProtectedRoute';
-import PublicLayout from '../components/public/PublicLayout';
-import PublicHomePage from '../pages/public/PublicHomePage';
-import PublicNewsDetailPage from '../pages/public/PublicNewsDetailPage';
+
+// Contenido
 import NewsAdminPage from '../pages/contenido/NewsAdminPage';
 import NewsEditorPage from '../pages/contenido/NewsEditorPage';
 
-/**
- * Decide qué pantalla mostrar en "/panel" según el rol.
- */
+// Páginas públicas
+import PublicHomePage from '../pages/public/PublicHomePage';
+import PublicNewsDetailPage from '../pages/public/PublicNewsDetailPage';
+
+// Layouts
+import AppLayout from '../components/layout/AppLayout';
+import PublicLayout from '../components/public/PublicLayout';
+
+// Protección de rutas
+import ProtectedRoute from './ProtectedRoute';
+
+// Muestra el panel correspondiente al rol del usuario autenticado.
 const RoleHome = () => {
-  const {
-    user,
-    patient,
-  } = useAuth();
+  const { user } = useAuth();
 
-  // Profesional.
-  if (user?.rol === 'PROFESIONAL') {
-    return <Dashboard />;
-  }
-
-  // Paciente.
-  // Si todavía no completó su perfil, lo redirige.
-  if (user?.rol === 'PACIENTE') {
-    return patient ? (
-      <Dashboard />
-    ) : (
-      <Navigate
-        to="/completar-perfil"
-        replace
-      />
-    );
-  }
-
-  // Administradores.
-  if (
-    ['SUPER_ADMIN', 'ADMIN_SALITA'].includes(
-      user?.rol ?? ''
-    )
-  ) {
-    return <Dashboard />;
-  }
-
-  return (
+  return [
+    'SUPER_ADMIN',
+    'ADMIN_SALITA',
+    'PROFESIONAL',
+    'PACIENTE',
+  ].includes(user?.rol ?? '') ? (
+    <Dashboard />
+  ) : (
     <p>
-      Tu rol no tiene un panel habilitado. Contactá a la
-      administración.
+      Tu rol no tiene un panel habilitado. Contactá a la administración.
     </p>
   );
 };
 
+// Define las rutas públicas y privadas de la aplicación.
 const AppRoutes = () => {
+  const { user } = useAuth();
+
+  // Identifica si el usuario tiene un rol administrativo.
+  const administrative = [
+    'SUPER_ADMIN',
+    'ADMIN_SALITA',
+  ].includes(user?.rol ?? '');
+
   return (
     <BrowserRouter>
       <Routes>
-        {/* RUTAS PÚBLICAS */}
+        {/* Rutas públicas del sitio. */}
         <Route element={<PublicLayout />}>
-          <Route path="/" element={<PublicHomePage />} />
-          <Route path="/noticias/:id" element={<PublicNewsDetailPage />} />
+          <Route
+            path="/"
+            element={<PublicHomePage />}
+          />
+
+          <Route
+            path="/noticias/:id"
+            element={<PublicNewsDetailPage />}
+          />
         </Route>
-        <Route path="/acceso-personal" element={<Navigate to="/login" replace />} />
-        
+
+        {/* Rutas de autenticación y recuperación de acceso. */}
+        <Route
+          path="/acceso-personal"
+          element={<Navigate to="/login" replace />}
+        />
+
         <Route
           path="/registro"
           element={<RegisterPage />}
@@ -132,23 +137,17 @@ const AppRoutes = () => {
 
         <Route
           path="/recuperar-contrasena"
-          element={
-            <PasswordRecoveryPage mode="forgot" />
-          }
+          element={<PasswordRecoveryPage mode="forgot" />}
         />
 
         <Route
           path="/restablecer-contrasena"
-          element={
-            <PasswordRecoveryPage mode="reset" />
-          }
+          element={<PasswordRecoveryPage mode="reset" />}
         />
 
         <Route
           path="/verificar-email"
-          element={
-            <PasswordRecoveryPage mode="verify" />
-          }
+          element={<PasswordRecoveryPage mode="verify" />}
         />
 
         <Route
@@ -156,42 +155,72 @@ const AppRoutes = () => {
           element={<VerifyEmailCodePage />}
         />
 
-        {/* AUTENTICACIÓN */}
         <Route
           path="/login"
           element={<Login />}
         />
 
-        {/* RUTAS PROTEGIDAS */}
+        {/* Rutas disponibles para usuarios autenticados. */}
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
-            <Route path="/mis-notificaciones" element={<MisNotificacionesPage />} />
-            <Route element={<ProtectedRoute roles={['SUPER_ADMIN', 'ADMIN_SALITA']} />}>
-              <Route path="/contenido" element={<NewsAdminPage />} />
-              <Route path="/contenido/nueva" element={<NewsEditorPage key="nueva-noticia" />} />
-              <Route path="/contenido/:id/editar" element={<NewsEditorPage key="editar-noticia" />} />
-              <Route path="/notificaciones" element={<HistorialNotificacionesPage key="historial" />} />
-              <Route path="/notificaciones/programadas" element={<HistorialNotificacionesPage key="programadas" programadas />} />
-              <Route path="/notificaciones/nueva" element={<NuevaNotificacionPage key="nueva" />} />
-              <Route path="/notificaciones/:id/editar" element={<NuevaNotificacionPage key="editar" editar />} />
-              <Route path="/notificaciones/:id" element={<DetalleNotificacionPage />} />
-            </Route>
+            {/* Panel principal y notificaciones personales. */}
+            <Route
+              path="/panel"
+              element={<RoleHome />}
+            />
 
-            {/* PACIENTE */}
+            <Route
+              path="/mis-notificaciones"
+              element={<MisNotificacionesPage />}
+            />
+
+            {/* Permite completar el perfil según el rol del usuario. */}
             <Route
               element={
                 <ProtectedRoute
-                  roles={['PACIENTE']}
+                  roles={['SUPER_ADMIN', 'ADMIN_SALITA', 'PACIENTE']}
                 />
               }
             >
               <Route
                 path="/completar-perfil"
                 element={
-                  <CompletePatientProfilePage />
+                  administrative
+                    ? <CompleteAdminProfilePage />
+                    : <CompletePatientProfilePage />
                 }
               />
+            </Route>
 
+            {/* Perfil personal de los usuarios autenticados. */}
+            <Route
+              element={
+                <ProtectedRoute
+                  roles={[
+                    'SUPER_ADMIN',
+                    'ADMIN_SALITA',
+                    'PACIENTE',
+                    'PROFESIONAL',
+                  ]}
+                />
+              }
+            >
+              <Route
+                path="/mi-perfil"
+                element={
+                  user?.rol === 'PACIENTE'
+                    ? <MiPerfilPage />
+                    : <AdminProfilePage />
+                }
+              />
+            </Route>
+
+            {/* Rutas exclusivas para pacientes. */}
+            <Route
+              element={
+                <ProtectedRoute roles={['PACIENTE']} />
+              }
+            >
               <Route
                 path="/solicitar-turno"
                 element={<SolicitarTurnoPage />}
@@ -201,15 +230,17 @@ const AppRoutes = () => {
                 path="/mis-turnos"
                 element={<PatientAppointmentsPage />}
               />
-              <Route path="/mis-turnos/:id" element={<PatientAppointmentDetailPage />} />
+
+              <Route
+                path="/mis-turnos/:id"
+                element={<PatientAppointmentDetailPage />}
+              />
             </Route>
 
-            {/* PROFESIONAL */}
+            {/* Rutas exclusivas para profesionales. */}
             <Route
               element={
-                <ProtectedRoute
-                  roles={['PROFESIONAL']}
-                />
+                <ProtectedRoute roles={['PROFESIONAL']} />
               }
             >
               <Route
@@ -223,46 +254,75 @@ const AppRoutes = () => {
               />
             </Route>
 
-            {/* PACIENTE Y PROFESIONAL */}
-
+            {/* Rutas para administradores de salitas y superadministradores. */}
             <Route
               element={
                 <ProtectedRoute
-                  roles={[
-                    'PACIENTE',
-                    'PROFESIONAL',
-                  ]}
+                  roles={['SUPER_ADMIN', 'ADMIN_SALITA']}
                 />
               }
             >
+              {/* Gestión de noticias y contenido. */}
               <Route
-                path="/mi-perfil"
-                element={<MiPerfilPage />}
+                path="/contenido"
+                element={<NewsAdminPage />}
               />
-            </Route>
 
-            {/* DASHBOARD */}
+              <Route
+                path="/contenido/nueva"
+                element={
+                  <NewsEditorPage key="nueva-noticia" />
+                }
+              />
 
-            <Route
-              path="/panel"
-              element={<RoleHome />}
-            />
+              <Route
+                path="/contenido/:id/editar"
+                element={
+                  <NewsEditorPage key="editar-noticia" />
+                }
+              />
 
-            {/* ADMINISTRACIÓN */}
-            {/* SUPER_ADMIN / ADMIN_SALITA */}
+              {/* Gestión de notificaciones. */}
+              <Route
+                path="/notificaciones"
+                element={
+                  <HistorialNotificacionesPage key="historial" />
+                }
+              />
 
-            <Route
-              element={
-                <ProtectedRoute
-                  roles={[
-                    'SUPER_ADMIN',
-                    'ADMIN_SALITA',
-                  ]}
-                />
-              }
-            >
-              {/* CONFIGURACIÓN */}
+              <Route
+                path="/notificaciones/programadas"
+                element={
+                  <HistorialNotificacionesPage
+                    key="programadas"
+                    programadas
+                  />
+                }
+              />
 
+              <Route
+                path="/notificaciones/nueva"
+                element={
+                  <NuevaNotificacionPage key="nueva" />
+                }
+              />
+
+              <Route
+                path="/notificaciones/:id/editar"
+                element={
+                  <NuevaNotificacionPage
+                    key="editar"
+                    editar
+                  />
+                }
+              />
+
+              <Route
+                path="/notificaciones/:id"
+                element={<DetalleNotificacionPage />}
+              />
+
+              {/* Configuración general del sistema. */}
               <Route
                 path="/configuracion"
                 element={<ConfiguracionPage />}
@@ -283,14 +343,83 @@ const AppRoutes = () => {
                 element={<BloqueosPage />}
               />
 
-              {/* Configuración exclusiva de SUPER_ADMIN */}
+              {/* Administración de cuentas de acceso. */}
+              <Route
+                path="/administracion"
+                element={<AccountManagementPage />}
+              />
+
+              {/* Gestión de pacientes. */}
+              <Route
+                path="/pacientes"
+                element={<PacientesPage />}
+              />
+
+              <Route
+                path="/pacientes/nuevo"
+                element={<NuevoPacientePage />}
+              />
+
+              <Route
+                path="/pacientes/:id"
+                element={<PacienteDetallePage />}
+              />
+
+              {/* Gestión de profesionales. */}
+              <Route
+                path="/profesionales"
+                element={<ProfesionalesPage />}
+              />
+
+              <Route
+                path="/profesionales/nuevo"
+                element={<NuevoProfesionalPage />}
+              />
+
+              <Route
+                path="/profesionales/:id"
+                element={<ProfesionalDetallePage />}
+              />
+
+              <Route
+                path="/profesionales/:id/editar"
+                element={<EditarProfesionalPage />}
+              />
+
+              {/* Gestión de turnos. */}
+              <Route
+                path="/turnos"
+                element={<TurnosPage />}
+              />
+
+              <Route
+                path="/turnos/nuevo"
+                element={<NuevoTurnoPage />}
+              />
+
+              <Route
+                path="/turnos/:id/reprogramar"
+                element={<ReprogramarTurnoPage />}
+              />
+
+              <Route
+                path="/turnos/:id"
+                element={<TurnoDetallePage />}
+              />
+
+              {/* Reportes del sistema. */}
+              <Route
+                path="/reportes"
+                element={<ReportesPage />}
+              />
+
+              {/* Rutas exclusivas para el superadministrador. */}
               <Route
                 element={
-                  <ProtectedRoute
-                    roles={['SUPER_ADMIN']}
-                  />
+                  <ProtectedRoute roles={['SUPER_ADMIN']} />
                 }
               >
+                {/* Catálogos y cobertura territorial. */}
                 <Route
                   path="/configuracion/zonas"
                   element={
@@ -325,42 +454,8 @@ const AppRoutes = () => {
                   path="/configuracion/cobertura"
                   element={<CoberturaPage />}
                 />
-              </Route>
 
-              {/* CUENTAS DE ACCESO */}
-
-              <Route
-                path="/administracion"
-                element={<AccountManagementPage />}
-              />
-
-              {/* PACIENTES */}
-
-              <Route
-                path="/pacientes"
-                element={<PacientesPage />}
-              />
-
-              <Route
-                path="/pacientes/nuevo"
-                element={<NuevoPacientePage />}
-              />
-
-              <Route
-                path="/pacientes/:id"
-                element={<PacienteDetallePage />}
-              />
-
-              {/* SALITAS */}
-              {/* Solo SUPER_ADMIN */}
-
-              <Route
-                element={
-                  <ProtectedRoute
-                    roles={['SUPER_ADMIN']}
-                  />
-                }
-              >
+                {/* Gestión de salitas. */}
                 <Route
                   path="/salitas"
                   element={<SalitasPage />}
@@ -371,14 +466,10 @@ const AppRoutes = () => {
                   element={<NuevaSalitaPage />}
                 />
 
-                {/* Evita interpretar "nuevo" como un ID. */}
                 <Route
                   path="/salitas/nuevo"
                   element={
-                    <Navigate
-                      to="/salitas/nueva"
-                      replace
-                    />
+                    <Navigate to="/salitas/nueva" replace />
                   }
                 />
 
@@ -392,72 +483,14 @@ const AppRoutes = () => {
                   element={<EditarSalitaPage />}
                 />
               </Route>
-
-
-              {/* PROFESIONALES */}
-
-              <Route
-                path="/profesionales"
-                element={<ProfesionalesPage />}
-              />
-
-              <Route
-                path="/profesionales/nuevo"
-                element={<NuevoProfesionalPage />}
-              />
-
-              <Route
-                path="/profesionales/:id"
-                element={<ProfesionalDetallePage />}
-              />
-
-              <Route
-                path="/profesionales/:id/editar"
-                element={<EditarProfesionalPage />}
-              />
-
-              {/* TURNOS */}
-
-              <Route
-                path="/turnos"
-                element={<TurnosPage />}
-              />
-
-              <Route
-                path="/turnos/nuevo"
-                element={<NuevoTurnoPage />}
-              />
-
-              <Route
-                path="/turnos/:id/reprogramar"
-                element={<ReprogramarTurnoPage />}
-              />
-
-              <Route
-                path="/turnos/:id"
-                element={<TurnoDetallePage />}
-              />
-
-              {/* REPORTES */}
-
-              <Route
-                path="/reportes"
-                element={<ReportesPage />}
-              />
             </Route>
           </Route>
         </Route>
 
-        {/* RUTA NO ENCONTRADA */}
-
+        {/* Redirige las rutas inexistentes a la página principal. */}
         <Route
           path="*"
-          element={
-            <Navigate
-              to="/"
-              replace
-            />
-          }
+          element={<Navigate to="/" replace />}
         />
       </Routes>
     </BrowserRouter>

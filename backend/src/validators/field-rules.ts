@@ -33,7 +33,7 @@ export const fieldMessages = {
     'El teléfono debe contener números; puede incluir + al inicio, espacios o guiones.',
 
   dni:
-    'El DNI debe contener entre 8 y 10 números, sin letras ni símbolos.',
+    'El DNI debe contener entre 7 y 15 números, sin letras ni símbolos.',
 
   license:
     'La matrícula admite letras, números y separadores (espacio, punto, guion o barra).',

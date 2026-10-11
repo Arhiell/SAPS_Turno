@@ -42,3 +42,57 @@ El menú comparte AppLayout, Sidebar y Navbar. ProtectedRoute controla los roles
 8. Solicitar recuperación con correo registrado y no registrado: mismo mensaje público. Probar token inválido, vencido y utilizado; cambiar contraseña e ingresar de nuevo.
 
 El envío real de correos y la autorización de Google requieren comprobación con las cuentas y proveedores configurados. No se crearon cuentas reales para probarlos automáticamente.
+
+## Perfil administrativo obligatorio
+
+Antes de desplegar este cambio, ejecutar en Supabase
+`backend/src/BBDD/20261011_admin_profile.sql`. Agrega solamente la RPC
+`completar_perfil_administrativo`, con ejecución restringida a `service_role`.
+No agrega columnas ni modifica el SQL histórico. La migración se entrega preparada;
+no fue aplicada desde esta sesión.
+
+- SUPER_ADMIN puede crear SUPER_ADMIN o ADMIN_SALITA mediante `POST /api/users/admins`.
+  `rol` admite sólo esos códigos; si se omite conserva ADMIN_SALITA para clientes existentes.
+  ADMIN_SALITA exige una salita activa; SUPER_ADMIN rechaza `id_salita` y no crea asociación.
+- El alta conserva `id_persona = NULL` y correo sin verificar. Reutiliza el código de email actual.
+- `GET /api/auth/me` devuelve `user.id_persona`, `user.email_verificado`,
+  `user.perfil_completo` y `person`, sin credenciales. El estado administrativo se deriva del vínculo.
+- React obliga a ambos roles administrativos a pasar por `/completar-perfil`.
+  La API rechaza sus operaciones protegidas con 403 `PROFILE_INCOMPLETE` mientras falte persona.
+  Se permiten consulta propia y `POST /api/auth/profile`; login, refresh, logout y verificación
+  conservan sus rutas. Las páginas públicas continúan disponibles.
+- Se reutiliza `createPersonSchema`: DNI, nombres y apellidos obligatorios;
+  fecha, sexo, teléfono, domicilio y código postal opcionales. Localidad/provincia tienen
+  los valores por defecto del modelo. No se trasladan requisitos clínicos de pacientes al administrador.
+- El correo personal inicial procede de la cuenta verificada. No se agrega sincronización posterior.
+- Un DNI existente requiere revisión administrativa, tenga o no cuenta/paciente/profesional.
+  No se reclama una identidad sólo por conocer el DNI. La operación crea una persona nueva
+  y su vínculo en una transacción, con bloqueo de usuario y auditoría existente.
+- Tras guardar se actualiza el contexto y se vuelve a `/panel`. `/mi-perfil` permite consultar
+  los datos; la edición administrativa posterior queda fuera de este cambio.
+- La política de contraseñas sigue siendo 8–128 caracteres con mayúscula, minúscula,
+  número y símbolo. Las altas internas y recuperación reutilizan el esquema de registro.
+
+La consulta de diagnóstico del 11/10/2026 encontró 3 cuentas administrativas, todas sin
+persona vinculada. No encontró perfiles administrativos vinculados parcialmente.
+No se modificaron cuentas durante esa revisión.
+
+### Comprobación funcional manual pendiente
+
+1. Aplicar la RPC antes de iniciar sesión con las cuentas administrativas existentes.
+2. Completar perfil del SUPER_ADMIN inicial; verificar una sola persona y su `usuarios.id_persona`.
+3. Crear ambos tipos administrativos. Comprobar correo sin verificar y relación con salita
+   exclusivamente para ADMIN_SALITA, principal y activa, con `fecha_desde` predeterminada.
+4. Verificar correo, ingresar, recargar y escribir `/panel` u otra URL protegida directamente:
+   debe exigir perfil. Una petición directa a la API también debe recibir 403.
+5. Completar perfil y comprobar mensaje, nombre visible y consulta de `/mi-perfil` sin relogin.
+6. Repetir el POST y enviar dos solicitudes simultáneas: no debe crear otra persona.
+   Probar un DNI vinculado a otra cuenta y uno preexistente sin cuenta: ambos se rechazan claramente.
+7. Comprobar en una base de prueba que un fallo al actualizar el vínculo revierte también
+   la inserción de persona. La RPC no utiliza compensaciones ni borrados posteriores.
+8. Intentar crear SUPER_ADMIN desde ADMIN_SALITA: 403. Enviar otro rol o una salita
+   para SUPER_ADMIN: 400. Probar una salita inexistente/inactiva: rechazo.
+9. Confirmar login, refresh, logout y flujos de pacientes/profesionales existentes.
+10. Revisar formulario a 320, 375, 425, 768, 1024 y 1440 px, sin desplazamiento horizontal.
+
+No se crearon tests automáticos; estas pruebas funcionales quedan a cargo del equipo.

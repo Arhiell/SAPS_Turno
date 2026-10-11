@@ -16,6 +16,9 @@ export default function AccountSummary({
 
   return (
     <div className="small mt-1 text-break">
+      {account.persona && <div className="fw-semibold">
+        {account.persona.nombres} {account.persona.apellidos}
+      </div>}
       <div>
         Nombre de usuario:{' '}
         <span className="fw-semibold">

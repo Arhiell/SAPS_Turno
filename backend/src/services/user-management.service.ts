@@ -1,14 +1,17 @@
-import { duplicateMessages } from "../utils/duplicate-error.js";
+import { supabase } from '../config/supabase.js';
+
 import type {
   CreateAdminInput,
   CreatePatientAccountInput,
-  CreateProfessionalAccountInput
-} from "../validators/user.validator.js";
-import type { AuthenticatedUser } from "../types/auth.types.js";
-import { supabase } from "../config/supabase.js";
-import { getProfesionalById } from "../repositories/profesional.repository.js";
-import { getTurnoScope } from "./turno-access.service.js";
-import { createVerificationCodeForNewUser } from "./email-verification.service.js";
+  CreateProfessionalAccountInput,
+} from '../validators/user.validator.js';
+
+import type {
+  AuthenticatedUser,
+} from '../types/auth.types.js';
+
+import { findAccountByPersonId } from '../repositories/account.repository.js';
+import { getProfesionalById } from '../repositories/profesional.repository.js';
 
 import {
   assignUserToSalita,
@@ -16,224 +19,222 @@ import {
   findActiveSalitaById,
   findRoleByCode,
   findUserByEmail,
-  findUserByUsername
-} from "../repositories/user.repository.js";
+  findUserByUsername,
+} from '../repositories/user.repository.js';
 
-import {
-  hashPassword
-} from "./password.service.js";
+import { getTurnoScope } from './turno-access.service.js';
+import { createVerificationCodeForNewUser } from './email-verification.service.js';
+import { hashPassword } from './password.service.js';
 
-import {
-  AppError
-} from "../utils/app-error.js";
+import { duplicateMessages } from '../utils/duplicate-error.js';
+import { AppError } from '../utils/app-error.js';
 
-/**
- * Verifica email y username antes de crear cuenta.
- */
+// Verifica que el correo y el nombre de usuario no estén registrados.
 const ensureUserDoesNotExist = async (
   email: string,
   username: string
 ) => {
   if (await findUserByEmail(email)) {
-    throw new AppError(
-      duplicateMessages.email,
-      409
-    );
+    throw new AppError(duplicateMessages.email, 409);
   }
 
-  if (
-    await findUserByUsername(username)
-  ) {
-    throw new AppError(
-      duplicateMessages.username,
-      409
-    );
+  if (await findUserByUsername(username)) {
+    throw new AppError(duplicateMessages.username, 409);
   }
 };
 
-/**
- * Solo será llamado desde una ruta SUPER_ADMIN.
- */
+// Crea una cuenta administrativa y asigna una salita si corresponde.
 export const createAdminAccount = async (
   input: CreateAdminInput
 ) => {
-  const email =
-    input.email.toLowerCase();
+  // Normaliza las credenciales del usuario.
+  const email = input.email.toLowerCase();
+  const username = input.nombre_usuario.trim();
 
-  const username =
-    input.nombre_usuario.trim();
+  // Comprueba que la cuenta no exista.
+  await ensureUserDoesNotExist(email, username);
 
-  await ensureUserDoesNotExist(
-    email,
-    username
-  );
-
-  // El rol se obtiene desde nuestra base.
-  const role =
-    await findRoleByCode("ADMIN_SALITA");
+  // Obtiene el rol administrativo solicitado.
+  const role = await findRoleByCode(input.rol);
 
   if (!role) {
-    throw new AppError(
-      "Rol ADMIN_SALITA no encontrado",
-      500
-    );
+    throw new AppError('Rol administrativo no encontrado', 500);
   }
 
-  // La salita debe existir y estar activa.
-  const salita =
-    await findActiveSalitaById(
-      input.id_salita
-    );
+  // Verifica la salita cuando el rol es ADMIN_SALITA.
+  const salita = input.rol === 'ADMIN_SALITA' && input.id_salita
+    ? await findActiveSalitaById(input.id_salita)
+    : null;
 
-  if (!salita) {
+  if (input.rol === 'ADMIN_SALITA' && !salita) {
     throw new AppError(
-      "La salita indicada no existe o está inactiva",
+      'La salita indicada no existe o está inactiva',
       404
     );
   }
 
-  const passwordHash =
-    await hashPassword(input.password);
+  // Genera el hash de la contraseña.
+  const passwordHash = await hashPassword(input.password);
 
+  // Registra la cuenta administrativa.
   const user = await createUser({
     id_rol: role.id_rol,
     nombre_usuario: username,
     email,
-    password_hash: passwordHash
+    password_hash: passwordHash,
   });
 
-  /**
-   * Los Admin de Salita sí requieren
-   * una relación usuario_salita.
-   */
-  await assignUserToSalita(
-    user.id_usuario,
-    input.id_salita
-  );
-
-  return {
-    ...user,
-
-    rol: role.codigo,
-
-    salita: {
-      id_salita: salita.id_salita,
-      nombre: salita.nombre
-    }
-  };
-};
-
-/**
- * Crea una cuenta PACIENTE.
- *
- * Puede ser utilizada por Super Admin
- * o Administrador de Salita.
- */
-export const createPatientAccount = async (
-  input: CreatePatientAccountInput
-) => {
-  const email =
-    input.email.toLowerCase();
-
-  const username =
-    input.nombre_usuario.trim();
-
-  await ensureUserDoesNotExist(
-    email,
-    username
-  );
-
-  const role =
-    await findRoleByCode("PACIENTE");
-
-  if (!role) {
-    throw new AppError(
-      "Rol PACIENTE no encontrado",
-      500
+  // Asocia la cuenta a la salita correspondiente.
+  if (salita) {
+    await assignUserToSalita(
+      user.id_usuario,
+      salita.id_salita
     );
   }
 
-  const passwordHash =
-    await hashPassword(input.password);
+  // Devuelve la cuenta con su rol y salita asignada.
+  return {
+    ...user,
+    rol: role.codigo,
+    salita: salita
+      ? {
+          id_salita: salita.id_salita,
+          nombre: salita.nombre,
+        }
+      : null,
+  };
+};
 
+// Crea una cuenta de usuario con el rol PACIENTE.
+export const createPatientAccount = async (
+  input: CreatePatientAccountInput
+) => {
+  // Normaliza las credenciales del paciente.
+  const email = input.email.toLowerCase();
+  const username = input.nombre_usuario.trim();
+
+  // Verifica que el correo y el usuario estén disponibles.
+  await ensureUserDoesNotExist(email, username);
+
+  // Obtiene el rol PACIENTE.
+  const role = await findRoleByCode('PACIENTE');
+
+  if (!role) {
+    throw new AppError('Rol PACIENTE no encontrado', 500);
+  }
+
+  // Genera el hash de la contraseña.
+  const passwordHash = await hashPassword(input.password);
+
+  // Registra la cuenta del paciente.
   const user = await createUser({
     id_rol: role.id_rol,
     nombre_usuario: username,
     email,
-    password_hash: passwordHash
+    password_hash: passwordHash,
   });
 
+  // Devuelve la cuenta creada con su rol.
   return {
     ...user,
-    rol: role.codigo
+    rol: role.codigo,
   };
 };
 
-/**
- * Crea una cuenta PROFESIONAL.
- *
- * El usuario queda asociado al rol
- * PROFESIONAL. La relación con una
- * salita se realizará posteriormente.
- */
+// Crea una cuenta para un profesional previamente registrado.
 export const createProfessionalAccount = async (
   input: CreateProfessionalAccountInput,
   actor: AuthenticatedUser,
   ip: string | null = null
 ) => {
-  const professional = await getProfesionalById(input.id_profesional);
-  if (!professional?.activo) throw new AppError("Profesional no encontrado o inactivo", 404);
-  const scope = await getTurnoScope(actor);
-  if (scope !== null) {
-    const { data, error } = await supabase.from("profesional_salita").select("id_profesional")
-      .eq("id_profesional", input.id_profesional).in("id_salita", scope).eq("activo", true);
-    if (error) throw error;
-    if (!data?.length) throw new AppError("El profesional no pertenece a tus salitas", 403);
-  }
-  const { data: existingAccount, error: accountError } = await supabase.from("usuarios")
-    .select("id_usuario").eq("id_persona", professional.id_persona).limit(1).maybeSingle();
-  if (accountError) throw accountError;
-  if (existingAccount) throw new AppError("La persona ya tiene una cuenta asociada", 409);
-  const email =
-    input.email.toLowerCase();
-
-  const username =
-    input.nombre_usuario.trim();
-
-  await ensureUserDoesNotExist(
-    email,
-    username
+  // Comprueba que el profesional exista y esté activo.
+  const professional = await getProfesionalById(
+    input.id_profesional
   );
 
-  const role =
-    await findRoleByCode("PROFESIONAL");
+  if (!professional?.activo) {
+    throw new AppError(
+      'Profesional no encontrado o inactivo',
+      404
+    );
+  }
+
+  // Obtiene las salitas autorizadas para el usuario que realiza el registro.
+  const scope = await getTurnoScope(actor);
+
+  if (scope !== null) {
+    // Verifica que el profesional pertenezca a una salita autorizada.
+    const { data, error } = await supabase
+      .from('profesional_salita')
+      .select('id_profesional')
+      .eq('id_profesional', input.id_profesional)
+      .in('id_salita', scope)
+      .eq('activo', true);
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data?.length) {
+      throw new AppError(
+        'El profesional no pertenece a tus salitas',
+        403
+      );
+    }
+  }
+
+  // Comprueba que la persona no tenga una cuenta asociada.
+  const existingAccount = await findAccountByPersonId(
+    professional.id_persona
+  );
+
+  if (existingAccount) {
+    throw new AppError(
+      'La persona ya tiene una cuenta asociada',
+      409
+    );
+  }
+
+  // Normaliza las credenciales del profesional.
+  const email = input.email.toLowerCase();
+  const username = input.nombre_usuario.trim();
+
+  // Verifica que el correo y el usuario estén disponibles.
+  await ensureUserDoesNotExist(email, username);
+
+  // Obtiene el rol PROFESIONAL.
+  const role = await findRoleByCode('PROFESIONAL');
 
   if (!role) {
     throw new AppError(
-      "Rol PROFESIONAL no encontrado",
+      'Rol PROFESIONAL no encontrado',
       500
     );
   }
 
-  const passwordHash =
-    await hashPassword(input.password);
+  // Genera el hash de la contraseña.
+  const passwordHash = await hashPassword(input.password);
 
+  // Registra la cuenta vinculada a la persona del profesional.
   const user = await createUser({
     id_persona: professional.id_persona,
     id_rol: role.id_rol,
     nombre_usuario: username,
     email,
-    password_hash: passwordHash
+    password_hash: passwordHash,
   });
 
+  // Genera y envía el código de verificación del correo.
   const verificationExpiresAt = await createVerificationCodeForNewUser(
     user.id_usuario,
     email,
     ip
   );
+
+  // Devuelve la cuenta y el vencimiento de la verificación.
   return {
     ...user,
     rol: role.codigo,
-    verificationExpiresAt
+    verificationExpiresAt,
   };
 };

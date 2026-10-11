@@ -1,181 +1,151 @@
-import ValidatedInput from './ValidatedInput';
-import {
-  useState,
-  type FormEvent,
-} from 'react';
+﻿import { useRef, useState, type FormEvent } from 'react';
 
 import {
   requestEmailChange,
   confirmEmailChange,
 } from '../../services/auth.service';
 
-import {
-  useAuth,
-} from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
+import { authError } from '../../utils/auth-errors';
 
-import {
-  authError,
-} from '../../utils/auth-errors';
+import ValidatedInput from './ValidatedInput';
 
-export default function PatientEmailForm() {
-  // Obtiene el usuario actual y la función
-  // para recargar su perfil.
-  const {
-    user,
-    reloadProfile,
-  } = useAuth();
+// Gestiona el cambio de correo mediante un código de verificación.
+export default function AccountEmailForm() {
+  const { user, reloadProfile } = useAuth();
 
-  // Controla si el formulario está abierto.
+  // Controla el formulario y los datos del nuevo correo.
   const [open, setOpen] = useState(false);
-
-  // Datos necesarios para cambiar el correo.
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
-
-  // Indica si el código ya fue enviado.
   const [sent, setSent] = useState(false);
-
-  // Estado de procesamiento.
   const [busy, setBusy] = useState(false);
 
-  // Mensajes de respuesta.
+  const pending = useRef(false);
+
+  // Almacena los mensajes de error y confirmación.
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
-  // ENVÍO DEL CÓDIGO
-
+  // Solicita o reenvía el código de verificación.
   const send = async () => {
+    if (pending.current) {
+      return;
+    }
+
+    pending.current = true;
     setBusy(true);
     setError('');
+    setMessage('');
 
     try {
-      // Solicita el cambio y envía un código
-      // de verificación al nuevo correo.
-      await requestEmailChange(
-        email.trim()
-      );
+      // Envía el código al nuevo correo e invalida el anterior.
+      await requestEmailChange(email.trim());
 
       setSent(true);
       setCode('');
-
       setMessage(
         'Enviamos un código al nuevo correo. Vence en 10 minutos. Podés reenviarlo después de un minuto.'
       );
     } catch (cause) {
-      setError(
-        authError(cause)
-      );
+      setError(authError(cause));
     } finally {
+      pending.current = false;
       setBusy(false);
     }
   };
 
-  // CONFIRMACIÓN DEL CAMBIO
-  const submit = async (
-    event: FormEvent
-  ) => {
+  // Procesa la solicitud o confirmación del cambio de correo.
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
 
-    // Evita solicitudes duplicadas.
-    if (busy) {
+    if (pending.current) {
       return;
     }
 
-    // Si todavía no se envió el código,
-    // realiza primero la solicitud.
+    // Solicita el código si todavía no fue enviado.
     if (!sent) {
       await send();
       return;
     }
 
+    pending.current = true;
     setBusy(true);
     setError('');
+    setMessage('');
 
     try {
-      // Confirma el código enviado al nuevo correo.
-      await confirmEmailChange(
-        email.trim(),
-        code
-      );
+      // Verifica el código y actualiza el correo de la cuenta.
+      await confirmEmailChange(email.trim(), code);
 
-      // Recarga el perfil para obtener
-      // el nuevo correo actualizado.
+      // Recarga los datos del usuario autenticado.
       await reloadProfile();
 
-      setMessage(
-        'Tu correo fue verificado y actualizado.'
-      );
-
-      // Cierra y reinicia el formulario.
+      setMessage('Tu correo fue verificado y actualizado.');
       setOpen(false);
       setSent(false);
       setCode('');
+      setEmail('');
     } catch (cause) {
-      setError(
-        authError(cause)
-      );
+      setError(authError(cause));
     } finally {
+      pending.current = false;
       setBusy(false);
     }
   };
 
-  // INTERFAZ
   return (
     <section className="patient-section mt-4">
       <h2 className="h5">
         Correo de acceso
       </h2>
 
-      {/* Correo actualmente registrado. */}
-      <p>
+      {/* Muestra el correo electrónico actual. */}
+      <p className="text-break">
         {user?.email}
       </p>
 
-      {/* Mensaje de éxito o información. */}
+      {/* Muestra los mensajes de confirmación o error. */}
       {message && (
-        <p
-          role="status"
-          className="text-success"
-        >
+        <p role="status" className="text-success">
           {message}
         </p>
       )}
 
-      {/* Mensaje de error. */}
       {error && (
-        <div
-          role="alert"
-          className="alert alert-danger"
-        >
+        <div role="alert" className="alert alert-danger">
           {error}
         </div>
       )}
 
+      {/* Permite iniciar el cambio de correo. */}
       {!open ? (
-        // Abre el formulario para cambiar el correo.
         <button
           className="btn btn-outline-success"
           onClick={() => {
             setOpen(true);
             setMessage('');
+            setError('');
           }}
         >
           Cambiar correo
         </button>
       ) : (
-        // Formulario de cambio de correo.
-        <form
-          onSubmit={(event) =>
-            void submit(event)
-          }
-        >
+        <form onSubmit={event => void submit(event)}>
           <p className="text-muted">
-            Tu correo actual seguirá vigente hasta
-            verificar el nuevo.
+            Tu correo actual seguirá vigente hasta verificar el nuevo.
           </p>
 
+          {/* Indica el correo al que se envió el código. */}
+          {sent && (
+            <p className="text-break">
+              Ingresá el código enviado a{' '}
+              <strong>{email.trim()}</strong>.
+            </p>
+          )}
+
           <fieldset disabled={busy}>
-            {/* Nuevo correo electrónico. */}
+            {/* Solicita el nuevo correo electrónico. */}
             <label className="form-label w-100">
               Nuevo correo
 
@@ -186,16 +156,12 @@ export default function PatientEmailForm() {
                 maxLength={254}
                 value={email}
                 readOnly={sent}
-                onChange={(event) =>
-                  setEmail(
-                    event.target.value
-                  )
-                }
+                onChange={event => setEmail(event.target.value)}
                 autoComplete="email"
               />
             </label>
 
-            {/* Código enviado al nuevo correo. */}
+            {/* Solicita el código de verificación recibido. */}
             {sent && (
               <label className="form-label w-100">
                 Código de verificación
@@ -208,16 +174,12 @@ export default function PatientEmailForm() {
                   maxLength={4}
                   required
                   value={code}
-                  onChange={(event) =>
-                    setCode(
-                      event.target.value
-                    )
-                  }
+                  onChange={event => setCode(event.target.value)}
                 />
               </label>
             )}
 
-            {/* Acciones del formulario. */}
+            {/* Acciones para enviar, verificar o cancelar. */}
             <div className="d-flex flex-wrap gap-2 mt-2">
               <button className="btn btn-saps">
                 {busy
@@ -227,20 +189,16 @@ export default function PatientEmailForm() {
                     : 'Enviar código'}
               </button>
 
-              {/* Permite solicitar nuevamente el código. */}
               {sent && (
                 <button
                   type="button"
                   className="btn btn-outline-primary"
-                  onClick={() =>
-                    void send()
-                  }
+                  onClick={() => void send()}
                 >
                   Reenviar código
                 </button>
               )}
 
-              {/* Cancela y reinicia el proceso. */}
               <button
                 type="button"
                 className="btn btn-outline-secondary"
@@ -249,6 +207,8 @@ export default function PatientEmailForm() {
                   setSent(false);
                   setError('');
                   setMessage('');
+                  setCode('');
+                  setEmail('');
                 }}
               >
                 Cancelar

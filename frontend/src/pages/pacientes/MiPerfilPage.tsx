@@ -1,4 +1,4 @@
-﻿import {
+import {
   useState,
 } from 'react';
 
@@ -14,9 +14,9 @@ import usePatientCoverage from '../../context/usePatientCoverage';
 
 import PatientCoverageCard from '../../components/ui/PatientCoverageCard';
 import PatientProfileForm from '../../components/ui/PatientProfileForm';
-import PatientEmailForm from '../../components/ui/PatientEmailForm';
-import PatientUsernameForm from '../../components/ui/PatientUsernameForm';
-import PatientPasswordForm from '../../components/ui/PatientPasswordForm';
+import AccountSecuritySection from '../../components/ui/AccountSecuritySection';
+
+
 
 // PERFIL DEL PACIENTE
 
@@ -319,26 +319,7 @@ function PatientProfile() {
           )}
       </div>
 
-      {/*ACCESO Y SEGURIDAD */}
-
-      <h2 className="h4 mt-4 mb-0">
-        Acceso y seguridad
-      </h2>
-
-      <div className="row g-4 mt-0">
-        {/* Cambio de nombre de usuario. */}
-        <div className="col-12 col-lg-6">
-          <PatientUsernameForm />
-        </div>
-
-        {/* Cambio de contraseña. */}
-        <div className="col-12 col-lg-6">
-          <PatientPasswordForm />
-        </div>
-      </div>
-
-      {/* Cambio y verificación de correo. */}
-      <PatientEmailForm />
+      <AccountSecuritySection />
     </div>
   );
 }

@@ -1,9 +1,4 @@
-import PasswordInput from './PasswordInput';
-import {
-  useEffect,
-  useState,
-  type FormEvent,
-} from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 
 import {
   Link,
@@ -13,79 +8,56 @@ import {
   useSearchParams,
 } from 'react-router-dom';
 
-import ConfirmationModal from '../../components/ui/ConfirmationModal';
-import ValidatedInput from '../../components/ui/ValidatedInput';
-
 import {
   requestPasswordRecovery,
   resetPassword,
   verifyEmail,
 } from '../../services/auth.service';
 
-import {
-  authError,
-  passwordError,
-} from '../../utils/auth-errors';
+import { authError, passwordError } from '../../utils/auth-errors';
 
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
+import ValidatedInput from '../../components/ui/ValidatedInput';
+
+import PasswordInput from './PasswordInput';
 import AuthForm from './AuthForm';
 import FourDigitCodeInput from './FourDigitCodeInput';
 
+// Define los modos disponibles para recuperar el acceso o verificar el correo.
 interface PasswordRecoveryPageProps {
-  mode:
-    | 'forgot'
-    | 'reset'
-    | 'verify';
+  mode: 'forgot' | 'reset' | 'verify';
 }
 
+// Gestiona la recuperación de contraseña y la verificación del correo electrónico.
 export default function PasswordRecoveryPage({
   mode,
 }: PasswordRecoveryPageProps) {
-  const [params] =
-    useSearchParams();
+  const [params] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Datos utilizados durante la recuperación.
-  const [email, setEmail] =
-    useState('');
+  // Almacena los datos necesarios para recuperar la contraseña.
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmation, setConfirmation] = useState('');
+  const [code, setCode] = useState('');
 
-  const [password, setPassword] =
-    useState('');
+  // Controla las etapas y el procesamiento del formulario.
+  const [requested, setRequested] = useState(false);
+  const [completed, setCompleted] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  const [
-    confirmation,
-    setConfirmation,
-  ] = useState('');
+  // Almacena los mensajes de error y confirmación.
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const [code, setCode] =
-    useState('');
+  // Controla la apertura del modal de confirmación.
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // Controla las distintas etapas del proceso.
-  const [requested, setRequested] =
-    useState(false);
+  // Obtiene el token de verificación o recuperación desde la URL.
+  const token = params.get('token') ?? '';
 
-  const [completed, setCompleted] =
-    useState(false);
-
-  const [busy, setBusy] =
-    useState(false);
-
-  // Mensajes mostrados al usuario.
-  const [error, setError] =
-    useState('');
-
-  const [success, setSuccess] =
-    useState('');
-
-  const [
-    confirmOpen,
-    setConfirmOpen,
-  ] = useState(false);
-
-  const token =
-    params.get('token') ?? '';
-
-  // Sends the user back to login after a successful password reset.
+  // Redirige al inicio de sesión después de completar la recuperación.
   useEffect(() => {
     if (!completed) {
       return;
@@ -99,15 +71,11 @@ export default function PasswordRecoveryPage({
       1500
     );
 
-    return () =>
-      window.clearTimeout(timeout);
+    return () => window.clearTimeout(timeout);
   }, [completed, navigate]);
 
-  // Valida y procesa la recuperación o verificación.
-  const submit = async (
-    event?: FormEvent,
-    confirmed = false
-  ) => {
+  // Procesa la solicitud, recuperación o verificación según el modo.
+  const submit = async (event?: FormEvent, confirmed = false) => {
     event?.preventDefault();
 
     if (busy) {
@@ -117,24 +85,14 @@ export default function PasswordRecoveryPage({
     setError('');
     setSuccess('');
 
-    // Valida el código y la nueva contraseña.
-    if (
-      mode === 'forgot' &&
-      requested
-    ) {
+    // Valida el código y la contraseña en la recuperación por correo.
+    if (mode === 'forgot' && requested) {
       if (code.length !== 4) {
-        setError(
-          'Ingresá los 4 dígitos del código.'
-        );
-
+        setError('Ingresá los 4 dígitos del código.');
         return;
       }
 
-      const validation =
-        passwordError(
-          password,
-          confirmation
-        );
+      const validation = passwordError(password, confirmation);
 
       if (validation) {
         setError(validation);
@@ -142,13 +100,9 @@ export default function PasswordRecoveryPage({
       }
     }
 
-    // Valida la contraseña y el token del enlace.
+    // Valida la contraseña y el token de recuperación por enlace.
     if (mode === 'reset') {
-      const validation =
-        passwordError(
-          password,
-          confirmation
-        );
+      const validation = passwordError(password, confirmation);
 
       if (validation) {
         setError(validation);
@@ -159,20 +113,16 @@ export default function PasswordRecoveryPage({
         setError(
           'El enlace no contiene un token válido. Solicitá otro enlace.'
         );
-
         return;
       }
     }
 
-    // Solicita confirmación antes de cambiar la contraseña.
+    // Solicita confirmación antes de restablecer la contraseña.
     if (
       !confirmed &&
       (
         mode === 'reset' ||
-        (
-          mode === 'forgot' &&
-          requested
-        )
+        (mode === 'forgot' && requested)
       )
     ) {
       setConfirmOpen(true);
@@ -182,15 +132,14 @@ export default function PasswordRecoveryPage({
     setBusy(true);
 
     try {
-      // Solicita el código de recuperación.
       if (mode === 'forgot') {
+        // Solicita el código de recuperación al correo electrónico.
         if (!requested) {
           await requestPasswordRecovery({
             email,
           });
 
           setRequested(true);
-
           setSuccess(
             'Si el correo está registrado, recibirás un código de 4 dígitos. Ingresalo para elegir una nueva contraseña.'
           );
@@ -198,7 +147,7 @@ export default function PasswordRecoveryPage({
           return;
         }
 
-        // Restablece la contraseña mediante código.
+        // Restablece la contraseña mediante el código recibido.
         await resetPassword({
           email,
           code,
@@ -211,7 +160,7 @@ export default function PasswordRecoveryPage({
         setEmail('');
         setRequested(false);
         setCompleted(true);
-        // Removes the recovery token from the address bar.
+
         navigate(location.pathname, {
           replace: true,
         });
@@ -220,7 +169,7 @@ export default function PasswordRecoveryPage({
           'Contraseña actualizada correctamente. Serás redirigido al inicio de sesión.'
         );
       } else if (mode === 'reset') {
-        // Restablece la contraseña mediante token.
+        // Restablece la contraseña mediante el token del enlace.
         await resetPassword({
           token,
           newPassword: password,
@@ -231,7 +180,7 @@ export default function PasswordRecoveryPage({
         setCode('');
         setEmail('');
         setCompleted(true);
-        // Removes the recovery token from the address bar.
+
         navigate(location.pathname, {
           replace: true,
         });
@@ -240,7 +189,7 @@ export default function PasswordRecoveryPage({
           'Contraseña actualizada correctamente. Serás redirigido al inicio de sesión.'
         );
       } else if (token) {
-        // Verifica el correo mediante token.
+        // Verifica el correo electrónico mediante el token recibido.
         await verifyEmail(token);
 
         setSuccess(
@@ -248,28 +197,18 @@ export default function PasswordRecoveryPage({
         );
       }
     } catch (cause) {
-      setError(
-        authError(cause)
-      );
+      setError(authError(cause));
     } finally {
       setBusy(false);
     }
   };
 
-  // Redirige a la verificación por código si falta el token.
-  if (
-    mode === 'verify' &&
-    !token
-  ) {
-    return (
-      <Navigate
-        to="/verificar-codigo"
-        replace
-      />
-    );
+  // Redirige a la verificación por código si no existe un token.
+  if (mode === 'verify' && !token) {
+    return <Navigate to="/verificar-codigo" replace />;
   }
 
-  // Define el título según el proceso actual.
+  // Define el título del formulario según el modo actual.
   const title =
     mode === 'forgot'
       ? requested
@@ -281,40 +220,31 @@ export default function PasswordRecoveryPage({
 
   return (
     <AuthForm title={title}>
+      {/* Solicita confirmación antes de restablecer la contraseña. */}
       <ConfirmationModal
         open={confirmOpen}
         title="Restablecer contraseña"
         message="¿Querés guardar la nueva contraseña?"
         detail={
           <div className="text-muted small">
-            Después podrás iniciar sesión
-            con la contraseña nueva.
+            Después podrás iniciar sesión con la contraseña nueva.
           </div>
         }
         confirmText="Restablecer contraseña"
         variant="warning"
         icon="bi-key"
         loading={busy}
-        onClose={() =>
-          setConfirmOpen(false)
-        }
+        onClose={() => setConfirmOpen(false)}
         onConfirm={() => {
           setConfirmOpen(false);
-
-          void submit(
-            undefined,
-            true
-          );
+          void submit(undefined, true);
         }}
       />
 
+      {/* Formulario de recuperación o verificación. */}
       <form onSubmit={submit}>
-        <fieldset
-          disabled={
-            busy ||
-            completed
-          }
-        >
+        <fieldset disabled={busy || completed}>
+          {/* Solicita el correo para iniciar la recuperación. */}
           {mode === 'forgot' && (
             <label className="form-label w-100">
               Correo electrónico
@@ -326,48 +256,34 @@ export default function PasswordRecoveryPage({
                 required
                 readOnly={requested}
                 value={email}
-                onChange={(event) =>
-                  setEmail(
-                    event.target.value
-                  )
-                }
+                onChange={event => setEmail(event.target.value)}
               />
             </label>
           )}
 
-          {mode === 'forgot' &&
-            requested && (
-              <>
-                <label className="form-label w-100">
-                  Código de recuperación
-                </label>
-
-                <FourDigitCodeInput
-                  label="Código de recuperación"
-                  value={code}
-                  onChange={setCode}
-                  disabled={
-                    busy ||
-                    completed
-                  }
-                />
-
-                <p className="small text-muted">
-                  El código vence en
-                  15 minutos.
-                </p>
-              </>
-            )}
-
-          {(
-            (
-              mode === 'forgot' &&
-              requested
-            ) ||
-            mode === 'reset'
-          ) && (
+          {/* Solicita el código de recuperación recibido. */}
+          {mode === 'forgot' && requested && (
             <>
-              {/* Reutiliza el control de visibilidad sin alterar las contraseñas. */}
+              <label className="form-label w-100">
+                Código de recuperación
+              </label>
+
+              <FourDigitCodeInput
+                label="Código de recuperación"
+                value={code}
+                onChange={setCode}
+                disabled={busy || completed}
+              />
+
+              <p className="small text-muted">
+                El código vence en 15 minutos.
+              </p>
+            </>
+          )}
+
+          {/* Solicita la nueva contraseña y su confirmación. */}
+          {((mode === 'forgot' && requested) || mode === 'reset') && (
+            <>
               <div>
                 <PasswordInput
                   id="recovery-password"
@@ -376,11 +292,7 @@ export default function PasswordRecoveryPage({
                   required
                   maxLength={128}
                   value={password}
-                  onChange={(event) =>
-                    setPassword(
-                      event.target.value
-                    )
-                  }
+                  onChange={event => setPassword(event.target.value)}
                 />
               </div>
 
@@ -391,57 +303,45 @@ export default function PasswordRecoveryPage({
                   autoComplete="new-password"
                   required
                   value={confirmation}
-                  onChange={(event) =>
-                    setConfirmation(
-                      event.target.value
-                    )
-                  }
+                  onChange={event => setConfirmation(event.target.value)}
                 />
               </div>
 
               <p className="small text-muted">
-                Entre 8 y 12 caracteres,
-                con mayúscula, minúscula,
+                Entre 8 y 128 caracteres, con mayúscula, minúscula,
                 número y símbolo.
               </p>
             </>
           )}
 
+          {/* Muestra los mensajes de error o confirmación. */}
           {error && (
-            <div
-              className="alert alert-danger"
-              role="alert"
-            >
+            <div className="alert alert-danger" role="alert">
               {error}
             </div>
           )}
 
           {success && (
-            <div
-              className="alert alert-success"
-              role="status"
-            >
+            <div className="alert alert-success" role="status">
               {success}
             </div>
           )}
 
+          {/* Ejecuta la acción correspondiente al modo actual. */}
           <button
             className="btn btn-primary w-100"
-            disabled={
-              busy ||
-              completed
-            }
+            disabled={busy || completed}
           >
             {busy
               ? 'Enviando…'
-              : mode === 'forgot' &&
-                  requested
+              : mode === 'forgot' && requested
                 ? 'Restablecer contraseña'
                 : title}
           </button>
         </fieldset>
       </form>
 
+      {/* Permite regresar al inicio de sesión al finalizar. */}
       {completed && (
         <Link
           className="btn btn-outline-secondary w-100 mt-3"

@@ -5,5 +5,6 @@ export interface AccountDisplay {
   email: string;
   email_verificado: boolean;
   activo: boolean;
+  persona?: { nombres: string; apellidos: string } | null;
   rol: { codigo: string };
 }
