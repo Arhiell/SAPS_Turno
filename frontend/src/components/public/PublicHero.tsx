@@ -1,6 +1,7 @@
+
 import { Link } from 'react-router-dom';
 
-// Sección principal de presentación de SAPS Turno.
+// Sección principal de presentación de CORA.
 export default function PublicHero() {
   return (
     <section className="public-hero">
@@ -12,17 +13,17 @@ export default function PublicHero() {
           </p>
 
           <h1>
-            SAPS Turno
+            CORA
           </h1>
 
           <p className="public-lead">
-            Gestioná tus turnos de atención primaria de forma
-            simple y segura.
+            Conexión y Organización de la Red de Atención.
           </p>
 
           <p>
-            Un espacio para vos y tu familia: conocé las salitas,
-            consultá las novedades y organizá tu próxima atención.
+            Una atención más humana, conectada y organizada.
+            Conocé las salas municipales, consultá las novedades
+            y organizá tu próxima atención en un mismo lugar.
           </p>
 
           <div className="d-flex flex-wrap gap-3 mt-4">

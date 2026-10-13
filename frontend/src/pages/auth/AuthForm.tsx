@@ -1,3 +1,4 @@
+
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -25,7 +26,7 @@ export default function AuthForm({
         {/* Identidad institucional y acceso al sitio público. */}
         <section
           className="auth-identity"
-          aria-label="SAPS Turno"
+          aria-label="CORA"
         >
           <div className="auth-brand">
             <span
@@ -36,15 +37,17 @@ export default function AuthForm({
             </span>
 
             <div>
-              <strong>SAPS Turno</strong>
-              <span>Atención primaria de la salud</span>
+              <strong>CORA</strong>
+              <span>
+                Conexión y Organización de la Red de Atención
+              </span>
             </div>
           </div>
 
           <div className="auth-identity-main">
             <div className="auth-identity-copy">
               <span className="auth-eyebrow">
-                GOYA · CORRIENTES
+                SALUD PÚBLICA · GOYA
               </span>
 
               <h2>
@@ -55,7 +58,7 @@ export default function AuthForm({
 
               <p>
                 Un mismo lugar para acompañar tu atención y organizar
-                tus turnos en las salitas de la ciudad.
+                tus turnos en las salas municipales de salud.
               </p>
 
               <div className="auth-identity-detail">
@@ -93,7 +96,7 @@ export default function AuthForm({
           </div>
 
           <p className="auth-identity-footer">
-            Sistema de gestión de turnos de salud
+            CORA · Una atención más humana, conectada y organizada.
           </p>
         </section>
 
@@ -144,7 +147,7 @@ export default function AuthForm({
       </div>
 
       <p className="auth-page-footer">
-        SAPS Turno · Al servicio de nuestra comunidad
+        CORA · Salud municipal
       </p>
     </main>
   );

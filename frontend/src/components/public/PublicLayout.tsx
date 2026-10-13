@@ -104,7 +104,7 @@ export default function PublicLayout() {
               className="bi bi-heart-pulse-fill"
               aria-hidden="true"
             />{' '}
-            SAPS Turno
+            Cora
           </Link>
 
           {/* Control del menú en dispositivos pequeños. */}
@@ -233,7 +233,7 @@ export default function PublicLayout() {
         <div className="container d-flex flex-wrap justify-content-between gap-4">
           <div>
             <strong>
-              SAPS Turno
+              Cora - Conexión y Organización de la Red de Atención
             </strong>
 
             <p className="mb-0">

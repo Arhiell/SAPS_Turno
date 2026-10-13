@@ -1,6 +1,7 @@
-import { useAuth } from "../../context/AuthContext";
-import SidebarItem from "./SidebarItem";
-import { getMenuForRole } from "./sidebar-menu";
+
+import { useAuth } from '../../context/AuthContext';
+import SidebarItem from './SidebarItem';
+import { getMenuForRole } from './sidebar-menu';
 
 const Sidebar = () => {
   const { user } = useAuth();
@@ -12,11 +13,14 @@ const Sidebar = () => {
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <h2>SAPS Turno</h2>
-        <p>Sistema de gestión</p>
+        <h2>CORA</h2>
+        <p>Salud municipal</p>
       </div>
 
-      <nav className="sidebar-nav" aria-label="Navegación principal">
+      <nav
+        className="sidebar-nav"
+        aria-label="Navegación principal"
+      >
         {menuItems.map((item) => (
           <SidebarItem
             key={item.path}
