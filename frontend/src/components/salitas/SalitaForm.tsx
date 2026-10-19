@@ -1,3 +1,4 @@
+import ZonaBarrioSelect from '../ui/ZonaBarrioSelect';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -114,12 +115,7 @@ const SalitaForm = ({
         const response =
           await getBarrios();
 
-        setBarrios(
-          response.data.barrios.filter(
-            (barrio) =>
-              barrio.activo
-          )
-        );
+        setBarrios(response.data.barrios);
       } catch (error) {
         console.error(error);
 
@@ -497,51 +493,12 @@ const SalitaForm = ({
                   </div>
 
                   <div className="col-md-6">
-                    <label
-                      htmlFor="id_barrio"
-                      className="form-label"
-                    >
-                      Barrio *
-                    </label>
-
-                    <select
-                      id="id_barrio"
-                      name="id_barrio"
-                      className="form-select"
-                      value={
-                        form.id_barrio
-                      }
-                      onChange={
-                        handleChange
-                      }
-                      disabled={
-                        loadingBarrios
-                      }
-                      required
-                    >
-                      <option value="">
-                        {loadingBarrios
-                          ? 'Cargando barrios...'
-                          : 'Seleccionar barrio'}
-                      </option>
-
-                      {barrios.map(
-                        (barrio) => (
-                          <option
-                            key={
-                              barrio.id_barrio
-                            }
-                            value={
-                              barrio.id_barrio
-                            }
-                          >
-                            {
-                              barrio.nombre
-                            }
-                          </option>
-                        )
-                      )}
-                    </select>
+                    <ZonaBarrioSelect
+                      barrios={barrios.filter((barrio) => barrio.activo || barrio.id_barrio === initialData?.id_barrio)}
+                      value={form.id_barrio}
+                      disabled={loadingBarrios}
+                      onChange={(id_barrio) => setForm((current) => ({ ...current, id_barrio }))}
+                    />
 
                     <div className="d-flex flex-wrap gap-2 mt-2">
                       <Link

@@ -1,3 +1,4 @@
+import ZonaBarrioSelect from './ZonaBarrioSelect';
 import ValidatedInput from './ValidatedInput';
 import {
   useState,
@@ -312,43 +313,12 @@ export default function PatientProfileForm({
 
           {/* Selección del barrio. */}
           <div className="col-12">
-            <label className="form-label w-100">
-              Barrio
-
-              <select
-                className="form-select mt-1"
-                value={draft.id_barrio}
-                disabled={
-                  coverage.loading ||
-                  !!coverage.error
-                }
-                onChange={(event) =>
-                  setDraft({
-                    ...draft,
-                    id_barrio:
-                      event.target.value,
-                  })
-                }
-              >
-                {coverage.barrios
-                  .filter(
-                    (b) =>
-                      b.activo ||
-                      b.id_barrio ===
-                        patient.id_barrio
-                  )
-                  .map(
-                    (b) => (
-                      <option
-                        key={b.id_barrio}
-                        value={b.id_barrio}
-                      >
-                        {b.nombre}
-                      </option>
-                    )
-                  )}
-              </select>
-            </label>
+            <ZonaBarrioSelect
+              barrios={coverage.barrios.filter((barrio) => barrio.activo || barrio.id_barrio === patient.id_barrio)}
+              value={draft.id_barrio ?? ''}
+              disabled={coverage.loading || !!coverage.error}
+              onChange={(id_barrio) => setDraft((current) => ({ ...current, id_barrio }))}
+            />
           </div>
         </div>
 

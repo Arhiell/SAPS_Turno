@@ -1,3 +1,4 @@
+import ZonaBarrioSelect from '../../components/ui/ZonaBarrioSelect';
 import {
   useEffect,
   useState,
@@ -410,48 +411,17 @@ export default function CompletePatientProfilePage() {
                 </select>
               </label>
 
-              <label className="col-md-6 mb-3">
-                Barrio
-
-                <select
-                  className="form-select"
-                  required
-                  value={
-                    form.id_barrio
-                  }
-                  onChange={(event) =>
-                    setForm(
-                      (current) => ({
-                        ...current,
-                        id_barrio:
-                          event.target
-                            .value,
-                        id_salita_asignada:
-                          '',
-                      })
-                    )
-                  }
-                >
-                  <option value="">
-                    Seleccioná un barrio
-                  </option>
-
-                  {barrios.map(
-                    (barrio) => (
-                      <option
-                        key={
-                          barrio.id_barrio
-                        }
-                        value={
-                          barrio.id_barrio
-                        }
-                      >
-                        {barrio.nombre}
-                      </option>
-                    )
-                  )}
-                </select>
-              </label>
+              <div className="col-md-6 mb-3">
+                <ZonaBarrioSelect
+                  barrios={barrios}
+                  value={form.id_barrio}
+                  onChange={(id_barrio) => setForm((current) => ({
+                    ...current,
+                    id_barrio,
+                    id_salita_asignada: '',
+                  }))}
+                />
+              </div>
 
               <label className="col-md-6 mb-3">
                 Salita asignada

@@ -1,3 +1,4 @@
+import ZonaBarrioSelect from '../../components/ui/ZonaBarrioSelect';
 import {
   useEffect,
   useMemo,
@@ -623,39 +624,11 @@ const NuevoPacientePage = () => {
           <div className="card-body">
             <div className="row g-3">
               <div className="col-md-6">
-                <label className="form-label">
-                  Barrio *
-                </label>
-
-                <select
-                  className="form-select"
+                <ZonaBarrioSelect
+                  barrios={barrios}
                   value={form.id_barrio}
-                  onChange={(event) =>
-                    handleBarrioChange(
-                      event.target.value
-                    )
-                  }
-                  required
-                >
-                  <option value="">
-                    Seleccionar barrio
-                  </option>
-
-                  {barrios.map(
-                    (barrio) => (
-                      <option
-                        key={
-                          barrio.id_barrio
-                        }
-                        value={
-                          barrio.id_barrio
-                        }
-                      >
-                        {barrio.nombre}
-                      </option>
-                    )
-                  )}
-                </select>
+                  onChange={handleBarrioChange}
+                />
               </div>
 
               <div className="col-md-6">

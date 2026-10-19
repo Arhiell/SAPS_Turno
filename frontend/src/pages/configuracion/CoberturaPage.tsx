@@ -1,3 +1,4 @@
+import ZonaBarrioSelect from '../../components/ui/ZonaBarrioSelect';
 import ValidatedInput from '../../components/ui/ValidatedInput';
 import {
   useEffect,
@@ -337,40 +338,14 @@ export default function CoberturaPage() {
             </label>
 
             {/* Selección de barrio */}
-            <label className="col-md-6 form-label">
-              Barrio
-
-              <select
-                className="form-select"
-                required
-                disabled={editing}
+            <div className="col-md-6">
+              <ZonaBarrioSelect
+                barrios={barrios.filter((barrio) => barrio.activo || barrio.id_barrio === form.id_barrio)}
                 value={form.id_barrio}
-                onChange={(e) =>
-                  change({
-                    id_barrio: e.target.value,
-                  })
-                }
-              >
-                <option value="">
-                  Seleccionar barrio
-                </option>
-
-                {barrios
-                  .filter(
-                    (barrio) =>
-                      barrio.activo ||
-                      barrio.id_barrio === form.id_barrio
-                  )
-                  .map((barrio) => (
-                    <option
-                      key={barrio.id_barrio}
-                      value={barrio.id_barrio}
-                    >
-                      {barrio.nombre}
-                    </option>
-                  ))}
-              </select>
-            </label>
+                disabled={editing}
+                onChange={(id_barrio) => change({ id_barrio })}
+              />
+            </div>
 
             {/* Período de vigencia */}
             <label className="col-md-6 form-label">
