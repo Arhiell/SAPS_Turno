@@ -37,6 +37,7 @@ import historialTurnoRoutes from './historial-turno.routes.js';
 import sancionRoutes from './sancion.routes.js';
 
 import notificacionRoutes from './notificacion.routes.js';
+import accessManagementRoutes from './access-management.routes.js';
 import auditoriaRoutes from './auditoria.routes.js';
 import reporteRoutes from './reporte.routes.js';
 
@@ -54,6 +55,7 @@ router.use('/health', healthRoutes);
 
 // Gestión de usuarios.
 router.use('/users', userRoutes);
+router.use('/access-management', accessManagementRoutes);
 
 // Autenticación y acceso.
 router.use('/auth', authRoutes);
