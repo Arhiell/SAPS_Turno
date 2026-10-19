@@ -70,6 +70,7 @@ export default function CatalogoPage({
   // Filtros del listado.
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('todos');
+  const [zoneFilter, setZoneFilter] = useState('');
 
   // Estados generales de la pantalla.
   const [loading, setLoading] = useState(true);
@@ -308,7 +309,7 @@ export default function CatalogoPage({
     }
   };
 
-  // Aplica búsqueda por texto y filtro por estado.
+  // Aplica búsqueda por texto, estado y zona para barrios.
   const filtered = rows.filter(
     (row) =>
       normalize(
@@ -317,6 +318,11 @@ export default function CatalogoPage({
       (
         status === 'todos' ||
         row.activo === (status === 'activos')
+      ) &&
+      (
+        tipo !== 'barrios' ||
+        !zoneFilter ||
+        row.id_zona === zoneFilter
       )
   );
 
@@ -668,7 +674,7 @@ export default function CatalogoPage({
               </h2>
 
               <div className="row g-2">
-                <label className="col-sm-8">
+                <label className={tipo === 'barrios' ? 'col-sm-4' : 'col-sm-8'}>
                   Buscar
 
                   <input
@@ -681,6 +687,27 @@ export default function CatalogoPage({
                     placeholder="Nombre o código"
                   />
                 </label>
+
+                {tipo === 'barrios' && (
+                  <label className="col-sm-4">
+                    Zona
+
+                    <select
+                      className="form-select"
+                      value={zoneFilter}
+                      onChange={(e) =>
+                        setZoneFilter(e.target.value)
+                      }
+                    >
+                      <option value="">Todas las zonas</option>
+                      {zonas.map((zona) => (
+                        <option key={zona.id_zona} value={zona.id_zona}>
+                          {zona.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
 
                 <label className="col-sm-4">
                   Estado
