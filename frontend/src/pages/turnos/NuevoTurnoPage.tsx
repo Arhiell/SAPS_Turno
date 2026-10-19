@@ -1,3 +1,5 @@
+import { getParametros } from '../../services/configuracion.service';
+import type { Parametro } from '../../types/configuracion.types';
 import ValidatedInput from '../../components/ui/ValidatedInput';
 import {
   useEffect,
@@ -66,11 +68,10 @@ const NuevoTurnoPage = () => {
   const [professionals, setProfessionals] =
     useState<Professional[]>([]);
 
-  const [professionalSpecialties, setProfessionalSpecialties] =
-    useState<ProfessionalSpecialty[]>([]);
-
-  const [professionalClinics, setProfessionalClinics] =
-    useState<ProfessionalClinic[]>([]);
+  const [relations, setRelations] = useState<Record<string, {
+    specialties: ProfessionalSpecialty[]; clinics: ProfessionalClinic[];
+  }>>({});
+  const [clinicSettings, setClinicSettings] = useState<Parametro[]>([]);
 
   const [selectedPatient, setSelectedPatient] =
     useState('');
@@ -106,8 +107,7 @@ const NuevoTurnoPage = () => {
   const [loadingInitial, setLoadingInitial] =
     useState(true);
 
-  const [loadingRelations, setLoadingRelations] =
-    useState(false);
+  const loadingRelations = loadingInitial;
 
   const [loadingAvailability, setLoadingAvailability] =
     useState(false);
@@ -125,109 +125,60 @@ const NuevoTurnoPage = () => {
     useState(false);
 
   useEffect(() => {
-    const loadInitialData =
-      async () => {
-        try {
-          setLoadingInitial(true);
-          setError('');
-
-          const [
-            patientsResponse,
-            professionalsResponse,
-          ] = await Promise.all([
-            getPatients(1, 100),
-            getProfessionals(),
+    let active = true;
+    const load = async () => {
+      setLoadingInitial(true); setError('');
+      try {
+        const [patientResponse, professionalResponse, settings] = await Promise.all([
+          getPatients(1, 100), getProfessionals(), getParametros(),
+        ]);
+        const available = professionalResponse.data.filter((item) => item.activo);
+        const entries = await Promise.all(available.map(async (professional) => {
+          const [specialties, clinics] = await Promise.all([
+            getProfessionalSpecialties(professional.id_profesional),
+            getProfessionalClinics(professional.id_profesional),
           ]);
-
-          setPatients(
-            patientsResponse.data.patients.filter(
-              (item) =>
-                item.activo,
-            ),
-          );
-
-          setProfessionals(
-            professionalsResponse.data.filter(
-              (item) =>
-                item.activo,
-            ),
-          );
-        } catch (error) {
-          console.error(error);
-
-          setError(
-            'No se pudieron cargar los datos necesarios para crear el turno.',
-          );
-        } finally {
-          setLoadingInitial(false);
-        }
-      };
-
-    void loadInitialData();
+          return [professional.id_profesional, { specialties: specialties.data, clinics: clinics.data }] as const;
+        }));
+        if (!active) return;
+        setPatients(patientResponse.data.patients.filter((item) => item.activo));
+        setProfessionals(available);
+        setRelations(Object.fromEntries(entries));
+        setClinicSettings(settings.filter((item) => item.clave === 'salita.especialidades'));
+      } catch {
+        if (active) setError('No se pudieron cargar los datos necesarios para crear el turno.');
+      } finally { if (active) setLoadingInitial(false); }
+    };
+    void load();
+    return () => { active = false; };
   }, []);
 
-  useEffect(() => {
-    setSelectedSpecialty('');
-    setSelectedSalita('');
-    setSelectedSlot(null);
-    setAvailability(null);
-    setProfessionalSpecialties([]);
-    setProfessionalClinics([]);
-
-    if (!selectedProfessional) {
-      return;
-    }
-
-    const loadProfessionalRelations =
-      async () => {
-        try {
-          setLoadingRelations(true);
-          setError('');
-
-          const [
-            specialtiesResponse,
-            clinicsResponse,
-          ] = await Promise.all([
-            getProfessionalSpecialties(
-              selectedProfessional,
-            ),
-            getProfessionalClinics(
-              selectedProfessional,
-            ),
-          ]);
-
-          setProfessionalSpecialties(
-            specialtiesResponse.data.filter(
-              (item) =>
-                item.activo &&
-                item.especialidad
-                  .activo,
-            ),
-          );
-
-          setProfessionalClinics(
-            clinicsResponse.data.filter(
-              (item) =>
-                item.activo &&
-                item.salita
-                  .activo,
-            ),
-          );
-        } catch (error) {
-          console.error(error);
-
-          setError(
-            'No se pudieron cargar las especialidades y salitas del profesional.',
-          );
-        } finally {
-          setLoadingRelations(false);
-        }
-      };
-
-    void loadProfessionalRelations();
-  }, [selectedProfessional]);
+  const current = (item: { activo: boolean; fecha_desde: string; fecha_hasta: string | null }) =>
+    item.activo && item.fecha_desde <= fecha && (!item.fecha_hasta || item.fecha_hasta >= fecha);
+  const offers = (clinic: string, specialty: string) => {
+    const setting = clinicSettings.find((item) => item.id_salita === clinic);
+    return !setting || (Array.isArray(setting.valor) && setting.valor.includes(specialty));
+  };
+  const eligibleSpecialties = (id: string) => {
+    const relation = relations[id];
+    return relation?.specialties.filter((item) => current(item) && item.especialidad.activo &&
+      relation.clinics.some((clinic) => current(clinic) && clinic.salita.activo && offers(clinic.id_salita, item.id_especialidad))) ?? [];
+  };
+  const professionalSpecialties = [...new Map(professionals.flatMap((professional) =>
+    eligibleSpecialties(professional.id_profesional)).map((item) => [item.id_especialidad, item])).values()];
+  const eligibleProfessionals = professionals.filter((professional) =>
+    eligibleSpecialties(professional.id_profesional).some((item) => item.id_especialidad === selectedSpecialty));
+  const professionalClinics = relations[selectedProfessional]?.clinics.filter((clinic) =>
+    current(clinic) && clinic.salita.activo && offers(clinic.id_salita, selectedSpecialty)) ?? [];
 
   useEffect(() => {
+    setSelectedSpecialty(''); setSelectedProfessional(''); setSelectedSalita('');
+    setSelectedSlot(null); setAvailability(null);
+  }, [fecha]);
+
+  useEffect(() => {
+    let active = true;
+    setLoadingAvailability(false);
     setSelectedSlot(null);
     setAvailability(null);
 
@@ -256,23 +207,18 @@ const NuevoTurnoPage = () => {
               selectedSalita,
             );
 
-          setAvailability(
-            response,
-          );
+          if (active) setAvailability(response);
         } catch (error) {
           console.error(error);
 
-          setError(
-            'No se pudo consultar la disponibilidad.',
-          );
+          if (active) setError('No se pudo consultar la disponibilidad.');
         } finally {
-          setLoadingAvailability(
-            false,
-          );
+          if (active) setLoadingAvailability(false);
         }
       };
 
     void loadAvailability();
+    return () => { active = false; };
   }, [
     fecha,
     selectedProfessional,
@@ -443,8 +389,8 @@ const NuevoTurnoPage = () => {
         </h2>
 
         <p className="text-muted mb-0">
-          Seleccione paciente, profesional,
-          especialidad, salita y horario.
+          Seleccione paciente, especialidad,
+          profesional, salita y horario.
         </p>
       </div>
 
@@ -532,102 +478,32 @@ const NuevoTurnoPage = () => {
                   </div>
 
                   <div className="col-md-6">
-                    <label className="form-label">
-                      Profesional *
-                    </label>
-
-                    <select
-                      className="form-select"
-                      value={
-                        selectedProfessional
-                      }
-                      onChange={(event) =>
-                        setSelectedProfessional(
-                          event.target
-                            .value,
-                        )
-                      }
-                      required
-                    >
-                      <option value="">
-                        Seleccionar profesional
-                      </option>
-
-                      {professionals.map(
-                        (
-                          professional,
-                        ) => (
-                          <option
-                            key={
-                              professional.id_profesional
-                            }
-                            value={
-                              professional.id_profesional
-                            }
-                          >
-                            {
-                              professional
-                                .persona
-                                .apellidos
-                            }
-                            ,{' '}
-                            {
-                              professional
-                                .persona
-                                .nombres
-                            }
-                          </option>
-                        ),
-                      )}
+                    <label className="form-label" htmlFor="turno-especialidad">Especialidad *</label>
+                    <select id="turno-especialidad" className="form-select" value={selectedSpecialty}
+                      disabled={loadingInitial} required onChange={(event) => {
+                        setSelectedSpecialty(event.target.value); setSelectedProfessional(''); setSelectedSalita('');
+                        setSelectedSlot(null); setAvailability(null);
+                      }}>
+                      <option value="">Seleccionar especialidad</option>
+                      {professionalSpecialties.map((item) => (
+                        <option key={item.id_especialidad} value={item.id_especialidad}>{item.especialidad.nombre}</option>
+                      ))}
                     </select>
+                    {!loadingInitial && !professionalSpecialties.length && <p className="small text-muted">No hay especialidades con profesionales y salas habilitados para esta fecha.</p>}
                   </div>
-
                   <div className="col-md-6">
-                    <label className="form-label">
-                      Especialidad *
-                    </label>
-
-                    <select
-                      className="form-select"
-                      value={
-                        selectedSpecialty
-                      }
-                      onChange={(event) =>
-                        setSelectedSpecialty(
-                          event.target
-                            .value,
-                        )
-                      }
-                      disabled={
-                        !selectedProfessional ||
-                        loadingRelations
-                      }
-                      required
-                    >
-                      <option value="">
-                        {loadingRelations
-                          ? 'Cargando...'
-                          : 'Seleccionar especialidad'}
-                      </option>
-
-                      {professionalSpecialties.map(
-                        (item) => (
-                          <option
-                            key={
-                              item.id_especialidad
-                            }
-                            value={
-                              item.id_especialidad
-                            }
-                          >
-                            {
-                              item
-                                .especialidad
-                                .nombre
-                            }
-                          </option>
-                        ),
-                      )}
+                    <label className="form-label" htmlFor="turno-profesional">Profesional *</label>
+                    <select id="turno-profesional" className="form-select" value={selectedProfessional}
+                      disabled={loadingInitial || !selectedSpecialty} required onChange={(event) => {
+                        setSelectedProfessional(event.target.value); setSelectedSalita('');
+                        setSelectedSlot(null); setAvailability(null);
+                      }}>
+                      <option value="">{selectedSpecialty ? 'Seleccionar profesional' : 'Primero seleccionar especialidad'}</option>
+                      {eligibleProfessionals.map((professional) => (
+                        <option key={professional.id_profesional} value={professional.id_profesional}>
+                          {professional.persona.apellidos}, {professional.persona.nombres}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
@@ -766,8 +642,8 @@ const NuevoTurnoPage = () => {
                     <i className="bi bi-calendar2-week" />
 
                     <p className="mb-0">
-                      Complete profesional,
-                      especialidad, salita y
+                      Complete especialidad,
+                      profesional, salita y
                       fecha para consultar
                       disponibilidad.
                     </p>

@@ -1,3 +1,4 @@
+import { assertClinicSpecialty } from './configuracion.service.js';
 // Servicio de disponibilidad de turnos
 
 import { disponibilidadQuerySchema } from "../validators/disponibilidad.validator.js";
@@ -251,6 +252,8 @@ export const obtenerDisponibilidad = async (
     id_especialidad,
     id_salita,
   } = disponibilidadQuerySchema.parse(query);
+
+  await assertClinicSpecialty(id_salita, id_especialidad);
 
   const diaSemana =
     obtenerDiaSemana(fecha);

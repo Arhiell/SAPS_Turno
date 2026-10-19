@@ -413,6 +413,16 @@ const AppRoutes = () => {
                 element={<ReportesPage />}
               />
 
+              <Route
+                  path="/configuracion/especialidades"
+                  element={
+                    <CatalogoPage
+                      key="especialidades"
+                      tipo="especialidades"
+                    />
+                  }
+                />
+
               {/* Rutas exclusivas para el superadministrador. */}
               <Route
                 element={
@@ -440,15 +450,7 @@ const AppRoutes = () => {
                   }
                 />
 
-                <Route
-                  path="/configuracion/especialidades"
-                  element={
-                    <CatalogoPage
-                      key="especialidades"
-                      tipo="especialidades"
-                    />
-                  }
-                />
+
 
                 <Route
                   path="/configuracion/cobertura"

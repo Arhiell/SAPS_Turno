@@ -161,7 +161,8 @@ export const changeTurnoStatus = async (
         } : {}) 
       }, 
       id, 
-      current.ocupa_agenda
+      current.ocupa_agenda,
+      !current.ocupa_agenda
     );
 
     if (Date.parse(

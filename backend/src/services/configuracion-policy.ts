@@ -23,6 +23,7 @@ import type {
 
 // Parámetros autorizados para administración local.
 export const configuracionAdminKeys = new Set([
+  'salita.especialidades',
   'agenda.intervalo_default',
   'notificaciones.recordatorio_horas',
   'turnos.dias_anticipacion',

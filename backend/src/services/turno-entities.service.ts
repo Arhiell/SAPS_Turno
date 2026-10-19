@@ -1,3 +1,4 @@
+import { assertClinicSpecialty } from './configuracion.service.js';
 import { 
   getPatientById 
 } from "./patient-read.service.js";
@@ -49,7 +50,8 @@ const vigente = (row: {
 // Usa las lecturas del equipo y comprueba las asociaciones en la fecha del turno.
 export const validateTurnoEntities = async (
   input: CreateTurnoInput, 
-  date: string) => {
+  date: string, enforceClinicSpecialty = true) => {
+    if (enforceClinicSpecialty) await assertClinicSpecialty(input.id_salita, input.id_especialidad);
     requireActive(await getPatientById(input.id_paciente), "Paciente");
     
     requireActive(await getProfesionalById(input.id_profesional), "Profesional");

@@ -14,7 +14,8 @@ import {
   getParametros,
   guardarParametro,
 } from '../../services/configuracion.service';
-import { getSalitas } from '../../services/salitas.service';
+import { getAdminSalitas } from '../../services/salitas.service';
+import { useAuth } from '../../context/AuthContext';
 import type { Salita } from '../../types/salita.types';
 
 import type {
@@ -55,6 +56,8 @@ export default function CatalogoPage({
 }: {
   tipo: CatalogoTipo;
 }) {
+  const { user } = useAuth();
+  const canEditCatalog = user?.rol === 'SUPER_ADMIN';
   // Datos del catálogo.
   const [rows, setRows] = useState<CatalogoRegistro[]>([]);
   const [zonas, setZonas] = useState<Zona[]>([]);
@@ -99,7 +102,7 @@ export default function CatalogoPage({
       tipo === 'barrios'
         ? getZonas()
         : Promise.resolve([]),
-      tipo === 'especialidades' ? getSalitas().then(response => response.data) : Promise.resolve([]),
+      tipo === 'especialidades' ? getAdminSalitas().then(response => response.data) : Promise.resolve([]),
       tipo === 'especialidades' ? getParametros() : Promise.resolve([]),
     ])
       .then(([data, zones, clinicRows, settings]) => {
@@ -107,6 +110,7 @@ export default function CatalogoPage({
           setRows(data);
           setZonas(zones);
           setClinics(clinicRows);
+          if (clinicRows.length === 1) setSelectedClinic(clinicRows[0]!.id_salita);
           setClinicSettings(settings.filter(setting => setting.clave === 'salita.especialidades'));
           setReady(true);
         }
@@ -130,8 +134,9 @@ export default function CatalogoPage({
   useEffect(() => {
     const setting = clinicSettings.find(item => item.id_salita === selectedClinic);
     setClinicSpecialties(Array.isArray(setting?.valor)
-      ? setting.valor.filter((id): id is string => typeof id === 'string') : []);
-  }, [selectedClinic, clinicSettings]);
+      ? setting.valor.filter((id): id is string => typeof id === 'string')
+      : rows.filter((row) => row.activo).map((row) => row.id));
+  }, [selectedClinic, clinicSettings, rows]);
 
   const saveClinicSpecialties = async (event?: FormEvent) => {
     event?.preventDefault();
@@ -221,6 +226,11 @@ export default function CatalogoPage({
     setSuccess('');
 
     // El nombre es obligatorio.
+    if (tipo === 'especialidades' && !editing && !selectedClinic) {
+      setError('Seleccioná primero la sala a la que se asignará la nueva especialidad.');
+      return;
+    }
+
     if (!form.nombre.trim()) {
       setError('Ingresá un nombre.');
       return;
@@ -290,15 +300,37 @@ export default function CatalogoPage({
     setBusy(true);
 
     try {
-      await guardarCatalogo(
+      const saved = await guardarCatalogo(
         tipo,
         input,
         editing
       );
 
+      if (tipo === 'especialidades' && !editing) {
+        const id = String(saved.id_especialidad);
+        const setting = clinicSettings.find((item) => item.id_salita === selectedClinic);
+        const previous = Array.isArray(setting?.valor)
+          ? setting.valor.filter((value): value is string => typeof value === 'string')
+          : rows.filter((row) => row.activo).map((row) => row.id);
+        try {
+          await guardarParametro({
+            id_salita: selectedClinic,
+            clave: 'salita.especialidades',
+            valor: [...new Set([...previous, id])],
+            descripcion: 'Especialidades disponibles en esta SAPS',
+            es_publica: false,
+          }, setting?.id_configuracion);
+        } catch (cause) {
+          setEditing(id);
+          setRows((current) => [...current, { ...input, id }]);
+          setError(`La especialidad se creó, pero falta asignarla a la sala. Seleccionala en Especialidades por SAPS y guardá. ${authError(cause)}`);
+          return;
+        }
+      }
+
       reset();
 
-      setSuccess('Registro guardado.');
+      setSuccess(tipo === 'especialidades' && !editing ? 'Especialidad creada y asignada a la sala.' : 'Registro guardado.');
 
       // Fuerza una nueva carga del listado.
       setRevision((value) => value + 1);
@@ -425,7 +457,8 @@ export default function CatalogoPage({
           setSpecialtyConfirmOpen(true);
         }} className="dashboard-panel p-3 mb-4">
           <h2 className="h5">Especialidades por SAPS</h2>
-          <p className="text-muted">Seleccioná las especialidades que ofrece cada sala, aunque todavía no tenga profesionales ni horarios asignados.</p>
+          <p className="text-muted">Seleccioná una sala y marcá las especialidades que ofrece. Desmarcar una especialidad la deshabilita para nuevos turnos de esa sala; no elimina los turnos existentes.</p>
+          <Link to="/profesionales" className="btn btn-outline-success mb-3">Asociar especialidades a profesionales</Link>
           <fieldset disabled={loading || busy || !ready}>
             <label className="form-label" htmlFor="specialty-clinic">SAPS / sala</label>
             <select id="specialty-clinic" className="form-select mb-3" value={selectedClinic}
@@ -439,6 +472,9 @@ export default function CatalogoPage({
             </select>
             {selectedClinic && (
               <>
+                {!clinicSettings.some((setting) => setting.id_salita === selectedClinic) && (
+                  <p className="small text-muted">Esta sala todavía no tiene una selección propia. Se conserva la oferta anterior hasta guardar las especialidades que atenderá.</p>
+                )}
                 <div className="row g-2 mb-3">
                   {rows.filter(row => row.activo || clinicSpecialties.includes(row.id)).map(row => (
                     <label key={row.id} className="col-md-6">
@@ -450,7 +486,7 @@ export default function CatalogoPage({
                     </label>
                   ))}
                 </div>
-                {!rows.some(row => row.activo) && <p>No hay especialidades activas. Cargalas en el formulario de este apartado.</p>}
+                {!rows.some(row => row.activo) && <p>No hay especialidades activas en el catálogo. El superadministrador puede cargarlas.</p>}
                 <button className="btn btn-saps" type="submit">{busy ? 'Guardando…' : 'Guardar especialidades de la SAPS'}</button>
               </>
             )}
@@ -460,7 +496,7 @@ export default function CatalogoPage({
 
       <div className="row g-4">
         {/* Formulario */}
-        <div className="col-xl-4">
+        {canEditCatalog && <div className="col-xl-4">
           <form
             ref={formRef}
             className="dashboard-panel p-3 configuration-form"
@@ -478,6 +514,17 @@ export default function CatalogoPage({
             <fieldset
               disabled={busy || loading || !ready}
             >
+              {tipo === 'especialidades' && !editing && (
+                <label className="form-label w-100">Asignar nueva especialidad a la sala *
+                  <select className="form-select" value={selectedClinic} required
+                    onChange={(event) => setSelectedClinic(event.target.value)}>
+                    <option value="">Seleccionar sala</option>
+                    {clinics.filter((clinic) => clinic.activo).map((clinic) => (
+                      <option key={clinic.id_salita} value={clinic.id_salita}>{clinic.nombre}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <label className="form-label w-100">
                 Nombre
 
@@ -665,8 +712,9 @@ export default function CatalogoPage({
           </form>
         </div>
 
+        }
         {/* Listado de registros */}
-        <div className="col-xl-8">
+        <div className={canEditCatalog ? 'col-xl-8' : 'col-12'}>
           <section className="dashboard-panel">
             <div className="p-3">
               <h2 className="h5">
@@ -821,7 +869,7 @@ export default function CatalogoPage({
                           <button
                             type="button"
                             className="btn btn-outline-success"
-                            disabled={busy}
+                            disabled={busy || !canEditCatalog}
                             onClick={() =>
                               edit(row)
                             }

@@ -59,15 +59,17 @@ export const guardarCatalogo = async (
   id?: string
 ) => {
   if (id) {
-    await api.put(
+    const response = await api.put<{ data: CatalogoInput & Record<string, unknown> }>(
       `/${tipo}/${id}`,
       input
     );
+    return response.data.data;
   } else {
-    await api.post(
+    const response = await api.post<{ data: CatalogoInput & Record<string, unknown> }>(
       `/${tipo}`,
       input
     );
+    return response.data.data;
   }
 };
 

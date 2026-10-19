@@ -46,6 +46,20 @@ import type {
 } from '../types/auth.types.js';
 
 // Valida el catálogo de especialidades configurado para una SAPS.
+// null conserva la oferta anterior en salas que aún no fueron configuradas.
+export const getClinicSpecialtyIds = async (idSalita: string): Promise<string[] | null> => {
+  const setting = await findConfiguracionByClave('salita.especialidades', idSalita);
+  if (!setting) return null;
+  return z.array(z.string().uuid()).parse(setting.valor);
+};
+
+export const assertClinicSpecialty = async (idSalita: string, idEspecialidad: string) => {
+  const ids = await getClinicSpecialtyIds(idSalita);
+  if (ids !== null && !ids.includes(idEspecialidad)) {
+    throw new AppError('La especialidad no está habilitada en esta sala.', 400);
+  }
+};
+
 const validateClinicSpecialties = async (
   clave: string,
   valor: unknown,

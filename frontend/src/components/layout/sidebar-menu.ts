@@ -158,7 +158,7 @@ export const configurationMenu: (SidebarMenuItem & {
     label: 'Especialidades',
     path: '/configuracion/especialidades',
     icon: 'bi-heart-pulse',
-    roles: ['SUPER_ADMIN'],
+    roles: ['SUPER_ADMIN', 'ADMIN_SALITA'],
     description: 'Administrá las especialidades disponibles para asignar a profesionales.',
   },
   {

@@ -57,7 +57,7 @@ const fits = (horario: Horario, input: CreateTurnoInput) => {
 
 // Validación reutilizable de reserva, sin implementar otro CRUD de disponibilidad.
 export const validateTurnoAgenda = async (
-  input: CreateTurnoInput, exclude?: string, allowPast = false
+  input: CreateTurnoInput, exclude?: string, allowPast = false, enforceClinicSpecialty = true
 ) => {
   const start = new Date(input.fecha_hora_inicio);
 
@@ -69,7 +69,7 @@ export const validateTurnoAgenda = async (
 
   const local = agendaDateTime(start);
 
-  await validateTurnoEntities(input, local.date);
+  await validateTurnoEntities(input, local.date, enforceClinicSpecialty);
 
   const candidates = input.id_horario
     ? [await getHorarioById(input.id_horario)]

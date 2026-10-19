@@ -1,3 +1,4 @@
+import { getClinicSpecialtyIds } from './configuracion.service.js';
 import {
   findPatientProfessionals,
 } from '../repositories/patient-agenda.repository.js';
@@ -74,6 +75,7 @@ export const getPatientProfessionals = async (
   const [
     professionals,
     schedules,
+    clinicSpecialties,
   ] = await Promise.all([
     findPatientProfessionals(
       patient.id_salita_asignada
@@ -81,6 +83,7 @@ export const getPatientProfessionals = async (
     getAllHorarios([
       patient.id_salita_asignada,
     ]),
+    getClinicSpecialtyIds(patient.id_salita_asignada),
   ]);
 
   // Obtiene el día de la semana correspondiente.
@@ -107,6 +110,7 @@ export const getPatientProfessionals = async (
         .filter(
           (e) =>
             e.especialidad?.activo &&
+            (clinicSpecialties === null || clinicSpecialties.includes(e.id_especialidad)) &&
             vigente(e, date) &&
             schedules.some(
               (h) =>
