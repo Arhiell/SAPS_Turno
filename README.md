@@ -390,7 +390,6 @@ El historial de Git registra contribuciones bajo los siguientes nombres:
 | **Ariel Ayala** | Historial de contribuciones del repositorio |
 | **Andres Herrero** | Historial de contribuciones del repositorio |
 | **Leonel Fernandez** | Historial de contribuciones del repositorio |
-| **Dev2** | Alias registrado en el historial de Git |
 
 Los nombres se presentan tal como aparecen en Git; distintos nombres pueden corresponder a una misma persona.
 
