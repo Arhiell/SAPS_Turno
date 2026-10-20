@@ -26,12 +26,14 @@ export default function PatientBookingSlots({
   professional,
   specialty,
   clinic,
+  refreshKey = 0,
   onBusyChange,
 }: {
   date: string;
   professional: string;
   specialty: string;
   clinic: string;
+  refreshKey?: number;
   onBusyChange: (busy: boolean) => void;
 }) {
   // Horarios disponibles devueltos por la API.
@@ -65,7 +67,6 @@ export default function PatientBookingSlots({
     // Reinicia los datos de la consulta anterior.
     setLoading(true);
     setError('');
-    setSelected('');
     setSlots([]);
 
     // Consulta la disponibilidad según
@@ -84,6 +85,8 @@ export default function PatientBookingSlots({
               (s) => s.estado === 'DISPONIBLE'
             )
           );
+          setSelected((current) => response.slots.some((slot) =>
+            slot.estado === 'DISPONIBLE' && slot.hora_inicio === current) ? current : '');
         }
       })
       .catch((cause) => {
@@ -108,6 +111,7 @@ export default function PatientBookingSlots({
     specialty,
     clinic,
     revision,
+    refreshKey,
   ]);
 
   // ========================================

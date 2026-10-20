@@ -1,3 +1,4 @@
+import { assertAccountAccess } from './account-access.service.js';
 import type {
   GoogleLoginInput
 } from "../validators/google-auth.validator.js";
@@ -77,12 +78,13 @@ export const loginWithGoogle = async (
       existingIdentity.id_usuario
     );
 
-    if (!user || !user.activo) {
+    if (!user) {
       throw new AppError(
         "Usuario no autorizado",
         401
       );
     }
+    assertAccountAccess(user);
   } else {
     /**
      * CASO 2:
@@ -95,6 +97,7 @@ export const loginWithGoogle = async (
       );
 
     if (existingEmail) {
+      assertAccountAccess(existingEmail);
       const existingRole = await findRoleById(existingEmail.id_rol);
       if (!existingEmail.activo || existingRole?.codigo !== "PACIENTE" || !existingRole.activo) {
         throw new AppError("Esta cuenta no puede acceder mediante Google", 403);
@@ -161,6 +164,7 @@ export const loginWithGoogle = async (
     await findRoleById(
       user.id_rol
     );
+  assertAccountAccess(user);
 
   if (!role || !role.activo || role.codigo !== "PACIENTE") {
     throw new AppError(

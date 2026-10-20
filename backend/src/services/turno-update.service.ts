@@ -135,6 +135,10 @@ export const changeTurnoStatus = async (
   }
   const current = await getTurno(id, user);
 
+  if (['ATENDIDO', 'NO_ASISTIO'].includes(input.estado) && Date.parse(current.fecha_hora_inicio) > Date.now()) {
+    throw new AppError('No se puede registrar atención o inasistencia antes del inicio del turno.', 409);
+  }
+
   if (user.rol === 'PACIENTE' && Date.parse(current.fecha_hora_inicio) <= Date.now()) {
     throw new AppError('El turno ya comenzó. Contactá a tu salita.', 409);
   }

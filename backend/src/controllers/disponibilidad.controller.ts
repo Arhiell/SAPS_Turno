@@ -10,11 +10,23 @@ import {
 
 import {
   getPatientAvailability,
+  getPatientAvailableDates,
 } from '../services/patient-agenda.service.js';
 
 import {
   disponibilidadQuerySchema,
 } from '../validators/disponibilidad.validator.js';
+
+export const obtenerFechasPaciente = async (
+  req: Request, res: Response, next: NextFunction,
+) => {
+  try {
+    const query = disponibilidadQuerySchema.omit({ fecha: true }).parse(req.query);
+    res.json(await getPatientAvailableDates(req.user!, query));
+  } catch (error) {
+    next(error);
+  }
+};
 
 // Obtiene la disponibilidad de turnos según el rol del usuario.
 export const obtenerDisponibilidadController = async (

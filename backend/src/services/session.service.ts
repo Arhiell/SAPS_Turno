@@ -1,3 +1,4 @@
+import { assertAccountAccess } from './account-access.service.js';
 import {
   env
 } from "../config/env.js";
@@ -110,12 +111,13 @@ export const refreshSession = async (
     session.id_usuario
   );
 
-  if (!user || !user.activo) {
+  if (!user) {
     throw new AppError(
       "Usuario no autorizado",
       401
     );
   }
+  assertAccountAccess(user);
 
   const role =
     await findRoleById(user.id_rol);

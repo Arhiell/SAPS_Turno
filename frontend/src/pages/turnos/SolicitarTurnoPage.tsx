@@ -77,8 +77,8 @@ export default function SolicitarTurnoPage() {
       </h1>
 
       <p className="text-muted mb-4">
-        Elegí una fecha, especialidad y profesional
-        de tu salita.
+        Elegí una especialidad y un profesional de tu salita,
+        y después uno de sus días disponibles.
       </p>
 
       <div className="row g-4">

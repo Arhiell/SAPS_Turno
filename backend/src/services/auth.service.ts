@@ -231,6 +231,8 @@ export const loginUser = async (
       throw new AppError(
         "Demasiados intentos fallidos. La cuenta fue bloqueada temporalmente",
         423,
+        'ACCOUNT_BLOCKED',
+        { fecha_fin: blockedUntil.toISOString() },
       );
     }
 

@@ -1,6 +1,7 @@
 import {
   AppError
 } from "../utils/app-error.js";
+import { assertAccountAccess } from './account-access.service.js';
 
 interface LoginAccessUser {
   activo: boolean;
@@ -24,12 +25,7 @@ export const validateLoginAccess = (
   user: LoginAccessUser,
   options: LoginAccessOptions = {},
 ) => {
-  if (!user.activo) {
-    throw new AppError(
-      "La cuenta se encuentra deshabilitada",
-      403,
-    );
-  }
+  assertAccountAccess(user);
 
   if (!options.allowUnverifiedEmail && !user.email_verificado) {
     throw new AppError(
@@ -38,13 +34,4 @@ export const validateLoginAccess = (
     );
   }
 
-  if (
-    user.bloqueado_hasta &&
-    new Date(user.bloqueado_hasta) > new Date()
-  ) {
-    throw new AppError(
-      "La cuenta se encuentra temporalmente bloqueada",
-      423,
-    );
-  }
 };

@@ -1,73 +1,84 @@
-import { 
-  randomUUID 
-} from "node:crypto";
+import { randomUUID } from 'node:crypto';
+
 import { assertOwnCoverage } from './patient-coverage.service.js';
+import { validateTurnoAgenda } from './turno-agenda.service.js';
+import {
+  getTurnoScope,
+  assertTurnoScope,
+} from './turno-access.service.js';
+import { getTurnoState } from './turno-read.service.js';
+import { notifyTurnoCreado } from './notificacion-turno.service.js';
+
+import { insertTurno } from '../repositories/turno.repository.js';
+
 import { agendaDateTime } from '../utils/turno-time.js';
+import { assertBookingDate } from '../utils/booking-window.js';
+import { AppError } from '../utils/app-error.js';
 
-import { 
-  insertTurno 
-} from "../repositories/turno.repository.js";
+import type { CreateTurnoInput } from '../validators/turno.validator.js';
+import type { AuthenticatedUser } from '../types/auth.types.js';
 
-import { 
-  validateTurnoAgenda 
-} from "./turno-agenda.service.js";
-
-import { 
-  getTurnoScope, 
-  assertTurnoScope 
-} from "./turno-access.service.js";
-
-import { 
-  getTurnoState 
-} from "./turno-read.service.js";
-
-import { 
-  AppError 
-} from "../utils/app-error.js";
-
-import type { 
-  CreateTurnoInput 
-} from "../validators/turno.validator.js";
-
-import type { 
-  AuthenticatedUser 
-} from "../types/auth.types.js";
-
-import { 
-    notifyTurnoCreado 
-} from "./notificacion-turno.service.js";
-
+// Crea un turno verificando los permisos y la disponibilidad.
 export const createTurno = async (
-  input: CreateTurnoInput, 
+  input: CreateTurnoInput,
   user: AuthenticatedUser
 ) => {
+  // Valida la cobertura y la identidad del paciente.
   if (user.rol === 'PACIENTE') {
-    const patient = await assertOwnCoverage(user, input.id_salita, agendaDateTime(input.fecha_hora_inicio).date);
-    if (patient.id_paciente !== input.id_paciente) throw new AppError('Paciente inválido', 403);
-  } else assertTurnoScope(await getTurnoScope(user), input.id_salita);
+    assertBookingDate(
+      agendaDateTime(input.fecha_hora_inicio).date
+    );
 
-  const state = await getTurnoState("SOLICITADO");
+    const patient = await assertOwnCoverage(
+      user,
+      input.id_salita,
+      agendaDateTime(input.fecha_hora_inicio).date
+    );
 
-  if (!state.ocupa_agenda || state.es_estado_final) {
+    if (patient.id_paciente !== input.id_paciente) {
+      throw new AppError(
+        'Paciente inválido',
+        403
+      );
+    }
+  } else {
+    // Verifica que el usuario tenga acceso a la salita.
+    assertTurnoScope(
+      await getTurnoScope(user),
+      input.id_salita
+    );
+  }
+
+  // Obtiene el estado inicial del turno.
+  const state = await getTurnoState('SOLICITADO');
+
+  // Comprueba que el estado permita reservar agenda.
+  if (
+    !state.ocupa_agenda ||
+    state.es_estado_final
+  ) {
     throw new AppError(
-      "El estado SOLICITADO no está configurado para reservar agenda", 
+      'El estado SOLICITADO no está configurado para reservar agenda',
       400
     );
   }
 
+  // Valida el horario y la disponibilidad del turno.
   const agenda = await validateTurnoAgenda(input);
-  // Código público sin datos personales, dentro del VARCHAR(30) del SQL.
-  const turno = await insertTurno(
-    { 
-      ...input, 
-      ...agenda, 
-      id_estado: state.id_estado,
-      codigo_turno: `T-${randomUUID().replaceAll("-", "").slice(0, 28)}`, 
-      creado_por: user.id_usuario 
-    }
-  );
 
-  // La notificación no forma parte de la validación de agenda.
+  // Genera un código público sin datos personales.
+  // Respeta el límite VARCHAR(30) definido en SQL.
+  const turno = await insertTurno({
+    ...input,
+    ...agenda,
+    id_estado: state.id_estado,
+    codigo_turno: `T-${randomUUID()
+      .replaceAll('-', '')
+      .slice(0, 28)}`,
+    creado_por: user.id_usuario,
+  });
+
+  // Envía la notificación después de registrar el turno.
   await notifyTurnoCreado(turno.id_turno);
 
   return turno;

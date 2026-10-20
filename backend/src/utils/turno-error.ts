@@ -23,6 +23,12 @@ export const rethrowTurnoError = (error: unknown): never => {
   const message = typeof error === "object" && error !== null && "message" in error
     ? String(error.message) : "";
 
+  if (hasDatabaseCode(error, 'P0001') && message === 'PATIENT_SANCTIONED') {
+    throw new AppError(
+      'Tenés una sanción vigente que impide reservar en todas las especialidades. Consultá en tu salita para conocer el vencimiento.',
+      409, 'PATIENT_SANCTIONED',
+    );
+  }
   if (hasDatabaseCode(error, "P0001") && triggerErrors[message]) {
     throw new AppError(
       message, 

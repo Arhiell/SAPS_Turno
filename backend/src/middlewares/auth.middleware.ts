@@ -13,6 +13,7 @@ import {
 } from '../repositories/user.repository.js';
 
 import { AppError } from '../utils/app-error.js';
+import { assertAccountAccess } from '../services/account-access.service.js';
 
 // Valida el token y carga el usuario autenticado en req.user.
 const authenticateRequest = (allowIncompleteProfile: boolean) => async (
@@ -40,9 +41,10 @@ const authenticateRequest = (allowIncompleteProfile: boolean) => async (
     // Comprueba que el usuario exista y esté activo.
     const user = await findUserById(payload.sub);
 
-    if (!user || !user.activo) {
+    if (!user) {
       throw new AppError('Usuario no autorizado', 401);
     }
+    assertAccountAccess(user);
 
     // Verifica que el rol del usuario esté activo.
     const role = await findRoleById(user.id_rol);

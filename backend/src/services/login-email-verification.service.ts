@@ -1,3 +1,4 @@
+import { assertAccountAccess } from './account-access.service.js';
 import {
   verifyLoginVerificationToken,
   generateAccessToken,
@@ -73,14 +74,14 @@ export const verifyLoginEmailCode = async (
     );
 
   if (
-    !user ||
-    !user.activo
+    !user
   ) {
     throw new AppError(
       "La cuenta no está disponible.",
       401,
     );
   }
+  assertAccountAccess(user);
 
   // ========================================
   // CONSUMIR CÓDIGO

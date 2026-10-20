@@ -25,7 +25,7 @@ export const patientProfessionals: RequestHandler = async (
     fecha,
   } = z
     .object({
-      fecha: z.string().date(),
+      fecha: z.string().date().optional(),
     })
     .strict()
     .parse(req.query);

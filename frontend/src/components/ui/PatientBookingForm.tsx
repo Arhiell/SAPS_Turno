@@ -1,122 +1,113 @@
-import ValidatedInput from './ValidatedInput';
-import {
-  useEffect,
-  useState,
-} from 'react';
+import { useEffect, useState } from 'react';
 
-import {
-  getPatientProfessionals,
-} from '../../services/profesionales.service';
+import { getPatientProfessionals } from '../../services/profesionales.service';
+import { getPatientAvailableDates } from '../../services/turnos.service';
 
-import type {
-  PatientProfessional,
-} from '../../types/profesional.types';
+import type { PatientProfessional } from '../../types/profesional.types';
 
 import PatientBookingSlots from './PatientBookingSlots';
 
-import {
-  authError,
-} from '../../utils/auth-errors';
+import { authError } from '../../utils/auth-errors';
 
+// Formatea las fechas utilizando la zona horaria argentina.
+const dateLabel = (date: string) =>
+  new Intl.DateTimeFormat('es-AR', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(new Date(`${date}T12:00:00-03:00`));
+
+// Permite seleccionar especialidad, profesional y fecha para reservar un turno.
 export default function PatientBookingForm({
   clinic,
 }: {
   clinic: string;
 }) {
-  // Obtiene la fecha actual usando la zona horaria de Argentina.
-  const today = new Intl.DateTimeFormat(
-    'en-CA',
-    {
-      timeZone:
-        'America/Argentina/Buenos_Aires',
-    }
-  ).format(
-    new Date()
-  );
+  // Almacena los profesionales y las opciones seleccionadas.
+  const [professionals, setProfessionals] = useState<
+    PatientProfessional[]
+  >([]);
 
-  // Fecha seleccionada para buscar turnos.
-  const [date, setDate] = useState(
-    today
-  );
+  const [specialty, setSpecialty] = useState('');
+  const [professional, setProfessional] = useState('');
+  const [date, setDate] = useState('');
+  const [dates, setDates] = useState<string[]>([]);
 
-  // Profesionales disponibles para la fecha seleccionada.
-  const [
-    professionals,
-    setProfessionals,
-  ] = useState<PatientProfessional[]>([]);
+  // Controla los estados de carga y las solicitudes.
+  const [loading, setLoading] = useState(true);
+  const [loadingDates, setLoadingDates] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  // Especialidad y profesional seleccionados.
-  const [
-    specialty,
-    setSpecialty,
-  ] = useState('');
+  // Almacena los mensajes de error.
+  const [error, setError] = useState('');
+  const [datesError, setDatesError] = useState('');
 
-  const [
-    professional,
-    setProfessional,
-  ] = useState('');
+  // Permite actualizar la información de la agenda.
+  const [revision, setRevision] = useState(0);
 
-  // Estados de carga y operación.
-  const [
-    loading,
-    setLoading,
-  ] = useState(true);
-
-  const [
-    busy,
-    setBusy,
-  ] = useState(false);
-
-  // Mensaje de error.
-  const [
-    error,
-    setError,
-  ] = useState('');
-
-  // Permite volver a ejecutar la búsqueda.
-  const [
-    revision,
-    setRevision,
-  ] = useState(0);
-
-  // CARGA DE PROFESIONALES
-
+  // El servidor determina la semana habilitada en horario argentino.
   useEffect(() => {
-    let active = true;
-
-    // Reinicia los datos de la búsqueda anterior.
-    setLoading(true);
-    setError('');
-    setProfessionals([]);
-    setSpecialty('');
-    setProfessional('');
-
-    // No permite consultar fechas anteriores.
-    if (
-      !date ||
-      date < today
-    ) {
-      setLoading(false);
+    if (busy) {
       return;
     }
 
-    // La API filtra asignación, vigencia,
-    // especialidad y horarios de atención.
-    void getPatientProfessionals(
-      date
-    )
+    // Solicita una actualización de los datos.
+    const refresh = () => {
+      setRevision((value) => value + 1);
+    };
+
+    // Actualiza la agenda cada 60 segundos.
+    const interval = window.setInterval(refresh, 60_000);
+
+    // Actualiza al recuperar el foco de la ventana.
+    window.addEventListener('focus', refresh);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [busy]);
+
+  // Obtiene los profesionales y especialidades disponibles.
+  useEffect(() => {
+    let active = true;
+
+    setLoading(true);
+    setError('');
+
+    void getPatientProfessionals()
       .then((rows) => {
-        if (active) {
-          setProfessionals(
-            rows
-          );
+        if (!active) {
+          return;
         }
+
+        setProfessionals(rows);
+
+        // Conserva la especialidad si continúa disponible.
+        setSpecialty((current) =>
+          rows.some((p) =>
+            p.especialidades.some(
+              (s) => s.id_especialidad === current
+            )
+          )
+            ? current
+            : ''
+        );
+
+        // Conserva el profesional si continúa disponible.
+        setProfessional((current) =>
+          rows.some(
+            (p) => p.id_profesional === current
+          )
+            ? current
+            : ''
+        );
       })
       .catch((cause) => {
         if (active) {
-          setError(
-            authError(cause)
-          );
+          setError(authError(cause));
+          setProfessionals([]);
         }
       })
       .finally(() => {
@@ -128,47 +119,75 @@ export default function PatientBookingForm({
     return () => {
       active = false;
     };
-  }, [
-    date,
-    clinic,
-    today,
-    revision,
-  ]);
+  }, [clinic, revision]);
 
-  // ESPECIALIDADES DISPONIBLES
+  // Consulta las fechas disponibles para la atención seleccionada.
+  useEffect(() => {
+    let active = true;
 
-  // Obtiene las especialidades disponibles
-  // evitando elementos duplicados.
+    setDatesError('');
+
+    // Limpia las fechas cuando falta seleccionar una atención.
+    if (!professional || !specialty) {
+      setDates([]);
+      setDate('');
+      setLoadingDates(false);
+      return;
+    }
+
+    setLoadingDates(true);
+
+    void getPatientAvailableDates(
+      professional,
+      specialty,
+      clinic
+    )
+      .then((result) => {
+        if (!active) {
+          return;
+        }
+
+        setDates(result.fechas);
+
+        // Conserva la fecha seleccionada si sigue disponible.
+        setDate((current) =>
+          result.fechas.includes(current)
+            ? current
+            : result.fechas[0] ?? ''
+        );
+      })
+      .catch((cause) => {
+        if (active) {
+          setDate('');
+          setDatesError(authError(cause));
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoadingDates(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [professional, specialty, clinic, revision]);
+
+  // Obtiene las especialidades sin duplicados.
   const specialties = [
     ...new Map(
       professionals
-        .flatMap(
-          (p) => p.especialidades
-        )
-        .map(
-          (e) => [
-            e.id_especialidad,
-            e,
-          ]
-        )
+        .flatMap((p) => p.especialidades)
+        .map((s) => [s.id_especialidad, s])
     ).values(),
   ];
 
-  // PROFESIONALES HABILITADOS
-
-  // Filtra los profesionales que atienden
-  // la especialidad seleccionada.
-  const eligible =
-    professionals.filter(
-      (p) =>
-        p.especialidades.some(
-          (e) =>
-            e.id_especialidad ===
-            specialty
-        )
-    );
-
-  // INTERFAZ
+  // Filtra los profesionales que atienden la especialidad seleccionada.
+  const eligible = professionals.filter((p) =>
+    p.especialidades.some(
+      (s) => s.id_especialidad === specialty
+    )
+  );
 
   return (
     <section className="patient-section">
@@ -176,171 +195,176 @@ export default function PatientBookingForm({
         Elegí tu atención
       </h2>
 
-      {/* Selección de fecha. */}
-      <label className="form-label w-100">
-        Fecha
+      <p className="small text-muted">
+        Podés reservar los días habilitados de esta semana.
+        Cada sábado a las 12:00 se abre la semana siguiente
+        (hora argentina). Solo podés tener un turno pendiente
+        por especialidad.
+      </p>
 
-        <ValidatedInput
-          className="form-control mt-1"
-          type="date"
-          value={date}
-          min={today}
-          disabled={busy}
-          onChange={(event) => {
-            setDate(
-              event.target.value
-            );
-
-            // Reinicia las selecciones dependientes.
-            setSpecialty('');
-            setProfessional('');
-          }}
-        />
-      </label>
-
-      {/* Estado de carga. */}
+      {/* Muestra el estado de carga de la agenda. */}
       {loading && (
         <p role="status">
-          Buscando profesionales de tu salita…
+          Actualizando la agenda de tu salita…
         </p>
       )}
 
-      {/* Mensaje de error y reintento. */}
-      {error && (
+      {/* Muestra los errores y permite actualizar la información. */}
+      {(error || datesError) && (
         <div
           className="alert alert-danger"
           role="alert"
         >
-          {error}{' '}
+          {error || datesError}{' '}
 
           <button
+            type="button"
             className="btn btn-outline-danger"
+            disabled={busy}
             onClick={() =>
-              setRevision(
-                (v) => v + 1
-              )
+              setRevision((value) => value + 1)
             }
           >
-            Reintentar
+            Actualizar
           </button>
         </div>
       )}
 
-      {/* No existen profesionales disponibles. */}
+      {/* Informa cuando no existen atenciones habilitadas. */}
       {!loading &&
         !error &&
-        date >= today &&
         !professionals.length && (
           <p>
-            No hay profesionales con horarios
-            habilitados para esta fecha. Probá
-            otro día o consultá en tu salita.
+            No hay atenciones habilitadas en el período
+            disponible. Consultá en tu salita.
           </p>
         )}
 
-      {/* Opciones disponibles para reservar. */}
-      {!loading &&
-        !error &&
-        professionals.length > 0 && (
-          <>
-            {/* Selección de especialidad. */}
+      {/* Formulario de selección de la atención. */}
+      {!error && professionals.length > 0 && (
+        <fieldset disabled={busy || loading}>
+          {/* Selección de especialidad. */}
+          <label className="form-label w-100">
+            Especialidad
+
+            <select
+              className="form-select mt-1"
+              value={specialty}
+              onChange={(event) => {
+                setSpecialty(event.target.value);
+                setProfessional('');
+                setDate('');
+                setDates([]);
+              }}
+            >
+              <option value="">
+                Seleccioná una especialidad
+              </option>
+
+              {specialties.map((s) => (
+                <option
+                  key={s.id_especialidad}
+                  value={s.id_especialidad}
+                >
+                  {s.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {/* Selección del profesional. */}
+          {specialty && (
             <label className="form-label w-100 mt-2">
-              Especialidad
+              Profesional
 
               <select
                 className="form-select mt-1"
-                value={specialty}
-                disabled={busy}
+                value={professional}
                 onChange={(event) => {
-                  setSpecialty(
-                    event.target.value
-                  );
-
-                  // Reinicia el profesional al
-                  // cambiar de especialidad.
-                  setProfessional('');
+                  setProfessional(event.target.value);
+                  setDate('');
+                  setDates([]);
                 }}
               >
                 <option value="">
-                  Seleccioná una especialidad
+                  Seleccioná un profesional
                 </option>
 
-                {specialties.map(
-                  (e) => (
-                    <option
-                      key={
-                        e.id_especialidad
-                      }
-                      value={
-                        e.id_especialidad
-                      }
-                    >
-                      {e.nombre}
-                    </option>
-                  )
-                )}
+                {eligible.map((p) => (
+                  <option
+                    key={p.id_profesional}
+                    value={p.id_profesional}
+                  >
+                    {p.persona.apellidos}{' '}
+                    {p.persona.nombres} · Matrícula{' '}
+                    {p.matricula}
+                  </option>
+                ))}
               </select>
             </label>
+          )}
 
-            {/* Selección de profesional. */}
-            {specialty && (
-              <label className="form-label w-100 mt-2">
-                Profesional
+          {/* Selección de una fecha con turnos disponibles. */}
+          {professional && (
+            <label className="form-label w-100 mt-2">
+              Días disponibles
 
-                <select
-                  className="form-select mt-1"
-                  value={professional}
-                  disabled={busy}
-                  onChange={(event) =>
-                    setProfessional(
-                      event.target.value
-                    )
-                  }
-                >
-                  <option value="">
-                    Seleccioná un profesional
+              <select
+                className="form-select mt-1"
+                value={date}
+                disabled={
+                  loadingDates || !dates.length
+                }
+                onChange={(event) =>
+                  setDate(event.target.value)
+                }
+              >
+                <option value="">
+                  {loadingDates
+                    ? 'Buscando días con turnos libres…'
+                    : 'Seleccioná un día'}
+                </option>
+
+                {dates.map((day) => (
+                  <option
+                    value={day}
+                    key={day}
+                  >
+                    {dateLabel(day)}
                   </option>
+                ))}
+              </select>
+            </label>
+          )}
 
-                  {eligible.map(
-                    (p) => (
-                      <option
-                        key={
-                          p.id_profesional
-                        }
-                        value={
-                          p.id_profesional
-                        }
-                      >
-                        {p.persona.apellidos}{' '}
-                        {p.persona.nombres}
-                        {' · '}
-                        Matrícula {p.matricula}
-                      </option>
-                    )
-                  )}
-                </select>
-              </label>
+          {/* Informa cuando no quedan fechas disponibles. */}
+          {professional &&
+            !loadingDates &&
+            !datesError &&
+            !dates.length && (
+              <p>
+                No quedan turnos disponibles para esta
+                atención en el período habilitado.
+              </p>
             )}
+        </fieldset>
+      )}
 
-            {/* Horarios disponibles para reservar. */}
-            {professional &&
-              specialty && (
-                <PatientBookingSlots
-                  key={`${date}-${professional}-${specialty}-${clinic}`}
-                  date={date}
-                  professional={
-                    professional
-                  }
-                  specialty={
-                    specialty
-                  }
-                  clinic={clinic}
-                  onBusyChange={
-                    setBusy
-                  }
-                />
-              )}
-          </>
+      {/* Muestra los horarios disponibles para la fecha seleccionada. */}
+      {!error &&
+        !datesError &&
+        dates.includes(date) &&
+        professional &&
+        specialty && (
+          <PatientBookingSlots
+            key={`${clinic}-${professional}-${specialty}-${date}`}
+            date={date}
+            professional={professional}
+            specialty={specialty}
+            clinic={clinic}
+            refreshKey={revision}
+            onBusyChange={setBusy}
+          />
         )}
     </section>
   );

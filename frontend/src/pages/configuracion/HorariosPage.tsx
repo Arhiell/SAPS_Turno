@@ -1,4 +1,10 @@
 import ValidatedInput from '../../components/ui/ValidatedInput';
+import WeeklyScheduleFields from '../../components/profesionales/WeeklyScheduleFields';
+import {
+  newWeeklySlot,
+  scheduleDays as days,
+  type WeeklySlot,
+} from '../../utils/weekly-schedule';
 import {
   useEffect,
   useRef,
@@ -46,17 +52,6 @@ import type {
 
 import { authError } from '../../utils/auth-errors';
 
-// Días disponibles para configurar la atención.
-const days = [
-  'Lunes',
-  'Martes',
-  'Miércoles',
-  'Jueves',
-  'Viernes',
-  'Sábado',
-  'Domingo',
-];
-
 // Devuelve la fecha actual de Argentina.
 const today = () =>
   new Intl.DateTimeFormat('en-CA', {
@@ -91,6 +86,8 @@ export default function HorariosPage() {
   );
 
   const [editing, setEditing] = useState<string>();
+  const [weeklySlots, setWeeklySlots] = useState<WeeklySlot[]>(() => [newWeeklySlot(1)]);
+  const [relationsProfessional, setRelationsProfessional] = useState('');
 
   // Datos principales.
   const [rows, setRows] = useState<Horario[]>([]);
@@ -189,6 +186,7 @@ export default function HorariosPage() {
       clinics: [],
       specialties: [],
     });
+    setRelationsProfessional('');
 
     if (!form.id_profesional) {
       setRelationLoading(false);
@@ -207,6 +205,7 @@ export default function HorariosPage() {
             clinics: c.data,
             specialties: s.data,
           });
+          setRelationsProfessional(form.id_profesional);
         }
       })
       .catch((cause) => {
@@ -296,9 +295,28 @@ export default function HorariosPage() {
       )
   );
 
+  // El catálogo de salitas ya está limitado por el alcance del administrador.
+  const onlyClinic = clinicOptions.length === 1 ? clinicOptions[0].id_salita : '';
+  const onlySpecialty = specialtyOptions.length === 1 ? specialtyOptions[0].id_especialidad : '';
+  const clinicSelectionValid = clinicOptions.some((clinic) => clinic.id_salita === form.id_salita);
+  const specialtySelectionValid = specialtyOptions.some((specialty) => specialty.id_especialidad === form.id_especialidad);
+
+  useEffect(() => {
+    if (editing || !ready || relationLoading || relationsProfessional !== form.id_profesional) return;
+    setForm((current) => {
+      const id_salita = clinicSelectionValid ? current.id_salita : onlyClinic;
+      const id_especialidad = specialtySelectionValid ? current.id_especialidad : onlySpecialty;
+      return id_salita === current.id_salita && id_especialidad === current.id_especialidad
+        ? current
+        : { ...current, id_salita, id_especialidad };
+    });
+  }, [editing, ready, relationLoading, relationsProfessional, form.id_profesional,
+    onlyClinic, onlySpecialty, clinicSelectionValid, specialtySelectionValid]);
+
   // Limpia el formulario y finaliza la edición.
   const reset = () => {
     setEditing(undefined);
+    setWeeklySlots([newWeeklySlot(1)]);
 
     setForm(
       initial(
@@ -315,15 +333,25 @@ export default function HorariosPage() {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
 
-    if (busy || !ready || relationLoading) {
+    if (busy || !ready || relationLoading || relationsProfessional !== form.id_profesional) {
       return;
     }
 
     setError('');
     setSuccess('');
 
-    // Valida que la hora inicial sea anterior a la final.
-    if (form.hora_inicio >= form.hora_fin) {
+    const inputs: HorarioInput[] = editing ? [form] : weeklySlots.map((slot) => ({
+      ...form,
+      dia_semana: slot.dia_semana,
+      hora_inicio: slot.hora_inicio,
+      hora_fin: slot.hora_fin,
+    }));
+    if (!inputs.length) {
+      setError('Seleccioná al menos un día y una franja de atención.');
+      return;
+    }
+    // Valida todas las franjas antes de comenzar el guardado.
+    if (inputs.some((input) => !input.hora_inicio || !input.hora_fin || input.hora_inicio >= input.hora_fin)) {
       setError(
         'El inicio debe ser anterior al fin.'
       );
@@ -362,19 +390,22 @@ export default function HorariosPage() {
 
     // Evita franjas superpuestas para el mismo profesional,
     // incluso cuando atiende en diferentes salitas.
-    const overlapping = rows.some(
+    const overlapping = inputs.some((input) => rows.some(
       (schedule) =>
         schedule.id_horario !== editing &&
         schedule.activo &&
         schedule.id_profesional === form.id_profesional &&
-        schedule.dia_semana === form.dia_semana &&
-        schedule.hora_inicio.slice(0, 5) < form.hora_fin &&
-        schedule.hora_fin.slice(0, 5) > form.hora_inicio &&
+        schedule.dia_semana === input.dia_semana &&
+        schedule.hora_inicio.slice(0, 5) < input.hora_fin &&
+        schedule.hora_fin.slice(0, 5) > input.hora_inicio &&
         schedule.vigencia_desde <=
           (form.vigencia_hasta ?? '9999-12-31') &&
         (schedule.vigencia_hasta ?? '9999-12-31') >=
           form.vigencia_desde
-    );
+    )) || inputs.some((input, index) => inputs.slice(index + 1).some((other) =>
+      input.dia_semana === other.dia_semana &&
+      input.hora_inicio < other.hora_fin && input.hora_fin > other.hora_inicio
+    ));
 
     if (form.activo && overlapping) {
       setError(
@@ -384,23 +415,39 @@ export default function HorariosPage() {
     }
 
     setBusy(true);
+    let saved = 0;
 
     try {
-      await guardarHorario(
-        form,
-        editing
-      );
+      for (const input of inputs) {
+        await guardarHorario(input, editing);
+        saved += 1;
+        // Retira las franjas confirmadas para no reenviarlas si falla una posterior.
+        if (!editing) {
+          const savedKey = weeklySlots[saved - 1].key;
+          setWeeklySlots((current) => current.filter((slot) => slot.key !== savedKey));
+        }
+      }
 
       reset();
 
       setSuccess(
-        'Horario guardado correctamente. Podés consultar su disponibilidad.'
+        `${saved === 1 ? 'Horario guardado' : `${saved} franjas guardadas`} correctamente. Podés consultar su disponibilidad.`
       );
 
       // Fuerza la recarga del listado.
       setRevision((value) => value + 1);
     } catch (cause) {
-      setError(authError(cause));
+      setError(saved
+        ? `Se guardaron ${saved} franjas. Quedan pendientes las que se muestran en el formulario. ${authError(cause)}`
+        : authError(cause));
+      if (saved) {
+        try {
+          setRows(await getHorarios());
+        } catch {
+          setError((message) => `${message} No se pudo actualizar el listado; recargalo antes de continuar.`);
+          setReady(false);
+        }
+      }
     } finally {
       setBusy(false);
     }
@@ -709,7 +756,7 @@ export default function HorariosPage() {
               <select
                 className="form-select"
                 required
-                disabled={relationLoading}
+                disabled={relationLoading || (!editing && clinicOptions.length === 1)}
                 value={form.id_salita}
                 onChange={(e) =>
                   change({
@@ -751,7 +798,7 @@ export default function HorariosPage() {
               <select
                 className="form-select"
                 required
-                disabled={relationLoading}
+                disabled={relationLoading || (!editing && specialtyOptions.length === 1)}
                 value={form.id_especialidad}
                 onChange={(e) =>
                   change({
@@ -809,6 +856,13 @@ export default function HorariosPage() {
                         estar asignadas al profesional para
                         poder activar este horario.
                       </div>
+                      {!relationLoading && relationsProfessional === form.id_profesional && (
+                        <div className="small mt-2">
+                          {!clinicOptions.length || !specialtyOptions.length
+                            ? 'Falta una salita o especialidad con asignación vigente dentro de tu alcance para la fecha indicada.'
+                            : 'Las opciones únicas se completan automáticamente. Si hay varias salitas o especialidades asignadas, elegí dónde y en qué especialidad atenderá.'}
+                        </div>
+                      )}
                     </div>
 
                     <Link
@@ -835,6 +889,10 @@ export default function HorariosPage() {
               </div>
             )}
 
+            {!editing && (
+              <WeeklyScheduleFields slots={weeklySlots} onChange={setWeeklySlots} />
+            )}
+            {editing && <>
             <label className="col-sm-6 col-lg-4 form-label">
               Día
 
@@ -894,6 +952,7 @@ export default function HorariosPage() {
               />
             </label>
 
+            </>}
             <label className="col-sm-6 col-lg-3 form-label">
               Duración del turno (minutos)
 
@@ -1016,7 +1075,7 @@ export default function HorariosPage() {
                   ? 'Procesando...'
                   : editing
                     ? 'Guardar cambios'
-                    : 'Guardar horario'}
+                    : `Guardar horarios (${weeklySlots.length})`}
               </button>
 
               {editing && (

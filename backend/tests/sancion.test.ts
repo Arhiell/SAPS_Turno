@@ -99,7 +99,9 @@ test("Patient and professional roles cannot access any sanctions route", async (
 });
 test("Inactive users cannot access sanctions", async () => {
   queue({ table: "usuarios", data: [{ ...user, activo: false }] });
-  assert.equal((await call("GET")).status, 401);
+  const result = await call("GET");
+  assert.equal(result.status, 403);
+  assert.equal(result.body.code, 'ACCOUNT_DISABLED');
 });
 test("Invalid HTTP inputs fail before sanctions database queries", async () => {
   for (const [method, path, body] of [["POST", "", {}], ["GET", "/bad", undefined], ["GET", "?limit=101", undefined],
