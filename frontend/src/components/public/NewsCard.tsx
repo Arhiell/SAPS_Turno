@@ -67,7 +67,7 @@ export default function NewsCard({
         <p className="small">
           {news.salita
             ?.nombre ??
-            'SAPS Turno · Información general'}
+            'CORA · Información general'}
         </p>
 
         {/* Acceso al detalle completo de la noticia. */}

@@ -361,15 +361,15 @@ const information = [
   ],
 ];
 
-// Presenta los principales beneficios de SAPS Turno.
+// Presenta los principales beneficios de CORA.
 export default function InformationalCarousel() {
   return (
     <section
       className="container public-section"
-      aria-label="Beneficios de SAPS Turno"
+      aria-label="Beneficios de CORA"
     >
       <PublicCarousel
-        label="Información de SAPS Turno"
+        label="Información de CORA"
         slides={information.map(
           ([
             icon,

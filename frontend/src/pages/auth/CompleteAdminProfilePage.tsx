@@ -91,7 +91,7 @@ export default function CompleteAdminProfilePage() {
         {/* Encabezado del formulario. */}
         <p className="text-primary fw-semibold">
           <i className="bi bi-heart-pulse me-2" />
-          SAPS Turno
+          CORA
         </p>
 
         <h1 className="h3">

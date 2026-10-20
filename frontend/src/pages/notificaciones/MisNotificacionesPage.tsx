@@ -363,7 +363,7 @@ export default function MisNotificacionesPage() {
                   {' · Enviado por: '}
 
                   {item.remitente ??
-                    'SAPS Turno · Notificación automática'}
+                    'CORA · Notificación automática'}
                 </p>
 
                 {!item.leida && (

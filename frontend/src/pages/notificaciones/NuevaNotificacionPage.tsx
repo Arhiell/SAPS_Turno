@@ -1139,7 +1139,7 @@ export default function NuevaNotificacionPage({
                 disabled
               />
 
-              SAPS Turno (obligatorio)
+              CORA (obligatorio)
             </label>
 
             <label className="d-block mt-2">
@@ -1212,7 +1212,7 @@ export default function NuevaNotificacionPage({
 
             <p>
               {preview?.cantidad}{' '}
-              destinatarios · SAPS Turno
+              destinatarios · CORA
               {email
                 ? ' + Email'
                 : ''}

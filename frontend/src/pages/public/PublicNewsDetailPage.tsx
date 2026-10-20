@@ -64,14 +64,14 @@ export default function PublicNewsDetailPage() {
 
           <p>
             {newsDate(news.fecha_publicacion)} ·{' '}
-            {news.salita?.nombre ?? 'SAPS Turno'}
+            {news.salita?.nombre ?? 'CORA'}
           </p>
 
           <p className="small">
             Autor institucional:{' '}
             {news.salita
               ? `Equipo de ${news.salita.nombre}`
-              : 'Administración SAPS Turno'}
+              : 'Administración CORA'}
           </p>
 
           <p className="lead">

@@ -284,7 +284,7 @@ export default function DetalleNotificacionPage() {
             </dt>
 
             <dd className="col-12 col-md-8">
-              SAPS Turno
+              CORA
               {envio.email &&
                 ' + Email'}
             </dd>

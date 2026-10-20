@@ -393,7 +393,7 @@ export default function NotificationBell() {
                         {item.mensaje.length > 160 ? `${item.mensaje.slice(0, 160)}…` : item.mensaje}
                       </span>
 
-                      <small>Enviado por: {item.remitente ?? 'SAPS Turno · Notificación automática'}</small>
+                      <small>Enviado por: {item.remitente ?? 'CORA · Notificación automática'}</small>
 
                       <small>
                         {new Date(
@@ -445,7 +445,7 @@ export default function NotificationBell() {
             <p className="notification-message-full">{mensajeAbierto.mensaje}</p>
             <footer className="notification-message-footer">
               <small>
-                Enviado por: {mensajeAbierto.remitente ?? 'SAPS Turno · Notificación automática'}
+                Enviado por: {mensajeAbierto.remitente ?? 'CORA · Notificación automática'}
                 <br />
                 {new Date(mensajeAbierto.fecha_envio ?? mensajeAbierto.fecha_creacion).toLocaleString('es-AR', {
                   timeZone: 'America/Argentina/Buenos_Aires',
