@@ -1,4 +1,5 @@
 import AccountSummary from '../../components/ui/AccountSummary';
+import ProfessionalAccessAccount from '../../components/profesionales/ProfessionalAccessAccount';
 import { useEffect, useState } from 'react';
 
 import AsignacionVigencia from '../../components/profesionales/AsignacionVigencia';
@@ -508,6 +509,15 @@ const ProfesionalDetallePage = () => {
         </button>
 
       </div>
+
+      <ProfessionalAccessAccount
+        key={professional.id_profesional}
+        professional={professional}
+        onCreated={(account) => setProfessional((current) => current ? {
+          ...current,
+          persona: { ...current.persona, cuenta: account },
+        } : current)}
+      />
 
       {message && (
         <div
