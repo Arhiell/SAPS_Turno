@@ -69,6 +69,11 @@ export const turnoQuerySchema = z
       .uuid()
       .optional(),
 
+    id_especialidad: z
+      .string()
+      .uuid()
+      .optional(),
+
     id_paciente: z
       .string()
       .uuid()

@@ -104,10 +104,12 @@ const NuevoTurnoPage = () => {
       null,
     );
 
+  // La pantalla puede mostrarse mientras se cargan las relaciones.
   const [loadingInitial, setLoadingInitial] =
     useState(true);
 
-  const loadingRelations = loadingInitial;
+  const [loadingRelations, setLoadingRelations] =
+    useState(true);
 
   const [loadingAvailability, setLoadingAvailability] =
     useState(false);
@@ -126,29 +128,57 @@ const NuevoTurnoPage = () => {
 
   useEffect(() => {
     let active = true;
+
     const load = async () => {
-      setLoadingInitial(true); setError('');
+      setLoadingInitial(true);
+      setLoadingRelations(true);
+      setError('');
+
       try {
+        // Cargar primero los datos base para que la pantalla no espere
+        // a que terminen todas las consultas de relaciones.
         const [patientResponse, professionalResponse, settings] = await Promise.all([
-          getPatients(1, 100), getProfessionals(), getParametros(),
+          getPatients(1, 100),
+          getProfessionals(),
+          getParametros(),
         ]);
+
+        if (!active) return;
+
         const available = professionalResponse.data.filter((item) => item.activo);
+        setPatients(patientResponse.data.patients.filter((item) => item.activo));
+        setProfessionals(available);
+        setClinicSettings(settings.filter((item) => item.clave === 'salita.especialidades'));
+        setLoadingInitial(false);
+
+        // Cargar las relaciones en paralelo, sin bloquear el render inicial.
         const entries = await Promise.all(available.map(async (professional) => {
           const [specialties, clinics] = await Promise.all([
             getProfessionalSpecialties(professional.id_profesional),
             getProfessionalClinics(professional.id_profesional),
           ]);
-          return [professional.id_profesional, { specialties: specialties.data, clinics: clinics.data }] as const;
+
+          return [
+            professional.id_profesional,
+            { specialties: specialties.data, clinics: clinics.data },
+          ] as const;
         }));
+
         if (!active) return;
-        setPatients(patientResponse.data.patients.filter((item) => item.activo));
-        setProfessionals(available);
         setRelations(Object.fromEntries(entries));
-        setClinicSettings(settings.filter((item) => item.clave === 'salita.especialidades'));
-      } catch {
-        if (active) setError('No se pudieron cargar los datos necesarios para crear el turno.');
-      } finally { if (active) setLoadingInitial(false); }
+      } catch (loadError) {
+        console.error('Error cargando datos para crear turno:', loadError);
+        if (active) {
+          setError('No se pudieron cargar todos los datos necesarios para crear el turno.');
+        }
+      } finally {
+        if (active) {
+          setLoadingInitial(false);
+          setLoadingRelations(false);
+        }
+      }
     };
+
     void load();
     return () => { active = false; };
   }, []);
@@ -171,10 +201,49 @@ const NuevoTurnoPage = () => {
   const professionalClinics = relations[selectedProfessional]?.clinics.filter((clinic) =>
     current(clinic) && clinic.salita.activo && offers(clinic.id_salita, selectedSpecialty)) ?? [];
 
+  // Al cambiar la fecha, conservar las selecciones que sigan siendo válidas.
+  // Solo limpiar la selección que ya no esté habilitada para ese día y sus dependencias.
   useEffect(() => {
-    setSelectedSpecialty(''); setSelectedProfessional(''); setSelectedSalita('');
-    setSelectedSlot(null); setAvailability(null);
-  }, [fecha]);
+    if (
+      selectedSpecialty &&
+      !professionalSpecialties.some(
+        (item) => item.id_especialidad === selectedSpecialty,
+      )
+    ) {
+      setSelectedSpecialty('');
+      setSelectedProfessional('');
+      setSelectedSalita('');
+      return;
+    }
+
+    if (
+      selectedProfessional &&
+      !eligibleProfessionals.some(
+        (item) => item.id_profesional === selectedProfessional,
+      )
+    ) {
+      setSelectedProfessional('');
+      setSelectedSalita('');
+      return;
+    }
+
+    if (
+      selectedSalita &&
+      !professionalClinics.some(
+        (item) => item.id_salita === selectedSalita,
+      )
+    ) {
+      setSelectedSalita('');
+    }
+  }, [
+    fecha,
+    selectedSpecialty,
+    selectedProfessional,
+    selectedSalita,
+    professionalSpecialties,
+    eligibleProfessionals,
+    professionalClinics,
+  ]);
 
   useEffect(() => {
     let active = true;
@@ -325,21 +394,6 @@ const NuevoTurnoPage = () => {
       }
     };
 
-  if (loadingInitial) {
-    return (
-      <div className="text-center py-5">
-        <div
-          className="spinner-border text-success"
-          role="status"
-        >
-          <span className="visually-hidden">
-            Cargando...
-          </span>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="turnos-page">
       <ConfirmationModal
@@ -408,6 +462,13 @@ const NuevoTurnoPage = () => {
         </div>
       )}
 
+      {loadingInitial && (
+        <div className="alert alert-light border d-flex align-items-center gap-2" role="status">
+          <span className="spinner-border spinner-border-sm text-success" aria-hidden="true" />
+          Cargando datos del formulario...
+        </div>
+      )}
+
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -436,6 +497,7 @@ const NuevoTurnoPage = () => {
                       value={
                         selectedPatient
                       }
+                      disabled={loadingInitial}
                       onChange={(event) =>
                         setSelectedPatient(
                           event.target
@@ -480,7 +542,7 @@ const NuevoTurnoPage = () => {
                   <div className="col-md-6">
                     <label className="form-label" htmlFor="turno-especialidad">Especialidad *</label>
                     <select id="turno-especialidad" className="form-select" value={selectedSpecialty}
-                      disabled={loadingInitial} required onChange={(event) => {
+                      disabled={loadingInitial || loadingRelations} required onChange={(event) => {
                         setSelectedSpecialty(event.target.value); setSelectedProfessional(''); setSelectedSalita('');
                         setSelectedSlot(null); setAvailability(null);
                       }}>
@@ -494,7 +556,7 @@ const NuevoTurnoPage = () => {
                   <div className="col-md-6">
                     <label className="form-label" htmlFor="turno-profesional">Profesional *</label>
                     <select id="turno-profesional" className="form-select" value={selectedProfessional}
-                      disabled={loadingInitial || !selectedSpecialty} required onChange={(event) => {
+                      disabled={loadingInitial || loadingRelations || !selectedSpecialty} required onChange={(event) => {
                         setSelectedProfessional(event.target.value); setSelectedSalita('');
                         setSelectedSlot(null); setAvailability(null);
                       }}>

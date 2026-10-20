@@ -1,3 +1,4 @@
+
 import {
   supabase,
 } from '../config/supabase.js';
@@ -186,6 +187,15 @@ export const findTurnos = async (
     }
   }
 
+  // NUEVO: filtra por especialidad en el listado general.
+  // La agenda mantiene su filtro específico más abajo.
+  if (!agenda && filters.id_especialidad) {
+    query = query.eq(
+      'id_especialidad',
+      filters.id_especialidad
+    );
+  }
+
   // Filtra por estado cuando fue especificado.
   if (stateId) {
     query = query.eq(
@@ -219,7 +229,7 @@ export const findTurnos = async (
         '(CANCELADO,REPROGRAMADO)'
       );
 
-    // Filtra la agenda por especialidad.
+    // Conserva el filtro de especialidad de la agenda.
     if (agenda.id_especialidad) {
       query = query.eq(
         'id_especialidad',

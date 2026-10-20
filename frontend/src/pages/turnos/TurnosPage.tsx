@@ -22,6 +22,10 @@ import {
   getAdminSalitas,
 } from '../../services/salitas.service';
 
+import {
+  getCatalogo,
+} from '../../services/configuracion.service';
+
 import type {
   Patient,
 } from '../../types/patient.types';
@@ -33,6 +37,10 @@ import type {
 import type {
   Salita,
 } from '../../types/salita.types';
+
+import type {
+  CatalogoRegistro,
+} from '../../types/configuracion.types';
 
 import type {
   Turno,
@@ -131,10 +139,16 @@ const TurnosPage = () => {
   const [salitas, setSalitas] =
     useState<Salita[]>([]);
 
+  const [especialidades, setEspecialidades] =
+    useState<CatalogoRegistro[]>([]);
+
   const [fecha, setFecha] =
     useState('');
 
   const [professionalId, setProfessionalId] =
+    useState('');
+
+  const [specialtyId, setSpecialtyId] =
     useState('');
 
   const [patientId, setPatientId] =
@@ -174,10 +188,12 @@ const TurnosPage = () => {
           patientsResponse,
           professionalsResponse,
           salitasResponse,
+          especialidadesResponse,
         ] = await Promise.all([
           getPatients(1, 100),
           getProfessionals(),
           getAdminSalitas(),
+          getCatalogo('especialidades'),
         ]);
 
         setPatients(
@@ -190,6 +206,10 @@ const TurnosPage = () => {
 
         setSalitas(
           salitasResponse.data,
+        );
+
+        setEspecialidades(
+          especialidadesResponse.filter((item) => item.activo),
         );
       } catch (error) {
         console.error(error);
@@ -216,6 +236,9 @@ const TurnosPage = () => {
               fecha || undefined,
             id_profesional:
               professionalId ||
+              undefined,
+            id_especialidad:
+              specialtyId ||
               undefined,
             id_paciente:
               patientId ||
@@ -259,6 +282,7 @@ const TurnosPage = () => {
   }, [
     fecha,
     professionalId,
+    specialtyId,
     patientId,
     salitaId,
     estado,
@@ -305,6 +329,7 @@ const TurnosPage = () => {
     () => {
       setFecha('');
       setProfessionalId('');
+      setSpecialtyId('');
       setPatientId('');
       setSalitaId('');
       setEstado('');
@@ -501,6 +526,28 @@ const TurnosPage = () => {
                       </option>
                     ),
                   )}
+              </select>
+            </div>
+
+            <div className="col-lg-3 col-md-6">
+              <label className="form-label">
+                Especialidad
+              </label>
+
+              <select
+                className="form-select"
+                value={specialtyId}
+                onChange={(event) =>
+                  setSpecialtyId(event.target.value)
+                }
+                disabled={loadingFilters}
+              >
+                <option value="">Todas</option>
+                {especialidades.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.nombre}
+                  </option>
+                ))}
               </select>
             </div>
 

@@ -306,6 +306,7 @@ export interface TurnosFilters {
   fecha?: string;
 
   id_profesional?: string;
+  id_especialidad?: string;
   id_paciente?: string;
   id_salita?: string;
 
