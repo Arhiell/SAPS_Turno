@@ -286,11 +286,12 @@ const EditarProfesionalPage = () => {
 
         <button
           type="button"
-          className="btn btn-saps"
+          className="btn btn-outline-secondary"
           onClick={() =>
             navigate('/profesionales')
           }
         >
+          <i className="bi bi-arrow-left me-2" />
           Volver
         </button>
       </div>
@@ -302,11 +303,10 @@ const EditarProfesionalPage = () => {
       <div className="mb-4">
         <button
           type="button"
-          className="btn btn-link text-decoration-none p-0 mb-3"
+          className="btn btn-outline-secondary mb-3"
           onClick={goBack}
         >
           <i className="bi bi-arrow-left me-2" />
-
           {returnLabel}
         </button>
 

@@ -540,7 +540,7 @@ const PacienteDetallePage = () => {
         <div>
           <button
             type="button"
-            className="btn btn-link text-decoration-none p-0 mb-2"
+            className="btn btn-outline-secondary mb-2"
             onClick={() =>
               navigate(
                 '/pacientes'

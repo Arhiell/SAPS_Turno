@@ -1,3 +1,4 @@
+
 import AccountSummary from '../../components/ui/AccountSummary';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -18,6 +19,17 @@ import type {
 const PacientesPage = () => {
   const navigate = useNavigate();
 
+  // Recupera el mensaje guardado al registrar un paciente nuevo.
+  const [success, setSuccess] = useState(() => {
+    const savedMessage = sessionStorage.getItem('pacientes_success_message');
+
+    if (savedMessage) {
+      sessionStorage.removeItem('pacientes_success_message');
+    }
+
+    return savedMessage ?? '';
+  });
+
   const [patients, setPatients] = useState<Patient[]>([]);
   const [pagination, setPagination] =
     useState<PatientPagination | null>(null);
@@ -34,8 +46,22 @@ const PacientesPage = () => {
   const [confirmTarget, setConfirmTarget] = useState<Patient | null>(null);
   const [confirming, setConfirming] = useState(false);
 
+  // Oculta el mensaje automáticamente después de cinco segundos.
+  useEffect(() => {
+    if (!success) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setSuccess('');
+    }, 5000);
+
+    return () => window.clearTimeout(timer);
+  }, [success]);
+
   const loadPatients = async () => {
     const currentRequest = ++requestId.current;
+
     try {
       setLoading(true);
       setError('');
@@ -46,12 +72,14 @@ const PacientesPage = () => {
         appliedSearch,
         statusFilter,
       );
+
       if (currentRequest !== requestId.current) return;
 
       setPatients(response.data.patients);
       setPagination(response.data.pagination);
     } catch (error) {
       if (currentRequest !== requestId.current) return;
+
       console.error(error);
       setPatients([]);
       setPagination(null);
@@ -65,7 +93,10 @@ const PacientesPage = () => {
 
   useEffect(() => {
     void loadPatients();
-    return () => { requestId.current++; };
+
+    return () => {
+      requestId.current++;
+    };
   }, [page, appliedSearch, statusFilter]);
 
   useEffect(() => {
@@ -166,6 +197,25 @@ const PacientesPage = () => {
           Nuevo paciente
         </button>
       </div>
+
+      {/* MENSAJE DE ÉXITO */}
+      {success && (
+        <div
+          className="alert alert-success alert-dismissible fade show"
+          role="status"
+          aria-live="polite"
+        >
+          <i className="bi bi-check-circle me-2" />
+          {success}
+
+          <button
+            type="button"
+            className="btn-close"
+            aria-label="Cerrar mensaje"
+            onClick={() => setSuccess('')}
+          />
+        </div>
+      )}
 
       {/* BUSCADOR */}
       <div className="card border-0 shadow-sm mb-4">

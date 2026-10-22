@@ -328,7 +328,7 @@ const TurnoDetallePage = () => {
       <div className="mb-4">
         <button
           type="button"
-          className="btn btn-link text-decoration-none p-0 mb-3"
+          className="btn btn-outline-secondary mb-3 d-inline-flex align-items-center"
           onClick={() =>
             navigate(
               '/turnos',

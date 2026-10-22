@@ -239,9 +239,10 @@ export default function CoberturaPage() {
 
       <Link
         to="/configuracion"
-        className="btn btn-outline-success mb-3"
+        className="btn btn-outline-secondary mb-3"
       >
-        Volver a Configuración
+        <i className="bi bi-arrow-left me-2" aria-hidden="true" />
+        Volver a configuración
       </Link>
 
       <div className="dashboard-header">

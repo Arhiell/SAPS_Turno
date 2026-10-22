@@ -250,6 +250,7 @@ export default function NewsEditorPage() {
         }
         onClick={requestCancel}
       >
+        <i className="bi bi-arrow-left me-2" aria-hidden="true" />
         Volver a contenido público
       </button>
 

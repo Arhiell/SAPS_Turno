@@ -1,3 +1,4 @@
+
 import {
   useEffect,
   useState,
@@ -25,10 +26,7 @@ export default function MisNotificacionesPage() {
   const [
     data,
     setData,
-  ] =
-    useState<NotificacionesResponse | null>(
-      null
-    );
+  ] = useState<NotificacionesResponse | null>(null);
 
   const [
     filter,
@@ -65,6 +63,21 @@ export default function MisNotificacionesPage() {
     setSuccess,
   ] = useState('');
 
+  // Oculta automáticamente los mensajes de éxito después de 5 segundos.
+  useEffect(() => {
+    if (!success) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setSuccess('');
+    }, 5000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [success]);
+
   // Carga las notificaciones según el filtro y la página seleccionada.
   useEffect(() => {
     let active = true;
@@ -76,53 +89,33 @@ export default function MisNotificacionesPage() {
       page,
       filter === 'todas'
         ? undefined
-        : filter ===
-            'leidas'
+        : filter === 'leidas',
     )
-      .then(
-        (result) => {
-          if (!active) {
-            return;
-          }
+      .then((result) => {
+        if (!active) {
+          return;
+        }
 
-          // Retrocede una página si la actual quedó vacía.
-          if (
-            !result
-              .notificaciones
-              .length &&
-            page > 1
-          ) {
-            setPage(
-              (value) =>
-                value - 1
-            );
-          } else {
-            setData(
-              result
-            );
-          }
+        // Retrocede una página si la actual quedó vacía.
+        if (
+          !result.notificaciones.length &&
+          page > 1
+        ) {
+          setPage((value) => value - 1);
+        } else {
+          setData(result);
         }
-      )
-      .catch(
-        (error) => {
-          if (active) {
-            setError(
-              authError(
-                error
-              )
-            );
-          }
+      })
+      .catch((loadError) => {
+        if (active) {
+          setError(authError(loadError));
         }
-      )
-      .finally(
-        () => {
-          if (active) {
-            setLoading(
-              false
-            );
-          }
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
         }
-      );
+      });
 
     return () => {
       active = false;
@@ -136,45 +129,32 @@ export default function MisNotificacionesPage() {
   // Actualiza la bandeja ante eventos del sistema y cada minuto.
   useEffect(() => {
     const refresh = () => {
-      setRevision(
-        (value) =>
-          value + 1
-      );
+      setRevision((value) => value + 1);
     };
 
     window.addEventListener(
       'notificaciones-actualizadas',
-      refresh
+      refresh,
     );
 
-    const timer =
-      window.setInterval(
-        () => {
-          if (
-            !document.hidden
-          ) {
-            refresh();
-          }
-        },
-        60000
-      );
+    const timer = window.setInterval(() => {
+      if (!document.hidden) {
+        refresh();
+      }
+    }, 60000);
 
     return () => {
       window.removeEventListener(
         'notificaciones-actualizadas',
-        refresh
+        refresh,
       );
 
-      window.clearInterval(
-        timer
-      );
+      window.clearInterval(timer);
     };
   }, []);
 
   // Marca una notificación o todas las notificaciones como leídas.
-  const read = async (
-    id?: string
-  ) => {
+  const read = async (id?: string) => {
     if (busy) {
       return;
     }
@@ -185,9 +165,7 @@ export default function MisNotificacionesPage() {
 
     try {
       if (id) {
-        await leerNotificacion(
-          id
-        );
+        await leerNotificacion(id);
       } else {
         await leerTodasNotificaciones();
       }
@@ -195,14 +173,15 @@ export default function MisNotificacionesPage() {
       setSuccess(
         id
           ? 'Notificación marcada como leída.'
-          : 'Todas las notificaciones fueron marcadas como leídas.'
+          : 'Todas las notificaciones fueron marcadas como leídas.',
       );
-    } catch (error) {
-      setError(
-        authError(
-          error
-        )
+
+      // Actualiza la lista y avisa al resto de los componentes.
+      window.dispatchEvent(
+        new Event('notificaciones-actualizadas'),
       );
+    } catch (readError) {
+      setError(authError(readError));
     } finally {
       setBusy(false);
     }
@@ -210,10 +189,9 @@ export default function MisNotificacionesPage() {
 
   // Fuerza una actualización manual de la bandeja.
   const refresh = () => {
-    setRevision(
-      (value) =>
-        value + 1
-    );
+    setError('');
+    setSuccess('');
+    setRevision((value) => value + 1);
   };
 
   return (
@@ -235,12 +213,11 @@ export default function MisNotificacionesPage() {
             id="notificacion-filtro"
             className="form-select"
             value={filter}
-            onChange={(e) => {
-              setFilter(
-                e.target.value
-              );
-
+            onChange={(event) => {
+              setFilter(event.target.value);
               setPage(1);
+              setSuccess('');
+              setError('');
             }}
           >
             <option value="todas">
@@ -260,15 +237,12 @@ export default function MisNotificacionesPage() {
         <button
           type="button"
           className="btn btn-outline-success"
-          disabled={
-            busy ||
-            loading
-          }
-          onClick={() =>
-            void read()
-          }
+          disabled={busy || loading}
+          onClick={() => void read()}
         >
-          Marcar todas como leídas
+          {busy
+            ? 'Actualizando…'
+            : 'Marcar todas como leídas'}
         </button>
 
         <button
@@ -282,21 +256,22 @@ export default function MisNotificacionesPage() {
       </div>
 
       {error && (
-        <p
+        <div
           className="alert alert-danger"
           role="alert"
         >
           {error}
-        </p>
+        </div>
       )}
 
       {success && (
-        <p
+        <div
+          className="alert alert-success"
           role="status"
-          className="text-success"
+          aria-live="polite"
         >
           {success}
-        </p>
+        </div>
       )}
 
       {loading && (
@@ -307,8 +282,7 @@ export default function MisNotificacionesPage() {
 
       {!loading &&
         !error &&
-        !data?.notificaciones
-          .length && (
+        !data?.notificaciones.length && (
           <p>
             No hay notificaciones para mostrar.
           </p>
@@ -316,127 +290,103 @@ export default function MisNotificacionesPage() {
 
       {!error && (
         <div className="d-grid gap-3">
-          {data?.notificaciones.map(
-            (item) => (
-              <article
-                key={
-                  item.id_notificacion
-                }
-                className={`card p-3 shadow-sm ${
-                  item.leida
-                    ? 'border-0'
-                    : 'border-success'
-                }`}
-              >
-                <div className="d-flex flex-wrap justify-content-between gap-2">
-                  <h2 className="h5">
-                    {
-                      item.titulo
-                    }
-                  </h2>
+          {data?.notificaciones.map((item) => (
+            <article
+              key={item.id_notificacion}
+              className={`card p-3 shadow-sm ${
+                item.leida
+                  ? 'border-0'
+                  : 'border-success'
+              }`}
+            >
+              <div className="d-flex flex-wrap justify-content-between gap-2">
+                <h2 className="h5">
+                  {item.titulo}
+                </h2>
 
-                  <span
-                    className={`badge align-self-start ${
-                      item.leida
-                        ? 'bg-secondary'
-                        : 'bg-success'
-                    }`}
-                  >
-                    {item.leida
-                      ? 'Leída'
-                      : 'Sin leer'}
-                  </span>
-                </div>
+                <span
+                  className={`badge align-self-start ${
+                    item.leida
+                      ? 'bg-secondary'
+                      : 'bg-success'
+                  }`}
+                >
+                  {item.leida
+                    ? 'Leída'
+                    : 'Sin leer'}
+                </span>
+              </div>
 
-                <p className="notification-message">
-                  {
-                    item.mensaje
-                  }
-                </p>
+              <p className="notification-message">
+                {item.mensaje}
+              </p>
 
-                <p className="small text-muted">
-                  {fechaNotificacion(
-                    item.fecha_envio ??
-                      item.fecha_creacion
-                  )}
-
-                  {' · Enviado por: '}
-
-                  {item.remitente ??
-                    'CORA · Notificación automática'}
-                </p>
-
-                {!item.leida && (
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-success align-self-start"
-                    disabled={busy}
-                    onClick={() =>
-                      void read(
-                        item.id_notificacion
-                      )
-                    }
-                  >
-                    Marcar como leída
-                  </button>
+              <p className="small text-muted">
+                {fechaNotificacion(
+                  item.fecha_envio ??
+                    item.fecha_creacion,
                 )}
-              </article>
-            )
-          )}
+
+                {' · Enviado por: '}
+
+                {item.remitente ??
+                  'CORA · Notificación automática'}
+              </p>
+
+              {!item.leida && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-success align-self-start"
+                  disabled={busy}
+                  onClick={() =>
+                    void read(item.id_notificacion)
+                  }
+                >
+                  Marcar como leída
+                </button>
+              )}
+            </article>
+          ))}
         </div>
       )}
 
-      {!!data &&
-        data.totalPages >
-          1 && (
-          <nav
-            className="d-flex justify-content-between align-items-center gap-2 mt-3"
-            aria-label="Paginación de notificaciones"
+      {!!data && data.totalPages > 1 && (
+        <nav
+          className="d-flex justify-content-between align-items-center gap-2 mt-3"
+          aria-label="Paginación de notificaciones"
+        >
+          <button
+            type="button"
+            className="btn btn-outline-secondary"
+            disabled={loading || page <= 1}
+            onClick={() =>
+              setPage((value) => value - 1)
+            }
           >
-            <button
-              type="button"
-              className="btn btn-outline-secondary"
-              disabled={
-                loading ||
-                page <= 1
-              }
-              onClick={() =>
-                setPage(
-                  (value) =>
-                    value - 1
-                )
-              }
-            >
-              Anterior
-            </button>
+            Anterior
+          </button>
 
-            <span>
-              {page}
-              {' / '}
-              {
-                data.totalPages
-              }
-            </span>
+          <span>
+            {page}
+            {' / '}
+            {data.totalPages}
+          </span>
 
-            <button
-              type="button"
-              className="btn btn-outline-secondary"
-              disabled={
-                loading ||
-                page >=
-                  data.totalPages
-              }
-              onClick={() =>
-                setPage(
-                  (value) =>
-                    value + 1
-                )
-              }
-            >
-              Siguiente
-            </button>
-          </nav>
-        )}
+          <button
+            type="button"
+            className="btn btn-outline-secondary"
+            disabled={
+              loading ||
+              page >= data.totalPages
+            }
+            onClick={() =>
+              setPage((value) => value + 1)
+            }
+          >
+            Siguiente
+          </button>
+        </nav>
+      )}
     </section>
   );
 }

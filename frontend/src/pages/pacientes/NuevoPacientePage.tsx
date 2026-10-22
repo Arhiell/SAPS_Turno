@@ -1,3 +1,4 @@
+
 import ZonaBarrioSelect from '../../components/ui/ZonaBarrioSelect';
 import {
   useEffect,
@@ -66,9 +67,6 @@ const NuevoPacientePage = () => {
 
   // Mensajes del formulario.
   const [error, setError] =
-    useState('');
-
-  const [message, setMessage] =
     useState('');
 
   // Datos del nuevo paciente.
@@ -189,7 +187,6 @@ const NuevoPacientePage = () => {
       try {
         setSaving(true);
         setError('');
-        setMessage('');
 
         await createPatient({
           ...form,
@@ -244,18 +241,16 @@ const NuevoPacientePage = () => {
             null,
         });
 
-        setMessage(
-          'Paciente registrado correctamente.'
+        // Guarda el mensaje antes de volver al listado.
+        // PacientesPage lo recupera y lo muestra al cargar.
+        sessionStorage.setItem(
+          'pacientes_success_message',
+          '¡Paciente registrado correctamente!',
         );
 
-        setTimeout(() => {
-          navigate(
-            '/pacientes',
-            {
-              replace: true,
-            }
-          );
-        }, 700);
+        navigate('/pacientes', {
+          replace: true,
+        });
       } catch (error: unknown) {
         console.error(error);
 
@@ -317,7 +312,7 @@ const NuevoPacientePage = () => {
       <div className="mb-4">
         <button
           type="button"
-          className="btn btn-link text-decoration-none p-0 mb-2"
+          className="btn btn-outline-secondary mb-2"
           onClick={() =>
             navigate('/pacientes')
           }
@@ -342,16 +337,6 @@ const NuevoPacientePage = () => {
         >
           <i className="bi bi-exclamation-triangle me-2" />
           {error}
-        </div>
-      )}
-
-      {message && (
-        <div
-          className="alert alert-success"
-          role="alert"
-        >
-          <i className="bi bi-check-circle me-2" />
-          {message}
         </div>
       )}
 

@@ -463,7 +463,7 @@ const ProfesionalDetallePage = () => {
         <div>
           <button
             type="button"
-            className="btn btn-link text-decoration-none p-0 mb-3"
+            className="btn btn-outline-secondary mb-3"
             onClick={() =>
               navigate('/profesionales')
             }

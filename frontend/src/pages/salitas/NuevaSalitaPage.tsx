@@ -36,7 +36,7 @@ const NuevaSalitaPage = () => {
               }
             >
               <i className="bi bi-arrow-left me-1" />
-              Volver
+              Volver a salitas
             </button>
 
             <h1>

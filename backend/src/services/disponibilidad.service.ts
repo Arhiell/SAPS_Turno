@@ -64,18 +64,14 @@ type Slot = {
 
 const obtenerDiaSemana = (fecha: string): number => {
   const fechaObj = new Date(`${fecha}T12:00:00-03:00`);
-
   const dia = fechaObj.getDay();
-
   return dia === 0 ? 7 : dia;
 };
 
 const convertirHoraAMinutos = (hora: string): number => {
   const partes = hora.split(":");
-
   const horas = Number(partes[0] ?? 0);
   const minutos = Number(partes[1] ?? 0);
-
   return horas * 60 + minutos;
 };
 
@@ -96,7 +92,6 @@ const obtenerFechaHoraArgentina = (
   hora: string
 ): Date => {
   const partesHora = hora.split(":");
-
   const horas = partesHora[0] ?? "00";
   const minutos = partesHora[1] ?? "00";
   const segundos = partesHora[2] ?? "00";
@@ -124,15 +119,8 @@ const slotEstaBloqueado = (
   bloqueado: boolean;
   motivo?: string;
 } => {
-  const inicioSlot = obtenerFechaHoraArgentina(
-    fecha,
-    horaInicio
-  );
-
-  const finSlot = obtenerFechaHoraArgentina(
-    fecha,
-    horaFin
-  );
+  const inicioSlot = obtenerFechaHoraArgentina(fecha, horaInicio);
+  const finSlot = obtenerFechaHoraArgentina(fecha, horaFin);
 
   for (const bloqueo of bloqueos) {
     if (bloqueo.dia_completo) {
@@ -149,17 +137,15 @@ const slotEstaBloqueado = (
       continue;
     }
 
-    const inicioBloqueo =
-      obtenerFechaHoraArgentina(
-        fecha,
-        bloqueo.hora_inicio
-      );
+    const inicioBloqueo = obtenerFechaHoraArgentina(
+      fecha,
+      bloqueo.hora_inicio
+    );
 
-    const finBloqueo =
-      obtenerFechaHoraArgentina(
-        fecha,
-        bloqueo.hora_fin
-      );
+    const finBloqueo = obtenerFechaHoraArgentina(
+      fecha,
+      bloqueo.hora_fin
+    );
 
     if (
       intervalosSeSuperponen(
@@ -191,26 +177,12 @@ const slotEstaOcupado = (
   id_turno?: string;
   estado_turno?: string;
 } => {
-  const inicioSlot =
-    obtenerFechaHoraArgentina(
-      fecha,
-      horaInicio
-    );
-
-  const finSlot =
-    obtenerFechaHoraArgentina(
-      fecha,
-      horaFin
-    );
+  const inicioSlot = obtenerFechaHoraArgentina(fecha, horaInicio);
+  const finSlot = obtenerFechaHoraArgentina(fecha, horaFin);
 
   for (const turno of turnos) {
-    const inicioTurno = new Date(
-      turno.fecha_hora_inicio
-    );
-
-    const finTurno = new Date(
-      turno.fecha_hora_fin
-    );
+    const inicioTurno = new Date(turno.fecha_hora_inicio);
+    const finTurno = new Date(turno.fecha_hora_fin);
 
     if (
       intervalosSeSuperponen(
@@ -230,8 +202,7 @@ const slotEstaOcupado = (
       };
 
       if (turno.estado?.nombre) {
-        resultado.estado_turno =
-          turno.estado.nombre;
+        resultado.estado_turno = turno.estado.nombre;
       }
 
       return resultado;
@@ -255,8 +226,7 @@ export const obtenerDisponibilidad = async (
 
   await assertClinicSpecialty(id_salita, id_especialidad);
 
-  const diaSemana =
-    obtenerDiaSemana(fecha);
+  const diaSemana = obtenerDiaSemana(fecha);
 
   const [
     horarios,
@@ -270,14 +240,12 @@ export const obtenerDisponibilidad = async (
       diaSemana,
       fecha
     ),
-
     getBloqueosParaDisponibilidad(
       id_profesional,
       id_especialidad,
       id_salita,
       fecha
     ),
-
     getTurnosParaDisponibilidad(
       id_profesional,
       id_salita,
@@ -285,63 +253,64 @@ export const obtenerDisponibilidad = async (
     ),
   ]);
 
-  const horariosTipados =
-    horarios as unknown as Horario[];
-
-  const bloqueosTipados =
-    bloqueos as unknown as Bloqueo[];
-
-  const turnosTipados =
-    turnos as unknown as Turno[];
+  const horariosTipados = horarios as unknown as Horario[];
+  const bloqueosTipados = bloqueos as unknown as Bloqueo[];
+  const turnosTipados = turnos as unknown as Turno[];
 
   const slots: Slot[] = [];
+  const ahora = Date.now();
 
   for (const horario of horariosTipados) {
-    const inicio =
-      convertirHoraAMinutos(
-        horario.hora_inicio
-      );
+    const inicio = convertirHoraAMinutos(horario.hora_inicio);
+    const fin = convertirHoraAMinutos(horario.hora_fin);
+    const duracion = horario.duracion_turno_minutos;
 
-    const fin =
-      convertirHoraAMinutos(
-        horario.hora_fin
-      );
+    if (!Number.isFinite(duracion) || duracion <= 0 || fin <= inicio) {
+      continue;
+    }
 
-    const duracion =
-      horario.duracion_turno_minutos;
+    // El cupo diario se calcula con turnos que realmente ocupan agenda.
+    const turnosQueOcupanCupo = turnosTipados.filter(
+      (turno) =>
+        turno.ocupa_agenda &&
+        turno.id_profesional === id_profesional &&
+        turno.id_especialidad === id_especialidad &&
+        turno.id_salita === id_salita
+    ).length;
 
-    let cantidadGenerada = 0;
+    const cupoCompleto =
+      horario.cupo_maximo_diario !== null &&
+      turnosQueOcupanCupo >= horario.cupo_maximo_diario;
 
+    // Generar todas las franjas del horario. No cortar después de
+    // cupo_maximo_diario franjas: ese valor es un límite de reservas,
+    // no un límite para generar opciones horarias.
     for (
       let minutoActual = inicio;
       minutoActual + duracion <= fin;
       minutoActual += duracion
     ) {
-      if (
-        horario.cupo_maximo_diario !== null &&
-        cantidadGenerada >=
-          horario.cupo_maximo_diario
-      ) {
-        break;
+      const horaInicio = convertirMinutosAHora(minutoActual);
+      const horaFin = convertirMinutosAHora(minutoActual + duracion);
+      const inicioSlot = obtenerFechaHoraArgentina(fecha, horaInicio);
+
+      // No ofrecer horarios cuyo inicio ya pasó en Argentina.
+      if (inicioSlot.getTime() <= ahora) {
+        slots.push({
+          hora_inicio: horaInicio,
+          hora_fin: horaFin,
+          estado: "BLOQUEADO",
+          motivo: "Horario pasado",
+        });
+        continue;
       }
 
-      const horaInicio =
-        convertirMinutosAHora(
-          minutoActual
-        );
-
-      const horaFin =
-        convertirMinutosAHora(
-          minutoActual + duracion
-        );
-
-      const bloqueo =
-        slotEstaBloqueado(
-          fecha,
-          horaInicio,
-          horaFin,
-          bloqueosTipados
-        );
+      const bloqueo = slotEstaBloqueado(
+        fecha,
+        horaInicio,
+        horaFin,
+        bloqueosTipados
+      );
 
       if (bloqueo.bloqueado) {
         const slotBloqueado: Slot = {
@@ -351,107 +320,88 @@ export const obtenerDisponibilidad = async (
         };
 
         if (bloqueo.motivo) {
-          slotBloqueado.motivo =
-            bloqueo.motivo;
+          slotBloqueado.motivo = bloqueo.motivo;
         }
 
         slots.push(slotBloqueado);
-      } else {
-        const ocupado =
-          slotEstaOcupado(
-            fecha,
-            horaInicio,
-            horaFin,
-            turnosTipados
-          );
-
-        if (ocupado.ocupado) {
-          const slotOcupado: Slot = {
-            hora_inicio: horaInicio,
-            hora_fin: horaFin,
-            estado: "OCUPADO",
-          };
-
-          if (ocupado.id_turno) {
-            slotOcupado.id_turno =
-              ocupado.id_turno;
-          }
-
-          if (ocupado.estado_turno) {
-            slotOcupado.estado_turno =
-              ocupado.estado_turno;
-          }
-
-          slots.push(slotOcupado);
-        } else {
-          slots.push({
-            hora_inicio: horaInicio,
-            hora_fin: horaFin,
-            estado: "DISPONIBLE",
-          });
-        }
+        continue;
       }
 
-      cantidadGenerada++;
+      const ocupado = slotEstaOcupado(
+        fecha,
+        horaInicio,
+        horaFin,
+        turnosTipados
+      );
+
+      if (ocupado.ocupado) {
+        const slotOcupado: Slot = {
+          hora_inicio: horaInicio,
+          hora_fin: horaFin,
+          estado: "OCUPADO",
+        };
+
+        if (ocupado.id_turno) {
+          slotOcupado.id_turno = ocupado.id_turno;
+        }
+
+        if (ocupado.estado_turno) {
+          slotOcupado.estado_turno = ocupado.estado_turno;
+        }
+
+        slots.push(slotOcupado);
+        continue;
+      }
+
+      if (cupoCompleto) {
+        slots.push({
+          hora_inicio: horaInicio,
+          hora_fin: horaFin,
+          estado: "BLOQUEADO",
+          motivo: "Cupo diario completo",
+        });
+        continue;
+      }
+
+      slots.push({
+        hora_inicio: horaInicio,
+        hora_fin: horaFin,
+        estado: "DISPONIBLE",
+      });
     }
   }
 
-  const disponibles =
-    slots.filter(
-      (slot) =>
-        slot.estado === "DISPONIBLE"
-    ).length;
+  const disponibles = slots.filter(
+    (slot) => slot.estado === "DISPONIBLE"
+  ).length;
 
-  const ocupados =
-    slots.filter(
-      (slot) =>
-        slot.estado === "OCUPADO"
-    ).length;
+  const ocupados = slots.filter(
+    (slot) => slot.estado === "OCUPADO"
+  ).length;
 
-  const bloqueados =
-    slots.filter(
-      (slot) =>
-        slot.estado === "BLOQUEADO"
-    ).length;
+  const bloqueados = slots.filter(
+    (slot) => slot.estado === "BLOQUEADO"
+  ).length;
 
   return {
     fecha,
-
     dia_semana: diaSemana,
-
     id_profesional,
-
     id_especialidad,
-
     id_salita,
-
     resumen: {
       total_slots: slots.length,
       disponibles,
       ocupados,
       bloqueados,
     },
-
     slots,
-
-    horarios_utilizados:
-      horariosTipados.map(
-        (horario) => ({
-          id_horario:
-            horario.id_horario,
-
-          hora_inicio:
-            horario.hora_inicio,
-
-          hora_fin:
-            horario.hora_fin,
-
-          duracion_turno_minutos:
-            horario.duracion_turno_minutos,
-
-          cupo_maximo_diario:
-            horario.cupo_maximo_diario,
-        })
-      ),
+    horarios_utilizados: horariosTipados.map((horario) => ({
+      id_horario: horario.id_horario,
+      hora_inicio: horario.hora_inicio,
+      hora_fin: horario.hora_fin,
+      duracion_turno_minutos: horario.duracion_turno_minutos,
+      cupo_maximo_diario: horario.cupo_maximo_diario,
+    })),
   };
 };

@@ -539,19 +539,19 @@ export default function HorariosPage() {
         {openedFromProfessional &&
         form.id_profesional ? (
           <Link
-            className="btn btn-outline-success"
+            className="btn btn-outline-secondary"
             to={`/profesionales/${form.id_profesional}`}
           >
-            <i className="bi bi-arrow-left me-2" />
+            <i className="bi bi-arrow-left me-2" aria-hidden="true" />
             Volver al profesional
           </Link>
         ) : (
           <Link
-            className="btn btn-outline-success"
+            className="btn btn-outline-secondary"
             to="/configuracion"
           >
-            <i className="bi bi-arrow-left me-2" />
-            Volver a Configuración
+            <i className="bi bi-arrow-left me-2" aria-hidden="true" />
+            Volver a configuración
           </Link>
         )}
       </div>

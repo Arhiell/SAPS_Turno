@@ -165,7 +165,7 @@ const SalitaDetallePage = () => {
 
         <button
           type="button"
-          className="btn btn-saps"
+          className="btn btn-outline-secondary"
           onClick={() =>
             navigate('/salitas')
           }
@@ -214,7 +214,8 @@ const SalitaDetallePage = () => {
             }
           >
             <i className="bi bi-arrow-left me-1" />
-            Volver
+            Volver a salitas
+
           </button>
 
           <div className="salitas-detail-title">

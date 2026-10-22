@@ -184,6 +184,14 @@ export default function DetalleNotificacionPage() {
 
   return (
     <section className="notificaciones-page">
+      <Link
+        to="/notificaciones"
+        className="btn btn-outline-secondary mb-3"
+      >
+        <i className="bi bi-arrow-left me-2" aria-hidden="true" />
+        Volver al historial
+      </Link>
+
       <NotificacionesNav />
 
       {error && (

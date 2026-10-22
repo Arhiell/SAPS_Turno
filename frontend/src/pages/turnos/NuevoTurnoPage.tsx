@@ -58,6 +58,37 @@ const getToday = () => {
   ].join('-');
 };
 
+// Obtiene la fecha actual usando explícitamente la zona horaria de Argentina.
+const getArgentinaToday = () => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+};
+
+const isSlotInFuture = (
+  date: string,
+  slot: DisponibilidadSlot,
+  now: number,
+) => {
+  // Para fechas futuras, los horarios no están vencidos.
+  if (date > getArgentinaToday()) return true;
+  if (date < getArgentinaToday()) return false;
+
+  // Acepta HH:mm y HH:mm:ss y compara usando la hora argentina (UTC-03:00).
+  const hora = slot.hora_inicio;
+  if (!/^\d{2}:\d{2}(:\d{2})?$/.test(hora)) return false;
+
+  const horaCompleta = hora.length === 5 ? `${hora}:00` : hora;
+  const slotStart = new Date(`${date}T${horaCompleta}-03:00`).getTime();
+  return Number.isFinite(slotStart) && slotStart > now;
+};
+
 const NuevoTurnoPage = () => {
   const navigate =
     useNavigate();
@@ -116,6 +147,13 @@ const NuevoTurnoPage = () => {
 
   const [saving, setSaving] =
     useState(false);
+
+  // Actualiza la lista si la página queda abierta y un horario vence.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   const [error, setError] =
     useState('');
@@ -319,11 +357,18 @@ const NuevoTurnoPage = () => {
       () =>
         availability?.slots.filter(
           (slot) =>
-            slot.estado ===
-            'DISPONIBLE',
+            slot.estado === 'DISPONIBLE' &&
+            isSlotInFuture(fecha, slot, now),
         ) ?? [],
-      [availability],
+      [availability, fecha, now],
     );
+
+  useEffect(() => {
+    if (selectedSlot && !isSlotInFuture(fecha, selectedSlot, now)) {
+      setSelectedSlot(null);
+      setError('El horario seleccionado ya pasó. Elegí uno futuro.');
+    }
+  }, [fecha, now, selectedSlot]);
 
   const handleSubmit =
     async (
@@ -342,6 +387,15 @@ const NuevoTurnoPage = () => {
         setError(
           'Complete todos los datos obligatorios y seleccione un horario disponible.',
         );
+        return;
+      }
+
+      // Segunda comprobación en el cliente: evita confirmar un horario
+      // que venció mientras el formulario o el modal estaban abiertos.
+      if (!isSlotInFuture(fecha, selectedSlot, Date.now())) {
+        setSelectedSlot(null);
+        setConfirmOpen(false);
+        setError('Ese horario ya pasó y no está disponible. Seleccione un horario futuro.');
         return;
       }
 
@@ -429,7 +483,7 @@ const NuevoTurnoPage = () => {
       <div className="mb-4">
         <button
           type="button"
-          className="btn btn-link text-decoration-none p-0 mb-3"
+          className="btn btn-outline-secondary mb-3"
           onClick={() =>
             navigate('/turnos')
           }
@@ -627,7 +681,7 @@ const NuevoTurnoPage = () => {
                       type="date"
                       className="form-control"
                       value={fecha}
-                      min={getToday()}
+                      min={getArgentinaToday()}
                       onChange={(event) =>
                         setFecha(
                           event.target
@@ -726,8 +780,7 @@ const NuevoTurnoPage = () => {
                       disponibilidad...
                     </p>
                   </div>
-                ) : availableSlots.length ===
-                  0 ? (
+                ) : (availability?.slots.length ?? 0) === 0 ? (
                   <div className="turno-availability-empty">
                     <i className="bi bi-calendar-x" />
 
@@ -736,9 +789,20 @@ const NuevoTurnoPage = () => {
                     </h6>
 
                     <p className="text-muted mb-0">
-                      No hay horarios
-                      disponibles para los
-                      datos seleccionados.
+                      {fecha === getArgentinaToday() &&
+                      availability?.slots.some(
+                        (slot) => slot.estado === 'BLOQUEADO' && slot.motivo === 'Horario pasado',
+                      ) ? (
+                        <>
+                          No quedan horarios disponibles para hoy. Los horarios que ya comenzaron
+                          no se pueden reservar. Elegí otra fecha para consultar próximos horarios.
+                        </>
+                      ) : (
+                        <>
+                          No hay horarios disponibles para los datos seleccionados. Probá con otra
+                          fecha o verificá la disponibilidad del profesional.
+                        </>
+                      )}
                     </p>
                   </div>
                 ) : (
@@ -746,11 +810,7 @@ const NuevoTurnoPage = () => {
                     <div className="turno-availability-summary mb-3">
                       <div>
                         <strong>
-                          {
-                            availability
-                              ?.resumen
-                              .disponibles
-                          }
+                          {availableSlots.length}
                         </strong>
 
                         <span>
@@ -788,49 +848,71 @@ const NuevoTurnoPage = () => {
                     </div>
 
                     <div className="turno-slots">
-                      {availableSlots.map(
-                        (
-                          slot,
-                        ) => {
-                          const selected =
-                            selectedSlot?.hora_inicio ===
-                              slot.hora_inicio &&
-                            selectedSlot?.hora_fin ===
-                              slot.hora_fin;
+                      {(availability?.slots ?? []).map((slot) => {
+                        const isPast = !isSlotInFuture(fecha, slot, now);
+                        const isSelectable =
+                          slot.estado === 'DISPONIBLE' && !isPast;
+                        const selected =
+                          isSelectable &&
+                          selectedSlot?.hora_inicio === slot.hora_inicio &&
+                          selectedSlot?.hora_fin === slot.hora_fin;
+                        const statusLabel = isPast
+                          ? 'Horario pasado'
+                          : slot.estado === 'OCUPADO'
+                            ? 'Ocupado'
+                            : slot.estado === 'BLOQUEADO'
+                              ? slot.motivo === 'Cupo diario completo'
+                                ? 'Cupo diario completo'
+                                : slot.motivo || 'No disponible'
+                              : 'Disponible';
+                        const statusIcon = isPast
+                          ? 'bi-lock-fill'
+                          : slot.estado === 'OCUPADO'
+                            ? 'bi-person-fill-lock'
+                            : slot.estado === 'BLOQUEADO'
+                              ? 'bi-lock-fill'
+                              : 'bi-clock';
 
-                          return (
-                            <button
-                              key={`${slot.hora_inicio}-${slot.hora_fin}`}
-                              type="button"
-                              className={`turno-slot ${
-                                selected
-                                  ? 'turno-slot-selected'
-                                  : ''
-                              }`}
-                              onClick={() =>
-                                setSelectedSlot(
-                                  slot,
-                                )
-                              }
+                        return (
+                          <button
+                            key={`${slot.hora_inicio}-${slot.hora_fin}`}
+                            type="button"
+                            disabled={!isSelectable}
+                            aria-disabled={!isSelectable}
+                            title={!isSelectable ? statusLabel : `Seleccionar ${slot.hora_inicio}`}
+                            className={`turno-slot ${
+                              selected
+                                ? 'turno-slot-selected'
+                                : ''
+                            } ${!isSelectable ? 'turno-slot-disabled' : ''}`}
+                            style={!isSelectable ? {
+                              backgroundColor: '#f3f4f6',
+                              borderColor: '#d1d5db',
+                              color: '#7b8490',
+                              cursor: 'not-allowed',
+                              opacity: 0.82,
+                            } : undefined}
+                            onClick={() => {
+                              if (isSelectable) setSelectedSlot(slot);
+                            }}
+                          >
+                            <span className="d-flex align-items-center justify-content-center gap-2">
+                              <i className={`bi ${statusIcon}`} />
+                              <strong>{slot.hora_inicio}</strong>
+                              <span>a {slot.hora_fin}</span>
+                            </span>
+                            <small
+                              className="d-block mt-1"
+                              style={{
+                                color: isSelectable ? '#198754' : '#7b8490',
+                                fontWeight: 400,
+                              }}
                             >
-                              <i className="bi bi-clock me-2" />
-
-                              <strong>
-                                {
-                                  slot.hora_inicio
-                                }
-                              </strong>
-
-                              <span>
-                                a{' '}
-                                {
-                                  slot.hora_fin
-                                }
-                              </span>
-                            </button>
-                          );
-                        },
-                      )}
+                              {statusLabel}
+                            </small>
+                          </button>
+                        );
+                      })}
                     </div>
 
                     {selectedSlot && (
