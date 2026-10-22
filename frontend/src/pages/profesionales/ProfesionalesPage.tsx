@@ -12,6 +12,9 @@ import type {
   Professional,
 } from '../../types/profesional.types';
 
+import { getAdminSalitas } from '../../services/salitas.service';
+import type { Salita } from '../../types/salita.types';
+
 import '../../styles/profesionales.css';
 
 interface ProfesionalesLocationState {
@@ -30,6 +33,8 @@ const ProfesionalesPage = () => {
 
   const [professionals, setProfessionals] =
     useState<Professional[]>([]);
+  const [salitas, setSalitas] = useState<Salita[]>([]);
+  const [selectedSalita, setSelectedSalita] = useState('');
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] =
@@ -90,6 +95,18 @@ const ProfesionalesPage = () => {
 
   useEffect(() => {
     void loadProfessionals();
+
+    const loadSalitas = async () => {
+      try {
+        const response = await getAdminSalitas();
+        setSalitas(response.data.filter((salita) => salita.activo));
+      } catch (error) {
+        console.error(error);
+        setError('No se pudieron cargar las salitas.');
+      }
+    };
+
+    void loadSalitas();
   }, []);
 
   useEffect(() => {
@@ -121,6 +138,8 @@ const ProfesionalesPage = () => {
       const value =
         search.trim().toLowerCase();
 
+      const today = new Date().toISOString().slice(0, 10);
+
       return professionals.filter(
         (professional) => {
           const person =
@@ -141,6 +160,16 @@ const ProfesionalesPage = () => {
               .toLowerCase()
               .includes(value);
 
+          const matchesSalita =
+            !selectedSalita ||
+            (professional.salitas ?? []).some((assignment) =>
+              assignment.id_salita === selectedSalita &&
+              assignment.activo &&
+              assignment.salita?.activo === true &&
+              assignment.fecha_desde <= today &&
+              (assignment.fecha_hasta === null || assignment.fecha_hasta >= today)
+            );
+
           const matchesStatus =
             statusFilter === 'TODOS' ||
             (statusFilter === 'ACTIVOS' &&
@@ -150,7 +179,8 @@ const ProfesionalesPage = () => {
 
           return (
             matchesSearch &&
-            matchesStatus
+            matchesStatus &&
+            matchesSalita
           );
         },
       );
@@ -158,6 +188,7 @@ const ProfesionalesPage = () => {
       professionals,
       search,
       statusFilter,
+      selectedSalita,
     ]);
 
   const handleDelete = (
@@ -749,6 +780,26 @@ const ProfesionalesPage = () => {
                 <option value="INACTIVOS">
                   Inactivos
                 </option>
+              </select>
+            </div>
+
+            <div className="col-lg-4">
+              <label className="form-label" htmlFor="filtro-salita-profesionales">
+                Salita
+              </label>
+
+              <select
+                id="filtro-salita-profesionales"
+                className="form-select"
+                value={selectedSalita}
+                onChange={(event) => setSelectedSalita(event.target.value)}
+              >
+                <option value="">Todas las salitas</option>
+                {salitas.map((salita) => (
+                  <option key={salita.id_salita} value={salita.id_salita}>
+                    {salita.nombre}
+                  </option>
+                ))}
               </select>
             </div>
           </div>

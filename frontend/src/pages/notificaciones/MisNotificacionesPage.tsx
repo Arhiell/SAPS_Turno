@@ -1,6 +1,7 @@
-
 import {
+  useCallback,
   useEffect,
+  useRef,
   useState,
 } from 'react';
 
@@ -39,11 +40,6 @@ export default function MisNotificacionesPage() {
   ] = useState(1);
 
   const [
-    revision,
-    setRevision,
-  ] = useState(0);
-
-  const [
     loading,
     setLoading,
   ] = useState(true);
@@ -63,6 +59,9 @@ export default function MisNotificacionesPage() {
     setSuccess,
   ] = useState('');
 
+  // Evita que una respuesta anterior sobrescriba una carga más reciente.
+  const requestId = useRef(0);
+
   // Oculta automáticamente los mensajes de éxito después de 5 segundos.
   useEffect(() => {
     if (!success) {
@@ -78,58 +77,66 @@ export default function MisNotificacionesPage() {
     };
   }, [success]);
 
-  // Carga las notificaciones según el filtro y la página seleccionada.
-  useEffect(() => {
-    let active = true;
+  // Carga la bandeja y conserva los datos actuales durante las actualizaciones.
+  const loadNotifications = useCallback(async (
+    showInitialLoading = false,
+  ) => {
+    const currentRequest = ++requestId.current;
 
-    setLoading(true);
+    if (showInitialLoading && !data) {
+      setLoading(true);
+    }
+
     setError('');
 
-    void getNotificaciones(
-      page,
-      filter === 'todas'
-        ? undefined
-        : filter === 'leidas',
-    )
-      .then((result) => {
-        if (!active) {
-          return;
-        }
+    try {
+      const result = await getNotificaciones(
+        page,
+        filter === 'todas'
+          ? undefined
+          : filter === 'leidas',
+      );
 
-        // Retrocede una página si la actual quedó vacía.
-        if (
-          !result.notificaciones.length &&
-          page > 1
-        ) {
-          setPage((value) => value - 1);
-        } else {
-          setData(result);
-        }
-      })
-      .catch((loadError) => {
-        if (active) {
-          setError(authError(loadError));
-        }
-      })
-      .finally(() => {
-        if (active) {
-          setLoading(false);
-        }
-      });
+      if (currentRequest !== requestId.current) {
+        return;
+      }
+
+      // Si una eliminación o un filtro deja vacía la página, retrocede una página.
+      if (
+        !result.notificaciones.length &&
+        page > 1
+      ) {
+        setPage((value) => value - 1);
+      } else {
+        setData(result);
+      }
+    } catch (loadError) {
+      if (currentRequest === requestId.current) {
+        setError(authError(loadError));
+      }
+    } finally {
+      if (currentRequest === requestId.current) {
+        setLoading(false);
+      }
+    }
+  }, [data, filter, page]);
+
+  // Carga al entrar y cuando cambian el filtro o la página.
+  useEffect(() => {
+    void loadNotifications(true);
 
     return () => {
-      active = false;
+      // Invalida la solicitud si cambian los parámetros o se desmonta la página.
+      requestId.current += 1;
     };
-  }, [
-    filter,
-    page,
-    revision,
-  ]);
+  }, [loadNotifications]);
 
-  // Actualiza la bandeja ante eventos del sistema y cada minuto.
+  // Actualiza solo ante eventos relevantes o cuando el usuario vuelve a la pestaña.
   useEffect(() => {
     const refresh = () => {
-      setRevision((value) => value + 1);
+      if (!document.hidden) {
+        void loadNotifications(false);
+      }
     };
 
     window.addEventListener(
@@ -137,11 +144,10 @@ export default function MisNotificacionesPage() {
       refresh,
     );
 
-    const timer = window.setInterval(() => {
-      if (!document.hidden) {
-        refresh();
-      }
-    }, 60000);
+    document.addEventListener(
+      'visibilitychange',
+      refresh,
+    );
 
     return () => {
       window.removeEventListener(
@@ -149,11 +155,14 @@ export default function MisNotificacionesPage() {
         refresh,
       );
 
-      window.clearInterval(timer);
+      document.removeEventListener(
+        'visibilitychange',
+        refresh,
+      );
     };
-  }, []);
+  }, [loadNotifications]);
 
-  // Marca una notificación o todas las notificaciones como leídas.
+  // Marca una notificación o todas como leídas y actualiza la interfaz enseguida.
   const read = async (id?: string) => {
     if (busy) {
       return;
@@ -166,8 +175,37 @@ export default function MisNotificacionesPage() {
     try {
       if (id) {
         await leerNotificacion(id);
+
+        setData((current) => {
+          if (!current) {
+            return current;
+          }
+
+          return {
+            ...current,
+            notificaciones: current.notificaciones.map((item) =>
+              item.id_notificacion === id
+                ? { ...item, leida: true }
+                : item
+            ),
+          };
+        });
       } else {
         await leerTodasNotificaciones();
+
+        setData((current) => {
+          if (!current) {
+            return current;
+          }
+
+          return {
+            ...current,
+            notificaciones: current.notificaciones.map((item) => ({
+              ...item,
+              leida: true,
+            })),
+          };
+        });
       }
 
       setSuccess(
@@ -176,10 +214,8 @@ export default function MisNotificacionesPage() {
           : 'Todas las notificaciones fueron marcadas como leídas.',
       );
 
-      // Actualiza la lista y avisa al resto de los componentes.
-      window.dispatchEvent(
-        new Event('notificaciones-actualizadas'),
-      );
+      // El servicio ya emite notificaciones-actualizadas al completar el PATCH.
+      // No se vuelve a emitir aquí para evitar una petición duplicada.
     } catch (readError) {
       setError(authError(readError));
     } finally {
@@ -187,11 +223,11 @@ export default function MisNotificacionesPage() {
     }
   };
 
-  // Fuerza una actualización manual de la bandeja.
+  // Actualiza manualmente sin vaciar la lista ni mostrar un bloqueo innecesario.
   const refresh = () => {
     setError('');
     setSuccess('');
-    setRevision((value) => value + 1);
+    void loadNotifications(false);
   };
 
   return (
@@ -276,7 +312,9 @@ export default function MisNotificacionesPage() {
 
       {loading && (
         <p role="status">
-          Cargando notificaciones…
+          {data
+            ? 'Actualizando notificaciones…'
+            : 'Cargando notificaciones…'}
         </p>
       )}
 

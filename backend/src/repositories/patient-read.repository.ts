@@ -1,3 +1,4 @@
+
 import {
   supabase,
 } from '../config/supabase.js';
@@ -21,17 +22,24 @@ export const findPatients = async (
     | 'todos' = 'activo',
   includeAccount = false
 ) => {
-  let query =
-    supabase
-      .from('pacientes')
-      .select(
-        includeAccount
-          ? patientAdminSelect
-          : patientSelect,
-        {
-          count: 'exact',
-        }
-      );
+  // Un alcance vacío significa que no hay salitas autorizadas.
+  if (scope !== null && scope.length === 0) {
+    return {
+      patients: [],
+      total: 0,
+    };
+  }
+
+  let query = supabase
+    .from('pacientes')
+    .select(
+      includeAccount
+        ? patientAdminSelect
+        : patientSelect,
+      {
+        count: 'exact',
+      }
+    );
 
   // Filtra los pacientes según su estado.
   if (status !== 'todos') {
@@ -50,38 +58,29 @@ export const findPatients = async (
   }
 
   // Cada término debe aparecer en el DNI, nombres o apellidos.
-  const text =
-    search.trim();
+  const text = search.trim();
 
   const terms =
     /^[\d.\s-]+$/.test(text)
       ? [
-          text.replace(
-            /\D/g,
-            ''
-          ),
+          text.replace(/\D/g, ''),
         ].filter(Boolean)
       : text.match(
           /[\p{L}\p{M}\p{N}'’-]+/gu
         ) ?? [];
 
   if (terms.length) {
-    const filters =
-      terms.map((term) => {
-        const pattern =
-          JSON.stringify(
-            `*${term}*`
-          );
+    const filters = terms.map((term) => {
+      const pattern = JSON.stringify(`*${term}*`);
 
-        return `or(dni.ilike.${pattern},nombres.ilike.${pattern},apellidos.ilike.${pattern})`;
-      });
+      return `or(dni.ilike.${pattern},nombres.ilike.${pattern},apellidos.ilike.${pattern})`;
+    });
 
     // Aplica todos los términos antes de contar y paginar.
     query = query.or(
       `and(${filters.join(',')})`,
       {
-        referencedTable:
-          'persona',
+        referencedTable: 'persona',
       }
     );
   } else if (text) {
@@ -123,12 +122,8 @@ export const findPatients = async (
   }
 
   return {
-    patients:
-      (data ?? []).map(
-        flattenPatient
-      ),
-    total:
-      count ?? 0,
+    patients: (data ?? []).map(flattenPatient),
+    total: count ?? 0,
   };
 };
 

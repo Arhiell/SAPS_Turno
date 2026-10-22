@@ -9,6 +9,7 @@ import {
   getPatients,
   updatePatientStatus,
 } from '../../services/patients.service';
+import { getAdminSalitas } from '../../services/salitas.service';
 
 import type {
   Patient,
@@ -39,6 +40,10 @@ const PacientesPage = () => {
   const [appliedSearch, setAppliedSearch] = useState('');
   const [statusFilter, setStatusFilter] =
     useState<PatientStatusFilter>('activo');
+  const [salitas, setSalitas] = useState<
+    { id_salita: string; nombre: string; activo: boolean }[]
+  >([]);
+  const [selectedSalita, setSelectedSalita] = useState('');
   const requestId = useRef(0);
 
   const [loading, setLoading] = useState(true);
@@ -71,6 +76,7 @@ const PacientesPage = () => {
         10,
         appliedSearch,
         statusFilter,
+        selectedSalita || undefined,
       );
 
       if (currentRequest !== requestId.current) return;
@@ -91,13 +97,27 @@ const PacientesPage = () => {
     }
   };
 
+  // Carga las salitas disponibles para el usuario autenticado.
+  useEffect(() => {
+    const loadSalitas = async () => {
+      try {
+        const response = await getAdminSalitas();
+        setSalitas(response.data.filter((salita) => salita.activo));
+      } catch (error) {
+        console.error('No se pudieron cargar las salitas.', error);
+      }
+    };
+
+    void loadSalitas();
+  }, []);
+
   useEffect(() => {
     void loadPatients();
 
     return () => {
       requestId.current++;
     };
-  }, [page, appliedSearch, statusFilter]);
+  }, [page, appliedSearch, statusFilter, selectedSalita]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -222,7 +242,7 @@ const PacientesPage = () => {
         <div className="card-body">
           <div className="row g-3">
 
-            <div className="col-lg-8">
+            <div className="col-lg-5">
               <label className="form-label">
                 Buscar
               </label>
@@ -246,7 +266,7 @@ const PacientesPage = () => {
               </div>
             </div>
 
-            <div className="col-lg-4">
+            <div className="col-lg-3">
               <label className="form-label">
                 Estado
               </label>
@@ -265,6 +285,30 @@ const PacientesPage = () => {
                 <option value="activo">Activos</option>
                 <option value="inactivo">Inactivos</option>
                 <option value="todos">Todos</option>
+              </select>
+            </div>
+
+            <div className="col-lg-4">
+              <label className="form-label" htmlFor="filtro-salita">
+                Salita
+              </label>
+
+              <select
+                id="filtro-salita"
+                className="form-select"
+                value={selectedSalita}
+                aria-label="Filtrar pacientes por salita"
+                onChange={(event) => {
+                  setSelectedSalita(event.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="">Todas las salitas disponibles</option>
+                {salitas.map((salita) => (
+                  <option key={salita.id_salita} value={salita.id_salita}>
+                    {salita.nombre}
+                  </option>
+                ))}
               </select>
             </div>
 

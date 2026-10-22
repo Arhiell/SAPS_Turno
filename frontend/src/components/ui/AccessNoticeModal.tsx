@@ -1,4 +1,8 @@
-import { useEffect, useSyncExternalStore } from 'react';
+import {
+  useEffect,
+  useRef,
+  useSyncExternalStore,
+} from 'react';
 
 import ConfirmationModal from './ConfirmationModal';
 
@@ -20,28 +24,49 @@ export default function AccessNoticeModal() {
     () => null
   );
 
+  // Evita que se ejecuten varias comprobaciones simultáneas.
+  const requestInFlight = useRef(false);
+
   // Comprueba periódicamente si la cuenta tiene restricciones.
   useEffect(() => {
-    // Detecta bloqueos administrativos mientras el usuario permanece conectado.
-    const check = () => {
+    let active = true;
+
+    const check = async () => {
       if (
-        getAccessToken() &&
-        document.visibilityState === 'visible'
+        !active ||
+        !getAccessToken() ||
+        document.visibilityState !== 'visible' ||
+        requestInFlight.current
       ) {
-        void api.get('/auth/me').catch(() => {
-          // El interceptor muestra el bloqueo.
-        });
+        return;
+      }
+
+      requestInFlight.current = true;
+
+      try {
+        await api.get('/auth/me');
+      } catch {
+        // El interceptor muestra el bloqueo cuando corresponde.
+      } finally {
+        requestInFlight.current = false;
       }
     };
 
-    // Realiza la comprobación cada 60 segundos.
-    const timer = window.setInterval(check, 60_000);
+    // Comprueba una vez al montar el componente.
+    void check();
+
+    // Detecta bloqueos administrativos mientras el usuario permanece conectado.
+    const timer = window.setInterval(() => {
+      void check();
+    }, 60_000);
 
     // Comprueba nuevamente cuando la ventana recupera el foco.
+    // check() evita duplicar una petición si ya hay una en curso.
     window.addEventListener('focus', check);
 
     // Limpia el intervalo y el evento al desmontar el componente.
     return () => {
+      active = false;
       window.clearInterval(timer);
       window.removeEventListener('focus', check);
     };

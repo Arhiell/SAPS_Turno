@@ -1,3 +1,4 @@
+
 import { z } from "zod";
 
 /**
@@ -22,13 +23,20 @@ export const patientDniSchema = z.object({
 });
 
 /**
- * Paginación del listado.
+ * Paginación y filtros del listado de pacientes.
  */
 export const patientListQuerySchema = z.object({
   search: z.string().trim().max(150).optional(),
+
   estado: z
     .enum(["activo", "inactivo", "todos"])
     .default("activo"),
+
+  id_salita: z
+    .string()
+    .uuid("El ID de la salita no es válido")
+    .optional(),
+
   page: z.coerce
     .number()
     .int()

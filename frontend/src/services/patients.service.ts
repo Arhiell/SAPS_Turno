@@ -1,3 +1,4 @@
+
 import api from './api';
 
 import { updateOwnProfile } from './auth.service';
@@ -18,12 +19,13 @@ export const updateOwnPatient = async (
   return updateOwnProfile(data);
 };
 
-// Obtiene la lista paginada de pacientes con filtros de búsqueda y estado.
+// Obtiene la lista paginada de pacientes con filtros de búsqueda, estado y salita.
 export const getPatients = async (
   page = 1,
   limit = 10,
   search = '',
   estado: PatientStatusFilter = 'activo',
+  idSalita?: string,
 ): Promise<PatientsResponse> => {
   const response = await api.get<PatientsResponse>(
     '/patients',
@@ -33,6 +35,7 @@ export const getPatients = async (
         limit,
         search: search || undefined,
         estado,
+        id_salita: idSalita || undefined,
       },
     }
   );

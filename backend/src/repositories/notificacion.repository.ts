@@ -1,7 +1,8 @@
 import { supabase } from "../config/supabase.js";
 import { AppError } from "../utils/app-error.js";
 
-const bandejaSelect = "id_notificacion,id_turno,tipo,titulo,mensaje,fecha_creacion,fecha_envio,leida,remitente";
+const bandejaSelect =
+  "id_notificacion,id_turno,tipo,titulo,mensaje,fecha_creacion,fecha_envio,leida,remitente";
 
 import type {
   CreateNotificacionInput,
@@ -101,6 +102,7 @@ export const findNotificacionById = async (
 };
 
 // Marca una notificación como leída.
+// Si ya estaba leída, devuelve igualmente el registro para que la operación sea idempotente.
 export const markNotificacionAsRead = async (
   id: string,
   idUsuario: string,
@@ -113,7 +115,6 @@ export const markNotificacionAsRead = async (
     })
     .eq("id_notificacion", id)
     .eq("id_usuario", idUsuario)
-    .eq("leida", false)
     .eq("canal", "SISTEMA")
     .eq("estado_envio", "ENVIADA")
     .select(bandejaSelect)
@@ -124,6 +125,19 @@ export const markNotificacionAsRead = async (
       "No se pudo marcar la notificación como leída",
       500,
     );
+  }
+
+  // Si no se actualizó ninguna fila, puede no existir o ya no cumplir los filtros.
+  // Consultamos solo en ese caso para distinguirlo de una notificación ya leída.
+  if (!data) {
+    const existing = await findNotificacionById(
+      id,
+      idUsuario,
+    );
+
+    if (existing) {
+      return existing;
+    }
   }
 
   return data;

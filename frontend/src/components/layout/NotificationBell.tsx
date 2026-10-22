@@ -67,9 +67,8 @@ export default function NotificationBell() {
   useEffect(() => {
     let active = true;
 
-    setLoading(true);
-    setError('');
-    setItems([]);
+    // Conserva la lista visible durante las actualizaciones para evitar parpadeos.
+    // El estado de carga inicial ya comienza en true.
 
     // Cuenta todas las pendientes,
     // sin cargar más notificaciones de las visibles en la campana.
@@ -107,7 +106,7 @@ export default function NotificationBell() {
   // ACTUALIZACIÓN AUTOMÁTICA
 
   useEffect(() => {
-    // Actualiza las notificaciones cada 15 segundos
+    // Actualiza las notificaciones cada 30 segundos
     // cuando la página está visible y el panel cerrado.
     const timer = window.setInterval(() => {
       if (
@@ -118,7 +117,7 @@ export default function NotificationBell() {
           (v) => v + 1
         );
       }
-    }, 15000);
+    }, 30000);
 
     return () =>
       window.clearInterval(timer);
@@ -232,6 +231,50 @@ export default function NotificationBell() {
     }
   };
 
+  // Abre una notificación y la marca como leída al seleccionarla.
+  const viewNotification = async (item: Notificacion) => {
+    setMensajeAbierto(item);
+
+    if (item.leida || busy) {
+      return;
+    }
+
+    setBusy(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await leerNotificacion(item.id_notificacion);
+
+      // Actualiza el estado local para reflejar el cambio inmediatamente.
+      setItems((current) =>
+        current.map((notification) =>
+          notification.id_notificacion === item.id_notificacion
+            ? { ...notification, leida: true }
+            : notification
+        )
+      );
+
+      setMensajeAbierto((current) =>
+        current?.id_notificacion === item.id_notificacion
+          ? { ...current, leida: true }
+          : current
+      );
+
+      setUnread((current) =>
+        current === null ? null : Math.max(0, current - 1)
+      );
+      setSuccess('Notificación leída.');
+
+    } catch {
+      setError(
+        'No se pudo marcar como leída. Volvé a intentar.'
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // INTERFAZ
 
   return (
@@ -253,13 +296,9 @@ export default function NotificationBell() {
         aria-expanded={open}
         aria-controls="patient-notifications"
         onClick={() => {
-          setOpen(!open);
-
-          if (!open) {
-            setRevision(
-              (v) => v + 1
-            );
-          }
+          // La bandeja ya se carga al montar y se sincroniza mediante el evento global.
+          // Evita repetir inmediatamente las dos consultas al abrir la campanita.
+          setOpen((current) => !current);
         }}
       >
         <i
@@ -407,7 +446,7 @@ export default function NotificationBell() {
                       <button
                         type="button"
                         className="btn btn-sm btn-outline-success align-self-start"
-                        onClick={() => setMensajeAbierto(item)}
+                        onClick={() => void viewNotification(item)}
                       >
                         Ver notificación
                       </button>

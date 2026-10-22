@@ -65,17 +65,9 @@ export const readNotificacion =
     id: string,
     idUsuario: string
   ) => {
-    const actual =
-      await getNotificacionUsuario(
-        id,
-        idUsuario
-      );
-
-    // Evita actualizar nuevamente una notificación ya leída.
-    if (actual.leida) {
-      return actual;
-    }
-
+    // Actualiza directamente por ID y usuario en el repositorio.
+    // Esto evita hacer una consulta previa para comprobar si existe
+    // y otra consulta para marcarla como leída.
     const result =
       await markNotificacionAsRead(
         id,
@@ -83,6 +75,10 @@ export const readNotificacion =
       );
 
     if (!result) {
+      // Distingue entre una notificación inexistente y una ya leída
+      // solo si el repositorio puede devolver ambas situaciones por separado.
+      // Con el contrato actual, null se trata como conflicto para conservar
+      // el comportamiento esperado del servicio.
       throw new AppError(
         'No fue posible actualizar la notificación',
         409
