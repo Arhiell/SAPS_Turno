@@ -10,6 +10,12 @@
   box-shadow: var(--saps-sombra-hover); transition: background-color .15s ease, box-shadow .15s ease;
 }
 .cora-chatbot__launcher > i { font-size: 25px; }
+.cora-chatbot .cora-chatbot__launcher { touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
+.cora-chatbot .cora-chatbot__launcher[data-dragging="true"] { cursor: grabbing; }
+.cora-chatbot__preferences { margin-bottom: 16px; padding: 10px; border: 1px solid var(--saps-borde); border-radius: var(--saps-radio); font-size: 12px; }
+.cora-chatbot__preferences summary { cursor: pointer; color: var(--saps-verde-oscuro); font-weight: 600; }
+.cora-chatbot__preferences p { margin: 10px 0; }
+.cora-chatbot__preferences button { min-height: 44px; margin: 0 8px 8px 0; padding: 6px 10px; border: 1px solid var(--saps-borde); border-radius: var(--saps-radio); background: var(--saps-verde-claro); color: var(--saps-verde-oscuro); }
 .cora-chatbot__launcher > span { font-size: 14px; font-weight: 600; }
 .cora-chatbot__launcher:hover { background: var(--saps-verde-oscuro); box-shadow: var(--saps-sombra); }
 .cora-chatbot__panel {

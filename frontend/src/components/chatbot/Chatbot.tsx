@@ -7,6 +7,7 @@ import { getAccessToken, getStoredUser } from '../../utils/auth-storage';
 import { ChatbotSession } from '../../utils/chatbot-session';
 import type { ChatbotMessage } from '../../types/chatbot.types';
 import '../../styles/chatbot.css';
+import useChatbotLauncher from './useChatbotLauncher';
 
 const welcome: ChatbotMessage = { id: 0, author: 'assistant',
   text: '¡Hola! Soy el Asistente CORA. Puedo explicarte cómo usar las funciones de tu panel. Cada consulta se responde por separado.' };
@@ -43,6 +44,7 @@ function ChatbotPanel({ identity, role, embedded }: { identity: string; role: st
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 767.98px)').matches);
   const panel = useRef<HTMLDivElement>(null);
   const launcher = useRef<HTMLButtonElement>(null);
+  const floating = useChatbotLauncher(identity, launcher);
   const input = useRef<HTMLTextAreaElement>(null);
   const log = useRef<HTMLDivElement>(null);
   const nearBottom = useRef(true);
@@ -99,7 +101,8 @@ function ChatbotPanel({ identity, role, embedded }: { identity: string; role: st
       if (!mobile && document.querySelector('.modal[aria-modal="true"]')) return;
       if (!embedded && event.key === 'Escape') { event.preventDefault(); close(); }
       if (!embedded && mobile && event.key === 'Tab') {
-        const focusable = panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), textarea:not(:disabled)');
+        const focusable = Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), textarea:not(:disabled), summary, [tabindex="0"]') ?? [])
+          .filter(element => element.getClientRects().length > 0);
         const first = focusable?.[0];
         const last = focusable?.[focusable.length - 1];
         if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
@@ -191,8 +194,16 @@ function ChatbotPanel({ identity, role, embedded }: { identity: string; role: st
   const close = () => { setOpen(false); launcher.current?.focus(); };
   const content = (
     <div className={`cora-chatbot${embedded ? ' cora-chatbot--embedded' : ''}`} data-open={open}>
-      {!embedded && <button ref={launcher} className="cora-chatbot__launcher" aria-label="Abrir Asistente CORA"
-        aria-expanded={open} aria-controls="cora-chatbot-panel" onClick={() => setOpen(value => !value)}>
+      {!embedded && !floating.hidden && <button ref={launcher} className="cora-chatbot__launcher" aria-label="Abrir Asistente CORA"
+        title="Asistente CORA: arrastrá para mover o tocá para abrir"
+        style={floating.style} data-dragging={floating.dragging}
+        onPointerDown={floating.onPointerDown} onPointerMove={floating.onPointerMove}
+        onPointerUp={floating.onPointerUp} onPointerCancel={floating.onPointerCancel}
+        onLostPointerCapture={floating.onLostPointerCapture}
+        aria-expanded={open} aria-controls="cora-chatbot-panel" onClick={event => {
+          if (event.detail !== 0 && floating.consumeClick()) return;
+          setOpen(value => !value);
+        }}>
         <i className="bi bi-robot" aria-hidden="true" />
         <span>Asistente CORA</span>
       </button>}
@@ -218,6 +229,15 @@ function ChatbotPanel({ identity, role, embedded }: { identity: string; role: st
             const area = event.currentTarget;
             nearBottom.current = area.scrollHeight - area.scrollTop - area.clientHeight <= 48;
           }}>
+          <details className="cora-chatbot__preferences">
+            <summary>Botón flotante del asistente</summary>
+            <p>Arrastralo con el mouse o el dedo para ubicarlo donde prefieras.</p>
+            <button type="button" aria-pressed={!floating.hidden} onClick={() => floating.setHidden(!floating.hidden)}>
+              {floating.hidden ? 'Mostrar botón flotante' : 'Ocultar botón flotante'}
+            </button>
+            <button type="button" onClick={floating.resetPosition}>Restablecer posición</button>
+            <p>Podés volver a activarlo desde Asistente CORA en el menú. Esta preferencia se guarda en este navegador.</p>
+          </details>
           <section id="cora-chatbot-privacy-details" className="cora-chatbot__privacy-details"
             aria-labelledby="cora-chatbot-privacy-title" hidden={!privacyExpanded}>
             <h3 id="cora-chatbot-privacy-title">Sobre tu privacidad</h3>
