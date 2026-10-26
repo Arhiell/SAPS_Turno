@@ -34,8 +34,8 @@ export const getHistorialByTurno = async (
   idTurno: string,
   user: AuthenticatedUser
 ) => {
-  // Para pacientes, primero valida que puedan acceder al turno.
-  if (user.rol === 'PACIENTE') {
+  // Pacientes y profesionales solo pueden consultar sus propios turnos.
+  if (user.rol === 'PACIENTE' || user.rol === 'PROFESIONAL') {
     await getTurno(
       idTurno,
       user

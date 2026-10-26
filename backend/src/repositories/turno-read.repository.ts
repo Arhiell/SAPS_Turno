@@ -239,7 +239,11 @@ export const findTurnos = async (
   }
 
   // Filtra los turnos correspondientes al día indicado.
-  if (filters.fecha) {
+  if (filters.fecha_desde && filters.fecha_hasta) {
+    query = query
+      .gte('fecha_hora_inicio', agendaDayBounds(filters.fecha_desde).start)
+      .lt('fecha_hora_inicio', agendaDayBounds(filters.fecha_hasta).end);
+  } else if (filters.fecha) {
     const bounds = agendaDayBounds(
       filters.fecha
     );

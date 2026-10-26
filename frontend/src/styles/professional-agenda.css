@@ -1,0 +1,23 @@
+.professional-calendar { width: 100%; max-width: 336px; padding: 12px; background: var(--saps-superficie); border: 1px solid var(--saps-borde); border-radius: var(--saps-radio); }
+.professional-calendar__navigation { display: grid; grid-template-columns: 36px minmax(0, 1fr) 36px; align-items: center; gap: 6px; }
+.professional-calendar__navigation label { min-width: 0; }
+.professional-calendar__navigation .form-control { min-width: 0; width: 100%; padding: 6px 8px; font-size: 13px; }
+.professional-calendar__navigation .btn { min-height: 36px; padding: 4px; }
+.professional-calendar__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.professional-calendar__grid > strong { font-size: 11px; padding-block: 5px; color: var(--saps-texto-secundario); }
+.professional-calendar__day { display: grid; place-items: center; height: 36px; min-width: 0; padding: 0; border: 1px solid transparent; border-radius: 50%; background: transparent; color: var(--saps-texto); font-size: 13px; }
+.professional-calendar__day.has-activity { background: var(--saps-verde-claro); color: var(--saps-verde-oscuro); }
+.professional-calendar__day:hover:not(:disabled) { border-color: var(--saps-verde); }
+.professional-calendar__day[aria-pressed="true"] { outline: 2px solid var(--saps-azul); outline-offset: -2px; }
+.professional-calendar__day[aria-current="date"] > strong { text-decoration: underline; text-underline-offset: 4px; }
+.professional-calendar__day:focus-visible { outline: 3px solid var(--saps-azul); }
+.professional-calendar__day:disabled { opacity: .6; }
+.professional-turno--ATENDIDO { --bs-table-bg: var(--saps-verde-claro); }
+.professional-turno--NO_ASISTIO { --bs-table-bg: var(--saps-amarillo-claro); }
+.professional-turno--CANCELADO { --bs-table-bg: #fce8eb; }
+.professional-turno--REPROGRAMADO { --bs-table-bg: var(--saps-azul-claro); }
+@media (max-width: 575.98px) {
+  .professional-calendar { padding: 10px; }
+  .professional-calendar__grid { gap: 3px; }
+  .professional-calendar__day { height: 36px; }
+}

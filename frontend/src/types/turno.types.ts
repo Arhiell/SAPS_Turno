@@ -304,6 +304,8 @@ export interface TurnosFilters {
   reprogramados?: 'true';
 
   fecha?: string;
+  fecha_desde?: string;
+  fecha_hasta?: string;
 
   id_profesional?: string;
   id_especialidad?: string;

@@ -251,12 +251,12 @@ const AppRoutes = () => {
               >
                 <Route
                   path="/mi-agenda"
-                  element={<MisTurnosPage />}
+                  element={<MisTurnosPage key="agenda" mode="history" />}
                 />
 
                 <Route
                   path="/mis-pacientes"
-                  element={<MisTurnosPage />}
+                  element={<MisTurnosPage key="today" mode="today" />}
                 />
               </Route>
 

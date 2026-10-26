@@ -38,7 +38,8 @@ export const exportAgendaDiariaController: RequestHandler = async (req, res) => 
   
   const file = await generateReporteFile(agendaSecciones(
     agenda.listas, 
-    agenda.fecha
+    agenda.fecha,
+    filters.fecha_hasta
   ), 
   "SAPS TURNO", filters.formato
 );
@@ -49,8 +50,7 @@ export const exportAgendaDiariaController: RequestHandler = async (req, res) => 
  
   res.setHeader(
     "Content-Disposition", 
-    `attachment; 
-    filename="agenda-diaria-${agenda.fecha}${suffix}.${file.extension}"`
+    `attachment; filename="agenda-diaria-${filters.fecha_desde ?? agenda.fecha}-${filters.fecha_hasta ?? agenda.fecha}${suffix}.${file.extension}"`
   );
 
   res.type(file.contentType).send(file.buffer);
@@ -67,7 +67,8 @@ export const printAgendaDiariaController: RequestHandler = async (req, res) => {
   res.type("html").send(
     agendaHtml(agendaSecciones(
       agenda.listas, 
-      agenda.fecha)
+      agenda.fecha,
+      filters.fecha_hasta)
     )
   );
 };

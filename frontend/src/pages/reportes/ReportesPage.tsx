@@ -9,6 +9,7 @@ import {
   getReporteProfesionales,
   getReporteResumen,
   descargarReporte,
+  reporteDownloadError,
   getAgendaDiaria,
   descargarAgendaDiaria,
 } from '../../services/reportes.service';
@@ -416,9 +417,7 @@ const ReportesPage = () => {
         console.error(err);
 
         setError(
-          err?.response?.data
-            ?.message ||
-            'No se pudo descargar el reporte.',
+          await reporteDownloadError(err),
         );
       } finally {
         setExportando(null);
@@ -461,9 +460,7 @@ const ReportesPage = () => {
         console.error(err);
 
         setError(
-          err?.response?.data
-            ?.message ||
-            'No se pudo descargar la agenda.',
+          await reporteDownloadError(err),
         );
       } finally {
         setExportando(null);

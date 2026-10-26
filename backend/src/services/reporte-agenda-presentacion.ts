@@ -5,7 +5,7 @@ import type {
 
 export const agendaSecciones = (
   listas: AgendaLista[], 
-  fecha: string): ReporteSecciones => (
+  fecha: string, fechaHasta?: string): ReporteSecciones => (
     {
       secciones: listas.length ? listas.map(lista => (
         {
@@ -39,7 +39,7 @@ export const agendaSecciones = (
     { cabecera: [
       "SAPS TURNO", 
       "Lista diaria de pacientes", 
-      `Fecha: ${fecha.split("-").reverse().join("/")}`
+      `Fecha: ${fecha.split("-").reverse().join("/")}${fechaHasta && fechaHasta !== fecha ? ` al ${fechaHasta.split("-").reverse().join("/")}` : ""}`
     ],
     columnas: [],
     filas: [], 
@@ -61,7 +61,7 @@ const escape = (value: string) => value.replace(/[&<>"']/g, char =>
 )[char]!);
 
 export const agendaHtml = (data: ReporteSecciones) => `<!doctype html><html lang="es"><head><meta charset="utf-8">
-<title
+<title>
   SAPS Turno — Lista diaria
 </title><style>
 

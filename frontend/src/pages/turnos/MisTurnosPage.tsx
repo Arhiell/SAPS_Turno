@@ -10,13 +10,17 @@ import {
 
 import {
   descargarAgendaDiaria,
+  reporteDownloadError,
 } from '../../services/reportes.service';
 
 import { authError } from '../../utils/auth-errors';
 
 import type { Turno } from '../../types/turno.types';
+import type { ReporteFormato } from '../../types/reporte.types';
+import ProfessionalCalendar from '../../components/turnos/ProfessionalCalendar';
+import ProfessionalTurnoHistory from '../../components/turnos/ProfessionalTurnoHistory';
 
-export default function MisTurnosPage() {
+export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' | 'today' }) {
   const { user } = useAuth();
 
   const professional = user?.rol === 'PROFESIONAL';
@@ -26,6 +30,12 @@ export default function MisTurnosPage() {
       timeZone: 'America/Argentina/Buenos_Aires',
     }).format(new Date())
   );
+
+  const [fechaHasta, setFechaHasta] = useState(fecha);
+  const [filterRange, setFilterRange] = useState(false);
+  const [today, setToday] = useState(fecha);
+  const daily = professional && mode === 'today';
+  const validRange = !!fecha && !!fechaHasta && fecha <= fechaHasta;
 
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [page, setPage] = useState(1);
@@ -37,14 +47,30 @@ export default function MisTurnosPage() {
   const [revision, setRevision] = useState(0);
 
   useEffect(() => {
+    if (!daily) return;
+    const timer = window.setInterval(() => {
+      const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date());
+      if (date !== today) { setToday(date); setPage(1); }
+    }, 30_000);
+    return () => window.clearInterval(timer);
+  }, [daily, today]);
+  useEffect(() => {
     let active = true;
 
     setLoading(true);
     setError('');
     setTurnos([]);
+    setTotalPages(0);
+    if (professional && !daily && filterRange && !validRange) {
+      setError('Seleccioná un rango válido: Desde no puede ser posterior a Hasta.');
+      setLoading(false);
+      return;
+    }
 
     void getTurnos({
-      ...(professional ? { fecha } : {}),
+      ...(professional ? daily ? { fecha: today } : filterRange
+        ? { fecha_desde: fecha, fecha_hasta: fechaHasta, orden: 'desc' as const }
+        : { orden: 'desc' as const } : {}),
       page,
       limit: 20,
     })
@@ -71,7 +97,7 @@ export default function MisTurnosPage() {
     return () => {
       active = false;
     };
-  }, [professional, fecha, page, revision]);
+  }, [professional, daily, today, filterRange, fecha, fechaHasta, validRange, page, revision]);
 
   const mark = async (
     turno: Turno,
@@ -101,23 +127,22 @@ export default function MisTurnosPage() {
     }
   };
 
-  const download = async () => {
-    if (busy) return;
+  const download = async (formato: ReporteFormato) => {
+    if (busy || (!daily && (!filterRange || !validRange))) return;
 
     setBusy(true);
     setError('');
 
     try {
       await descargarAgendaDiaria(
-        {
-          fecha,
+        daily ? { fecha: today } : {
+          fecha_desde: fecha,
+          fecha_hasta: fechaHasta,
         },
-        'pdf'
+        formato
       );
-    } catch {
-      setError(
-        'No se pudo descargar la agenda. Volvé a intentar.'
-      );
+    } catch (cause) {
+      setError(await reporteDownloadError(cause));
     } finally {
       setBusy(false);
     }
@@ -127,20 +152,34 @@ export default function MisTurnosPage() {
     <div>
       <h1 className="h3">
         {professional
-          ? 'Mi agenda y pacientes del día'
+          ? daily ? 'Pacientes del día' : 'Mi agenda'
           : 'Mis turnos'}
       </h1>
+      {professional && <p className="text-muted">{daily
+        ? `Atención de hoy (${today.split('-').reverse().join('/')}).`
+        : 'Historial completo de tus turnos, con su estado actual y los cambios registrados.'}</p>}
+      {professional && !daily && <>
+        <ProfessionalCalendar revision={revision} selected={filterRange && fecha === fechaHasta ? fecha : ''}
+          onSelect={day => { setFecha(day); setFechaHasta(day); setFilterRange(true); setPage(1); }} />
+        <label className="form-check my-3">
+          <input className="form-check-input" type="checkbox" checked={filterRange} disabled={busy}
+            onChange={event => { setFilterRange(event.target.checked); setPage(1); }} />
+          <span className="form-check-label">Filtrar por período (desmarcá para ver todos los turnos)</span>
+        </label>
+      </>}
 
       {professional ? (
         <div className="d-flex flex-wrap gap-3 my-3 align-items-end">
+          {!daily && <>
           <label>
-            Fecha
+            Desde
 
             <input
               className="form-control"
               type="date"
               value={fecha}
-              disabled={busy}
+              max={fechaHasta}
+              disabled={busy || !filterRange}
               onChange={(e) => {
                 if (e.target.value) {
                   setFecha(e.target.value);
@@ -150,13 +189,23 @@ export default function MisTurnosPage() {
             />
           </label>
 
-          <button
-            className="btn btn-outline-primary"
-            disabled={busy || loading}
-            onClick={() => void download()}
-          >
-            Descargar lista diaria PDF
-          </button>
+          <label>
+            Hasta
+            <input className="form-control" type="date" value={fechaHasta}
+              min={fecha} disabled={busy || !filterRange} onChange={event => {
+                setFechaHasta(event.target.value);
+                setPage(1);
+              }} />
+          </label>
+          </>}
+          {(['pdf', 'docx', 'xlsx'] as const).map(formato => (
+            <button key={formato} className="btn btn-outline-primary"
+              disabled={busy || loading || (!daily && (!filterRange || !validRange))}
+              onClick={() => void download(formato)}>
+              <i className={`bi bi-file-earmark-${formato === 'pdf' ? 'pdf' : formato === 'docx' ? 'word' : 'excel'} me-2`} aria-hidden="true" />
+              Descargar {formato === 'pdf' ? 'PDF' : formato === 'docx' ? 'Word' : 'Excel'}
+            </button>
+          ))}
         </div>
       ) : (
         <p className="text-muted">
@@ -164,6 +213,11 @@ export default function MisTurnosPage() {
           contactá a tu salita.
         </p>
       )}
+
+      {professional && <p className="text-muted small">
+        Las descargas incluyen las listas de pacientes pendientes de atención del período,
+        agrupadas por fecha, salita y especialidad. {!daily && 'Seleccioná un período para descargar.'}
+      </p>}
 
       {error && (
         <div
@@ -214,7 +268,7 @@ export default function MisTurnosPage() {
 
             <tbody>
               {turnos.map((t) => (
-                <tr key={t.id_turno}>
+                <tr key={t.id_turno} className={professional ? `professional-turno--${t.estado.codigo}` : undefined}>
                   <td data-label="Fecha y hora">
                     {new Date(
                       t.fecha_hora_inicio
@@ -258,6 +312,7 @@ export default function MisTurnosPage() {
 
                   {professional && (
                     <td data-label="Acciones">
+                      <ProfessionalTurnoHistory turnoId={t.id_turno} revision={revision} />
                       {!t.estado.es_estado_final && (
                         <div className="d-flex flex-wrap gap-2">
                           <button

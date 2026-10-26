@@ -38,6 +38,8 @@ export const turnoQuerySchema = z
     fecha: z.iso
       .date()
       .optional(),
+    fecha_desde: z.iso.date().optional(),
+    fecha_hasta: z.iso.date().optional(),
 
     // Permite consultar turnos próximos o anteriores.
     periodo: z
@@ -105,7 +107,10 @@ export const turnoQuerySchema = z
       .max(100)
       .default(20),
   })
-  .strict();
+  .strict()
+  .refine(data => !(data.fecha_desde || data.fecha_hasta) ||
+    (!data.fecha && !!data.fecha_desde && !!data.fecha_hasta && data.fecha_desde <= data.fecha_hasta),
+  { message: 'Indicá un rango desde/hasta válido, sin combinarlo con fecha.', path: ['fecha_hasta'] });
 
 // Tipo generado a partir del esquema de consulta.
 export type TurnoQuery = z.infer<

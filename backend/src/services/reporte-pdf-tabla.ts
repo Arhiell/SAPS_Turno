@@ -9,7 +9,8 @@ export const drawReporteSections = (
 ) => {
   const left = 40;
 
-  const widths = [25, 40, 140, 70, 90, 150];
+  const availableWidth = doc.page.width - left * 2;
+  const widths = [25, 40, 140, 70, 90, 150].map(width => width * availableWidth / 615);
 
   const bottom = doc.page.height - 55;
 

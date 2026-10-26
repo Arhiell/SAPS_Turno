@@ -1,4 +1,30 @@
 import api from './api';
+import axios from 'axios';
+import { authError } from '../utils/auth-errors';
+
+// Las respuestas de error también llegan como Blob en una descarga.
+export const reporteDownloadError = async (error: unknown): Promise<string> => {
+  if (axios.isAxiosError(error) && error.response?.data instanceof Blob) {
+    try {
+      const body = JSON.parse(await error.response.data.text());
+      if (typeof body.message === 'string') return body.message;
+    } catch { /* Conserva el mensaje de respaldo si no es JSON. */ }
+    return 'No se pudo descargar el archivo. Volvé a intentar.';
+  }
+  return authError(error);
+};
+
+const saveDownload = (blob: Blob, filename: string) => {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  // Da tiempo al navegador para iniciar la descarga antes de liberar el recurso.
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+};
 
 import type {
   AgendaDiariaResponse,
@@ -95,46 +121,8 @@ export const descargarReporte =
         },
       );
 
-    const blob =
-      new Blob(
-        [response.data],
-      );
-
-    const url =
-      window.URL.createObjectURL(
-        blob,
-      );
-
-    const extension =
-      formato === 'xlsx'
-        ? 'xlsx'
-        : formato === 'docx'
-          ? 'docx'
-          : 'pdf';
-
-    const link =
-      document.createElement(
-        'a',
-      );
-
-    link.href = url;
-
-    link.download =
-      `reporte-${tipo}-${filters.fecha_desde}-${filters.fecha_hasta}.${extension}`;
-
-    document.body.appendChild(
-      link,
-    );
-
-    link.click();
-
-    document.body.removeChild(
-      link,
-    );
-
-    window.URL.revokeObjectURL(
-      url,
-    );
+    saveDownload(response.data,
+      `reporte-${tipo}-${filters.fecha_desde}-${filters.fecha_hasta}.${formato}`);
   };
 
 /* ========================= */
@@ -142,7 +130,9 @@ export const descargarReporte =
 /* ========================= */
 
 export interface AgendaFiltros {
-  fecha: string;
+  fecha?: string;
+  fecha_desde?: string;
+  fecha_hasta?: string;
   id_salita?: string;
   id_profesional?: string;
   id_especialidad?: string;
@@ -152,9 +142,13 @@ export interface AgendaFiltros {
 const buildAgendaParams = (
   filters: AgendaFiltros,
 ) => {
-  const params: Record<string, string> = {
-    fecha: filters.fecha,
-  };
+  const params: Record<string, string> = {};
+  if (filters.fecha_desde && filters.fecha_hasta) {
+    params.fecha_desde = filters.fecha_desde;
+    params.fecha_hasta = filters.fecha_hasta;
+  } else if (filters.fecha) {
+    params.fecha = filters.fecha;
+  }
 
   if (filters.id_salita) {
     params.id_salita =
@@ -214,44 +208,7 @@ export const descargarAgendaDiaria =
         },
       );
 
-    const blob =
-      new Blob(
-        [response.data],
-      );
-
-    const url =
-      window.URL.createObjectURL(
-        blob,
-      );
-
-    const extension =
-      formato === 'xlsx'
-        ? 'xlsx'
-        : formato === 'docx'
-          ? 'docx'
-          : 'pdf';
-
-    const link =
-      document.createElement(
-        'a',
-      );
-
-    link.href = url;
-
-    link.download =
-      `agenda-diaria-${filters.fecha}.${extension}`;
-
-    document.body.appendChild(
-      link,
-    );
-
-    link.click();
-
-    document.body.removeChild(
-      link,
-    );
-
-    window.URL.revokeObjectURL(
-      url,
-    );
+    const period = filters.fecha_desde && filters.fecha_hasta
+      ? `${filters.fecha_desde}-${filters.fecha_hasta}` : filters.fecha ?? 'hoy';
+    saveDownload(response.data, `agenda-${period}.${formato}`);
   };

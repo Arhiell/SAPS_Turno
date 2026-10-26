@@ -75,7 +75,7 @@ export const getAgendaDiaria = async (
   if (scope?.length === 0) 
     return {
    sistema: "SAPS Turno", 
-   fecha: filters.fecha,
+   fecha: filters.fecha_desde ?? filters.fecha,
    total_pacientes: 0,
    listas: []
   };
@@ -94,14 +94,15 @@ export const getAgendaDiaria = async (
         );
 
       for (const turno of result.turnos as AgendaTurno[]) {
-        const key = `${turno.id_profesional}/${turno.id_salita}/${turno.id_especialidad}`;
+        const day = agendaDateTime(turno.fecha_hora_inicio).date;
+        const key = `${day}/${turno.id_profesional}/${turno.id_salita}/${turno.id_especialidad}`;
 
         let lista = listas.get(key);
         
         if (!lista) {
           const salita = one(turno.salita);
           lista = { 
-            fecha: filters.fecha, 
+            fecha: day,
             id_salita: turno.id_salita,
             salita: salita?.nombre ?? "Sin datos",
             direccion: salita?.direccion ?? null, 
@@ -137,12 +138,12 @@ export const getAgendaDiaria = async (
     }
   }
   
-  const grupos = [...listas.values()].sort((a, b) => a.profesional.localeCompare(b.profesional, "es")
+  const grupos = [...listas.values()].sort((a, b) => a.fecha.localeCompare(b.fecha) || a.profesional.localeCompare(b.profesional, "es")
     || a.salita.localeCompare(b.salita, "es") || a.especialidad.localeCompare(b.especialidad, "es"));
 
   return { 
     sistema: "SAPS Turno", 
-    fecha: filters.fecha,
+    fecha: filters.fecha_desde ?? filters.fecha,
     total_pacientes: grupos.reduce(
       (
         sum,

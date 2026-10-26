@@ -72,10 +72,21 @@ const fechaAgenda = z.union([z.iso.date(), z.enum(["hoy", "manana", "mañana"])]
     return value;
   });
 
-export const reporteAgendaQuerySchema = turnoQuerySchema
-  .pick({ id_salita: true, id_profesional: true, estado: true })
-  .extend({ fecha: fechaAgenda, id_especialidad: z.string().uuid().optional() });
+const agendaFields = z.object({
+  id_salita: turnoQuerySchema.shape.id_salita,
+  id_profesional: turnoQuerySchema.shape.id_profesional,
+  estado: turnoQuerySchema.shape.estado,
+  fecha: fechaAgenda,
+  fecha_desde: z.iso.date().optional(),
+  fecha_hasta: z.iso.date().optional(),
+  id_especialidad: z.string().uuid().optional(),
+});
+const validAgendaRange = (data: z.infer<typeof agendaFields>) =>
+  !(data.fecha_desde || data.fecha_hasta) ||
+  (!!data.fecha_desde && !!data.fecha_hasta && data.fecha_desde <= data.fecha_hasta);
+const rangeError = { message: 'Indicá un rango desde/hasta válido.', path: ['fecha_hasta'] };
+export const reporteAgendaQuerySchema = agendaFields.refine(validAgendaRange, rangeError);
 
-  export const reporteAgendaExportSchema = reporteAgendaQuerySchema.extend({ formato: reporteFormatoSchema });
+  export const reporteAgendaExportSchema = agendaFields.extend({ formato: reporteFormatoSchema }).refine(validAgendaRange, rangeError);
 
   export type ReporteAgendaQuery = z.infer<typeof reporteAgendaQuerySchema>;

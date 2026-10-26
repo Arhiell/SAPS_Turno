@@ -35,6 +35,7 @@ router.get(
   authenticate,
   requireRole(
     "PACIENTE",
+    "PROFESIONAL",
     "SUPER_ADMIN",
     "ADMIN_SALITA",
     "RECEPCION",
