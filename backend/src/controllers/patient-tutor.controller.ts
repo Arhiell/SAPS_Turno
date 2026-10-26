@@ -1,6 +1,8 @@
 import type {
   RequestHandler
 } from "express";
+import { getTurnoScope } from '../services/turno-access.service.js';
+import { getPatientById } from '../services/patient-read.service.js';
 
 import {
   createPatientTutorSchema,
@@ -117,10 +119,16 @@ export const listTutorPatientsController: RequestHandler =
           params.data.tutorId
         );
 
+      const scope = await getTurnoScope(req.user!);
+      const visible = scope === null ? patients : (await Promise.all(patients.map(async relation => {
+        const patient = await getPatientById(relation.id_paciente);
+        return scope.includes(patient.id_salita_asignada) ? relation : null;
+      }))).filter(relation => relation !== null);
+
       res.json({
         success: true,
         data: {
-          patients
+          patients: visible
         }
       });
     } catch (error) {

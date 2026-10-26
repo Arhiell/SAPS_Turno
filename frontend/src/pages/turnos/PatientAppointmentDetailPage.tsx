@@ -196,7 +196,7 @@ export default function PatientAppointmentDetailPage() {
       {/* Regreso al listado de turnos. */}
       <Link
         className="btn btn-link px-0 mb-3"
-        to="/mis-turnos"
+        to={turno ? `/mis-turnos?paciente=${turno.id_paciente}` : '/mis-turnos'}
       >
         Volver a mis turnos
       </Link>
@@ -204,6 +204,10 @@ export default function PatientAppointmentDetailPage() {
       <h1 className="h3 mb-4">
         Detalle del turno
       </h1>
+      {turno && <p className="alert alert-info">
+        Paciente: {turno.paciente?.persona?.apellidos}, {turno.paciente?.persona?.nombres}
+        {' · '}DNI: {turno.paciente?.persona?.dni}
+      </p>}
 
       {/* Confirma que el turno acaba de crearse. */}
       {location.state?.created && (

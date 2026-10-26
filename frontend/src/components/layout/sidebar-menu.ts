@@ -10,6 +10,7 @@ export interface SidebarMenuItem {
 
 // Define las opciones de navegación según los roles permitidos.
 export const sidebarMenu: SidebarMenuItem[] = [
+  { label: 'Personas a cargo', path: '/personas-a-cargo', icon: 'bi-people', roles: ['PACIENTE'] },
   {
     label: 'Asistente CORA',
     path: '/asistente',

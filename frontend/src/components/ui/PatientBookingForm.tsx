@@ -21,8 +21,12 @@ const dateLabel = (date: string) =>
 // Permite seleccionar especialidad, profesional y fecha para reservar un turno.
 export default function PatientBookingForm({
   clinic,
+  patientId,
+  onBusyChange,
 }: {
   clinic: string;
+  patientId?: string;
+  onBusyChange?: (busy: boolean) => void;
 }) {
   // Almacena los profesionales y las opciones seleccionadas.
   const [professionals, setProfessionals] = useState<
@@ -76,7 +80,7 @@ export default function PatientBookingForm({
     setLoading(true);
     setError('');
 
-    void getPatientProfessionals()
+    void getPatientProfessionals(undefined, patientId)
       .then((rows) => {
         if (!active) {
           return;
@@ -119,7 +123,7 @@ export default function PatientBookingForm({
     return () => {
       active = false;
     };
-  }, [clinic, revision]);
+  }, [clinic, patientId, revision]);
 
   // Consulta las fechas disponibles para la atención seleccionada.
   useEffect(() => {
@@ -140,7 +144,8 @@ export default function PatientBookingForm({
     void getPatientAvailableDates(
       professional,
       specialty,
-      clinic
+      clinic,
+      patientId
     )
       .then((result) => {
         if (!active) {
@@ -171,7 +176,7 @@ export default function PatientBookingForm({
     return () => {
       active = false;
     };
-  }, [professional, specialty, clinic, revision]);
+  }, [professional, specialty, clinic, patientId, revision]);
 
   // Obtiene las especialidades sin duplicados.
   const specialties = [
@@ -198,8 +203,8 @@ export default function PatientBookingForm({
       <p className="small text-muted">
         Podés reservar los días habilitados de esta semana.
         Cada sábado a las 12:00 se abre la semana siguiente
-        (hora argentina). Solo podés tener un turno pendiente
-        por especialidad.
+        (hora argentina). El paciente seleccionado puede tener un turno pendiente
+        por especialidad, independientemente de los turnos de otras personas a cargo.
       </p>
 
       {/* Muestra el estado de carga de la agenda. */}
@@ -362,8 +367,9 @@ export default function PatientBookingForm({
             professional={professional}
             specialty={specialty}
             clinic={clinic}
+            patientId={patientId}
             refreshKey={revision}
-            onBusyChange={setBusy}
+            onBusyChange={value => { setBusy(value); onBusyChange?.(value); }}
           />
         )}
     </section>

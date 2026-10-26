@@ -1,3 +1,4 @@
+import { agendaDateTime } from '../utils/turno-time.js';
 import { supabase } from "../config/supabase.js";
 
 import type {
@@ -18,7 +19,7 @@ export const findActivePatientTutorRelation = async (
     .select("*")
     .eq("id_paciente", patientId)
     .eq("id_tutor", tutorId)
-    .is("fecha_hasta", null)
+    .or(`fecha_hasta.is.null,fecha_hasta.gte.${agendaDateTime(new Date()).date}`)
     .maybeSingle();
 
   if (error) throw error;
@@ -61,7 +62,7 @@ export const findCurrentPrincipalTutor = async (
     .select("*")
     .eq("id_paciente", patientId)
     .eq("es_principal", true)
-    .is("fecha_hasta", null)
+    .or(`fecha_hasta.is.null,fecha_hasta.gte.${agendaDateTime(new Date()).date}`)
     .maybeSingle();
 
   if (error) throw error;
@@ -117,7 +118,7 @@ export const findTutorsByPatientId = async (
     .from("paciente_tutores")
     .select("*")
     .eq("id_paciente", patientId)
-    .is("fecha_hasta", null)
+    .or(`fecha_hasta.is.null,fecha_hasta.gte.${agendaDateTime(new Date()).date}`)
     .order("es_principal", { ascending: false })
     .order("fecha_desde", { ascending: true });
 
@@ -137,7 +138,7 @@ export const findPatientsByTutorId = async (
     .from("paciente_tutores")
     .select("*")
     .eq("id_tutor", tutorId)
-    .is("fecha_hasta", null)
+    .or(`fecha_hasta.is.null,fecha_hasta.gte.${agendaDateTime(new Date()).date}`)
     .order("fecha_desde", { ascending: true });
 
   if (error) throw error;
@@ -159,7 +160,6 @@ export const updatePatientTutorRelation = async (
     .update(input)
     .eq("id_paciente", patientId)
     .eq("id_tutor", tutorId)
-    .is("fecha_hasta", null)
     .select("*")
     .maybeSingle();
 
@@ -180,11 +180,12 @@ export const endPatientTutorRelation = async (
   const { data, error } = await supabase
     .from("paciente_tutores")
     .update({
-      fecha_hasta: endDate
+      fecha_hasta: endDate,
+      puede_gestionar_turnos: false
     })
     .eq("id_paciente", patientId)
     .eq("id_tutor", tutorId)
-    .is("fecha_hasta", null)
+    .or(`fecha_hasta.is.null,fecha_hasta.gte.${agendaDateTime(new Date()).date}`)
     .select("*")
     .maybeSingle();
 

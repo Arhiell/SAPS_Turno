@@ -10,7 +10,7 @@ export default function PatientCoverageCard({
   patient,
   coverage,
 }: {
-  patient: Patient;
+  patient: Pick<Patient, 'id_barrio' | 'id_salita_asignada'>;
   coverage: ReturnType<typeof usePatientCoverage>;
 }) {
   // Obtiene los datos necesarios de cobertura.

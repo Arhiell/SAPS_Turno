@@ -181,7 +181,8 @@ export const deleteProfessionalClinic = async (
 
 // Obtiene los profesionales disponibles para los pacientes.
 export const getPatientProfessionals = async (
-  fecha?: string
+  fecha?: string,
+  patientId?: string
 ) =>
   (
     await api.get<{ data: PatientProfessional[] }>(
@@ -189,6 +190,7 @@ export const getPatientProfessionals = async (
       {
         params: {
           fecha,
+          ...(patientId ? { id_paciente: patientId } : {}),
         },
       }
     )

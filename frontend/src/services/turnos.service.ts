@@ -23,7 +23,7 @@ export const getTurnoHistory = async (
 
 // Permite al paciente solicitar su propio turno.
 export const createOwnTurno = async (
-  data: Omit<
+  data: { id_paciente?: string } & Omit<
     CreateTurnoRequest,
     'id_paciente' | 'observaciones'
   >
@@ -105,7 +105,8 @@ export const getDisponibilidad = async (
   fecha: string,
   idProfesional: string,
   idEspecialidad: string,
-  idSalita: string
+  idSalita: string,
+  patientId?: string
 ): Promise<DisponibilidadResponse> => {
   const response = await api.get<DisponibilidadResponse>(
     '/disponibilidad',
@@ -115,6 +116,7 @@ export const getDisponibilidad = async (
         id_profesional: idProfesional,
         id_especialidad: idEspecialidad,
         id_salita: idSalita,
+        ...(patientId ? { id_paciente: patientId } : {}),
       },
     }
   );
@@ -137,7 +139,8 @@ export interface PatientAvailableDates {
 export const getPatientAvailableDates = async (
   professional: string,
   specialty: string,
-  clinic: string
+  clinic: string,
+  patientId?: string
 ): Promise<PatientAvailableDates> =>
   (
     await api.get<PatientAvailableDates>(
@@ -147,6 +150,7 @@ export const getPatientAvailableDates = async (
           id_profesional: professional,
           id_especialidad: specialty,
           id_salita: clinic,
+          ...(patientId ? { id_paciente: patientId } : {}),
         },
       }
     )

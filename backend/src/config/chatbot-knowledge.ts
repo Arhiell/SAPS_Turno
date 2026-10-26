@@ -15,9 +15,16 @@ export interface ChatbotArticle {
 // Solo documentación: nunca se interpolan registros, nombres, IDs ni texto libre del usuario.
 export const chatbotKnowledge: ChatbotArticle[] = [
   {
+    id: 'personas-a-cargo', roles: [...admins, 'PACIENTE'],
+    keywords: ['tutor', 'tutores', 'hijo', 'hijos', 'padres', 'abuelo', 'abuelos', 'menor', 'responsable', 'cargo'],
+    question: '¿Cómo gestiono turnos para una persona a cargo?',
+    content: 'En Personas a cargo (/personas-a-cargo), el paciente ve sus vínculos autorizados y puede solicitar o consultar turnos de cada persona. También puede elegir el paciente en Solicitar turno y Mis turnos. Administración registra el vínculo desde Pacientes, detalle, Tutores y responsables: verifica la autorización, ingresa el DNI del responsable registrado y el parentesco. Puede retirar el permiso desde esa ficha. Cada persona tiene su propio límite de un turno pendiente por especialidad y su propia cobertura. El paciente atendido puede ser menor o adulto y no necesita cuenta; el responsable necesita su cuenta de paciente activa. El asistente solo explica el procedimiento y no registra ni autoriza vínculos.',
+    sources: ['frontend/src/pages/pacientes/PersonasACargoPage.tsx', 'frontend/src/components/ui/PatientTutorsPanel.tsx', 'backend/src/services/patient-managed.service.ts'],
+  },
+  {
     id: 'pacientes', roles: admins, keywords: ['paciente', 'pacientes', 'tutor', 'tutores'],
     question: '¿Cómo registro y busco pacientes en CORA?',
-    content: 'En Pacientes (/pacientes), usá Buscar para buscar por DNI, apellido o nombre completo dentro del sistema. No escribas esos datos en el asistente. Para crear, ingresá a /pacientes/nuevo, completá los campos obligatorios, usá Registrar paciente y confirmá en el diálogo Registrar paciente. Desde el listado podés abrir el detalle. La gestión se limita al alcance autorizado de tu cuenta. No hay un procedimiento de tutores verificado en esta pantalla; consultá a la administración.',
+    content: 'En Pacientes (/pacientes), usá Buscar para buscar por DNI, apellido o nombre completo dentro del sistema. No escribas esos datos en el asistente. Para crear, ingresá a /pacientes/nuevo, completá los campos obligatorios, usá Registrar paciente y confirmá en el diálogo Registrar paciente. Desde el listado podés abrir el detalle. La gestión se limita al alcance autorizado de tu cuenta. Desde Tutores y responsables en el detalle del paciente se registra el responsable por DNI, previa verificacion del vinculo y del permiso para gestionar turnos.',
     sources: ['frontend/src/pages/pacientes/PacientesPage.tsx', 'frontend/src/pages/pacientes/NuevoPacientePage.tsx', 'frontend/src/pages/pacientes/PacienteDetallePage.tsx'],
   },
   {

@@ -6,6 +6,7 @@ export const disponibilidadQuerySchema = z
     id_profesional: z.string().uuid(),
     id_especialidad: z.string().uuid(),
     id_salita: z.string().uuid(),
+    id_paciente: z.string().uuid().optional(),
   })
   .strict();
 

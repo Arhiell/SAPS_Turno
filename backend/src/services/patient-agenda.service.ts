@@ -1,6 +1,7 @@
 import { getClinicSpecialtyIds } from './configuracion.service.js';
 import { assertPatientCanBook } from './booking-restriction.service.js';
-import { assertOwnCoverage, getOwnPatient } from './patient-coverage.service.js';
+import { assertOwnCoverage } from './patient-coverage.service.js';
+import { resolveManagedPatient } from './patient-managed.service.js';
 import { validateTurnoEntities } from './turno-entities.service.js';
 import { obtenerDisponibilidad } from './disponibilidad.service.js';
 
@@ -31,7 +32,8 @@ const vigente = (
 // Obtiene los profesionales y especialidades disponibles para el paciente.
 export const getPatientProfessionals = async (
   user: AuthenticatedUser,
-  date?: string
+  date?: string,
+  patientId?: string
 ) => {
   if (date) {
     assertBookingDate(date);
@@ -40,7 +42,7 @@ export const getPatientProfessionals = async (
   const dates = date ? [date] : bookingWindow().fechas;
 
   // Obtiene el paciente y verifica sus restricciones.
-  const patient = await getOwnPatient(user);
+  const patient = await resolveManagedPatient(user, patientId, date);
 
   await assertPatientCanBook(patient.id_paciente);
 
@@ -48,7 +50,8 @@ export const getPatientProfessionals = async (
   await assertOwnCoverage(
     user,
     patient.id_salita_asignada,
-    dates[0]!
+    dates[0]!,
+    patient.id_paciente
   );
 
   // Consulta profesionales, horarios y especialidades de la salita.
@@ -141,7 +144,8 @@ export const getPatientAvailability = async (
   const patient = await assertOwnCoverage(
     user,
     query.id_salita,
-    query.fecha
+    query.fecha,
+    query.id_paciente
   );
 
   await assertPatientCanBook(
@@ -222,7 +226,9 @@ export const getPatientAvailableDates = async (
 
   // Obtiene los profesionales disponibles para el paciente.
   const professionals = await getPatientProfessionals(
-    user
+    user,
+    undefined,
+    query.id_paciente
   );
 
   // Verifica que el profesional y la especialidad estén disponibles.
@@ -246,7 +252,8 @@ export const getPatientAvailableDates = async (
   await assertOwnCoverage(
     user,
     query.id_salita,
-    window.desde
+    window.desde,
+    query.id_paciente
   );
 
   const schedules = await getAllHorarios([
@@ -297,7 +304,7 @@ export const getPatientAvailableDates = async (
       if (
         error instanceof AppError &&
         error.statusCode === 400 &&
-        !error.code
+        (!error.code || error.code === 'TUTORSHIP_DATE_EXPIRED')
       ) {
         continue;
       }

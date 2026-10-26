@@ -23,9 +23,11 @@ export const patientProfessionals: RequestHandler = async (
   // Valida la fecha recibida por query.
   const {
     fecha,
+    id_paciente,
   } = z
     .object({
       fecha: z.string().date().optional(),
+      id_paciente: z.string().uuid().optional(),
     })
     .strict()
     .parse(req.query);
@@ -35,7 +37,8 @@ export const patientProfessionals: RequestHandler = async (
     success: true,
     data: await getPatientProfessionals(
       req.user!,
-      fecha
+      fecha,
+      id_paciente
     ),
   });
 };

@@ -29,6 +29,7 @@ import {
 import type {
   AuthenticatedUser,
 } from '../types/auth.types.js';
+import { resolveManagedPatient } from './patient-managed.service.js';
 
 // ========================================
 // COBERTURA DE SALITAS
@@ -169,12 +170,11 @@ export const resolvePatientSalita = async (
 export const assertOwnCoverage = async (
   user: AuthenticatedUser,
   salita: string,
-  date: string
+  date: string,
+  patientId?: string
 ) => {
   // Obtiene el paciente autenticado.
-  const patient = await getOwnPatient(
-    user
-  );
+  const patient = await resolveManagedPatient(user, patientId, date);
 
   // Obtiene las salitas cubiertas por su barrio.
   const clinics = await getCoveredSalitas(

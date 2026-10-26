@@ -32,7 +32,8 @@ export const createTurno = async (
     const patient = await assertOwnCoverage(
       user,
       input.id_salita,
-      agendaDateTime(input.fecha_hora_inicio).date
+      agendaDateTime(input.fecha_hora_inicio).date,
+      input.id_paciente
     );
 
     if (patient.id_paciente !== input.id_paciente) {

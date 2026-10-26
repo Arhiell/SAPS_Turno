@@ -1,5 +1,27 @@
 import { supabase } from "../config/supabase.js";
 import { AppError } from "../utils/app-error.js";
+import { agendaDateTime } from '../utils/turno-time.js';
+
+// Solo responsables con permiso vigente reciben nuevos avisos dentro del sistema.
+export const findTutorUsersByTurno = async (idTurno: string): Promise<string[]> => {
+  const { data: turno, error } = await supabase.from('turnos').select('id_paciente').eq('id_turno', idTurno).maybeSingle();
+  if (error) throw error;
+  if (!turno) return [];
+  const today = agendaDateTime(new Date()).date;
+  const { data: relations, error: relationError } = await supabase.from('paciente_tutores')
+    .select('id_tutor').eq('id_paciente', turno.id_paciente).eq('puede_gestionar_turnos', true)
+    .lte('fecha_desde', today).or(`fecha_hasta.is.null,fecha_hasta.gte.${today}`);
+  if (relationError) throw relationError;
+  if (!relations?.length) return [];
+  const { data: tutors, error: tutorError } = await supabase.from('tutores').select('id_persona')
+    .in('id_tutor', relations.map(row => row.id_tutor)).eq('activo', true);
+  if (tutorError) throw tutorError;
+  if (!tutors?.length) return [];
+  const { data: users, error: userError } = await supabase.from('usuarios').select('id_usuario')
+    .in('id_persona', tutors.map(row => row.id_persona)).eq('activo', true);
+  if (userError) throw userError;
+  return (users ?? []).map(row => row.id_usuario);
+};
 
 // Busca el usuario asociado al paciente dueño del turno.
 export const findUsuarioByTurno = async (

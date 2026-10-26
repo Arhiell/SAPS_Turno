@@ -1,4 +1,5 @@
 import { patientScope } from "../middlewares/profile-scope.middleware.js";
+import { getManagedPatients } from '../services/patient-managed.service.js';
 import {
   Router
 } from "express";
@@ -29,6 +30,9 @@ import {
 const router = Router();
 
 router.use(authenticate);
+router.get('/personas-a-cargo', requireRole('PACIENTE'), async (req, res) => {
+  res.json({ data: await getManagedPatients(req.user!) });
+});
 
 /**
  * Listar pacientes.

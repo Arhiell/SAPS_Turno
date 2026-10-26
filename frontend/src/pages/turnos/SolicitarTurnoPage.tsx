@@ -12,12 +12,18 @@ import usePatientCoverage, {
 
 import PatientCoverageCard from '../../components/ui/PatientCoverageCard';
 import PatientBookingForm from '../../components/ui/PatientBookingForm';
+import { useState } from 'react';
+import useManagedPatients from '../../context/useManagedPatients';
+import ManagedPatientSelector from '../../components/ui/ManagedPatientSelector';
 
 export default function SolicitarTurnoPage() {
   // Obtiene el perfil del paciente autenticado.
   const {
-    patient,
+    patient: ownPatient,
   } = useAuth();
+  const selection = useManagedPatients();
+  const patient = selection.selected;
+  const [busy, setBusy] = useState(false);
 
   // Obtiene barrios, salitas y relaciones
   // necesarias para validar la cobertura.
@@ -29,7 +35,7 @@ export default function SolicitarTurnoPage() {
 
   // Si todavía no completó su perfil,
   // debe hacerlo antes de solicitar un turno.
-  if (!patient) {
+  if (!ownPatient) {
     return (
       <section className="patient-section">
         <h1 className="h3">
@@ -56,7 +62,7 @@ export default function SolicitarTurnoPage() {
 
   // Verifica que la salita asignada al paciente
   // tenga cobertura vigente para su barrio.
-  const valid = coveredClinics(
+  const valid = patient && coveredClinics(
     patient.id_barrio,
     coverage.clinics,
     coverage.relations
@@ -76,12 +82,14 @@ export default function SolicitarTurnoPage() {
         Solicitar turno
       </h1>
 
+      <ManagedPatientSelector selection={selection} disabled={busy} />
+
       <p className="text-muted mb-4">
         Elegí una especialidad y un profesional de tu salita,
         y después uno de sus días disponibles.
       </p>
 
-      <div className="row g-4">
+      {!selection.loading && !selection.error && patient && <div className="row g-4">
         {/* Información de cobertura del paciente. */}
         <div className="col-12 col-lg-5">
           <PatientCoverageCard
@@ -101,6 +109,9 @@ export default function SolicitarTurnoPage() {
             !coverage.error &&
             valid && (
               <PatientBookingForm
+                key={patient.id_paciente}
+                patientId={patient.id_paciente}
+                onBusyChange={setBusy}
                 clinic={
                   patient.id_salita_asignada
                 }
@@ -114,21 +125,20 @@ export default function SolicitarTurnoPage() {
             !valid && (
               <div className="patient-section">
                 <p>
-                  Necesitamos revisar tu cobertura
-                  antes de reservar. Actualizá tu
-                  barrio o contactá a tu salita.
+                  Necesitamos revisar la cobertura de la persona seleccionada
+                  antes de reservar. Contactá a su salita para actualizar sus datos.
                 </p>
 
                 <Link
                   className="btn btn-outline-success"
-                  to="/mi-perfil"
+                  to={patient.id_paciente === ownPatient.id_paciente ? '/mi-perfil' : '/personas-a-cargo'}
                 >
-                  Revisar mi perfil
+                  Volver a los datos del paciente
                 </Link>
               </div>
             )}
         </div>
-      </div>
+      </div>}
     </section>
   );
 }

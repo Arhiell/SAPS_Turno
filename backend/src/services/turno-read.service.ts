@@ -21,6 +21,7 @@ import type {
   TurnoQuery 
 } from "../validators/turno-query.validator.js";
 import { getOwnEntity } from "./auth-profile.service.js";
+import { resolveManagedPatient } from './patient-managed.service.js';
 
 export const getTurno = async (id: string, user: AuthenticatedUser) => {
   
@@ -35,7 +36,8 @@ export const getTurno = async (id: string, user: AuthenticatedUser) => {
   );
 
   assertTurnoScope(scope, turno.id_salita);
-  if (own && turno[own.key as "id_paciente" | "id_profesional"] !== own.id) {
+  if (user.rol === 'PACIENTE') await resolveManagedPatient(user, turno.id_paciente);
+  else if (own && turno[own.key as "id_paciente" | "id_profesional"] !== own.id) {
     throw new AppError("No tiene permisos sobre este turno", 403);
   }
 
@@ -60,7 +62,10 @@ export const getTurnos = async (
   user: AuthenticatedUser) => {
      const own = ["PACIENTE", "PROFESIONAL"].includes(user.rol) ? await getOwnEntity(user) : null;
      const scope = own ? null : await getTurnoScope(user);
-     if (own) filters = { ...filters, [own.key]: own.id };
+     if (user.rol === 'PACIENTE') {
+       const patient = await resolveManagedPatient(user, filters.id_paciente);
+       filters = { ...filters, id_paciente: patient.id_paciente };
+     } else if (own) filters = { ...filters, [own.key]: own.id };
      
      if (filters.id_salita) assertTurnoScope(scope, filters.id_salita);
      

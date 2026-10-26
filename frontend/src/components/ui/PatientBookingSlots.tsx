@@ -26,6 +26,7 @@ export default function PatientBookingSlots({
   professional,
   specialty,
   clinic,
+  patientId,
   refreshKey = 0,
   onBusyChange,
 }: {
@@ -33,6 +34,7 @@ export default function PatientBookingSlots({
   professional: string;
   specialty: string;
   clinic: string;
+  patientId?: string;
   refreshKey?: number;
   onBusyChange: (busy: boolean) => void;
 }) {
@@ -75,7 +77,8 @@ export default function PatientBookingSlots({
       date,
       professional,
       specialty,
-      clinic
+      clinic,
+      patientId
     )
       .then((response) => {
         if (active) {
@@ -110,6 +113,7 @@ export default function PatientBookingSlots({
     professional,
     specialty,
     clinic,
+    patientId,
     revision,
     refreshKey,
   ]);
@@ -140,6 +144,7 @@ export default function PatientBookingSlots({
       // y revalida el horario al reservar.
       const response =
         await createOwnTurno({
+          ...(patientId ? { id_paciente: patientId } : {}),
           id_profesional:
             professional,
 

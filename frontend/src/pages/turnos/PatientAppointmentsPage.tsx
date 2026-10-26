@@ -17,12 +17,16 @@ import type {
 } from '../../types/turno.types';
 
 import TurnoCard from '../../components/ui/TurnoCard';
+import useManagedPatients from '../../context/useManagedPatients';
+import ManagedPatientSelector from '../../components/ui/ManagedPatientSelector';
 
 import {
   getEstadoClass,
 } from '../../utils/turno-status';
 
 export default function PatientAppointmentsPage() {
+  const selection = useManagedPatients();
+  useEffect(() => { setPage(1); }, [selection.id]);
   // FILTROS
 
   // Período seleccionado:
@@ -81,10 +85,15 @@ export default function PatientAppointmentsPage() {
     setLoading(true);
     setError('');
     setItems([]);
+    if (selection.loading || selection.error || !selection.selected) {
+      setLoading(selection.loading);
+      return;
+    }
 
     // La API filtra por la identidad
     // de sesión antes de paginar.
     void getTurnos({
+      id_paciente: selection.id,
       periodo,
       ...(
         estado === 'REPROGRAMADO'
@@ -135,6 +144,7 @@ export default function PatientAppointmentsPage() {
     estado,
     page,
     revision,
+    selection.id, selection.loading, selection.error,
   ]);
 
   // INTERFAZ
@@ -156,13 +166,14 @@ export default function PatientAppointmentsPage() {
 
         <Link
           className="btn btn-saps align-self-start"
-          to="/solicitar-turno"
+          to={`/solicitar-turno?paciente=${selection.id}`}
         >
           Solicitar turno
         </Link>
       </div>
 
       {/* FILTROS */}
+      <ManagedPatientSelector selection={selection} />
 
       <div className="row g-3 mb-4">
         {/* Filtro por período. */}

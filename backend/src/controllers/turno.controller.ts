@@ -13,10 +13,11 @@ import { getOwnEntity } from '../services/auth-profile.service.js';
 
 // Los errores de Zod y AppError llegan al middleware global de Express 5.
 export const createTurnoController: RequestHandler = async (req, res) => {
-  const body = req.user!.rol === 'PACIENTE'
-    ? { ...createTurnoSchema.omit({ id_paciente: true, observaciones: true }).parse(req.body),
-        id_paciente: (await getOwnEntity(req.user!)).id }
-    : req.body;
+  let body = req.body;
+  if (req.user!.rol === 'PACIENTE') {
+    const parsed = createTurnoSchema.omit({ observaciones: true }).partial({ id_paciente: true }).parse(req.body);
+    body = { ...parsed, id_paciente: parsed.id_paciente ?? (await getOwnEntity(req.user!)).id };
+  }
   const input = createTurnoSchema.parse(body);
   const turno = await createTurno(input, req.user!);
   res.status(201).json(

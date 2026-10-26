@@ -9,6 +9,7 @@ import {
 } from 'react-router-dom';
 
 import AccountSummary from '../../components/ui/AccountSummary';
+import PatientTutorsPanel from '../../components/ui/PatientTutorsPanel';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
 import ValidatedInput from '../../components/ui/ValidatedInput';
 
@@ -628,6 +629,7 @@ const PacienteDetallePage = () => {
         />
       </div>
 
+      <PatientTutorsPanel key={patient.id_paciente} patientId={patient.id_paciente} />
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-header bg-white py-3">
           <h5 className="mb-0 fw-bold">

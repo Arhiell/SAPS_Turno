@@ -1,5 +1,6 @@
 import {
   findActivePatientTutorRelation,
+  findPatientTutorRelation,
   findCurrentPrincipalTutor,
   createPatientTutorRelation,
   findTutorsByPatientId,
@@ -28,6 +29,7 @@ import {
 import {
   hasDatabaseCode
 } from "../utils/profile-error.js";
+import { agendaDateTime } from '../utils/turno-time.js';
 
 
 /**
@@ -38,7 +40,11 @@ export const getPatientTutors = async (
 ) => {
   await getPatientById(patientId);
 
-  return await findTutorsByPatientId(patientId);
+  const relations = await findTutorsByPatientId(patientId);
+  return Promise.all(relations.map(async relation => {
+    const tutor = await getTutorById(relation.id_tutor);
+    return { ...relation, nombres: tutor.nombres, apellidos: tutor.apellidos, dni: tutor.dni };
+  }));
 };
 
 
@@ -61,11 +67,13 @@ export const addTutorToPatient = async (
   patientId: string,
   input: CreatePatientTutorInput
 ) => {
+  input = { ...input, fecha_desde: input.fecha_desde ?? agendaDateTime(new Date()).date };
   const patient =
     await getPatientById(patientId);
 
   const tutor =
     await getTutorById(input.id_tutor);
+  if (patient.id_persona === tutor.id_persona) throw new AppError('Un paciente no puede ser su propio tutor.', 400);
 
   if (!patient.activo) {
     throw new AppError(
@@ -119,9 +127,26 @@ export const addTutorToPatient = async (
   }
 
   try {
+    // La tabla identifica el vínculo por paciente y tutor; un permiso vencido
+    // se renueva sobre la misma relación, sin duplicar personas ni turnos.
+    const previous = await findPatientTutorRelation(patientId, input.id_tutor);
+    const values = {
+      ...input,
+      fecha_desde: input.fecha_desde ?? agendaDateTime(new Date()).date,
+      fecha_hasta: input.fecha_hasta ?? null,
+    };
+    if (previous) {
+      return await updatePatientTutorRelation(patientId, input.id_tutor, {
+        parentesco: values.parentesco,
+        fecha_desde: values.fecha_desde,
+        fecha_hasta: values.fecha_hasta,
+        es_principal: input.es_principal ?? false,
+        puede_gestionar_turnos: input.puede_gestionar_turnos ?? true,
+      });
+    }
     return await createPatientTutorRelation(
       patientId,
-      input
+      values
     );
   } catch (error) {
     if (hasDatabaseCode(error, "23505")) {
@@ -245,7 +270,7 @@ export const finishPatientTutorRelation = async (
     );
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = agendaDateTime(new Date()).date;
 
     if (today < relation.fecha_desde) {
         throw new AppError(

@@ -6,6 +6,7 @@ import { sendEmail } from
 
 import {
   findUsuarioByTurno,
+  findTutorUsersByTurno,
   findTurnoEmailContextById,
 } from "../repositories/notificacion-turno.repository.js";
 
@@ -181,17 +182,15 @@ const notifyTurno = async (
   const idUsuario =
     await findUsuarioByTurno(idTurno);
 
-  if (!idUsuario) {
-    return null;
-  }
-
-  return sendSystemNotification({
-    id_usuario: idUsuario,
+  const tutors = await findTutorUsersByTurno(idTurno);
+  const recipients = new Set([...(idUsuario ? [idUsuario] : []), ...tutors]);
+  return Promise.all([...recipients].map(id => sendSystemNotification({
+    id_usuario: id,
     id_turno: idTurno,
     tipo,
     titulo,
     mensaje,
-  });
+  })));
 };
 
 export const notifyTurnoCreado = async (
