@@ -24,16 +24,16 @@ const storedIdentity = () => {
 };
 
 // La key del contenedor reinicia completamente el historial al cambiar identidad o rol.
-export default function Chatbot() {
+export default function Chatbot({ embedded = false }: { embedded?: boolean }) {
   const { user, isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
   if (!user || !isAuthenticated || isLoading || !roles.includes(user.rol) ||
     location.pathname === '/completar-perfil') return null;
-  return <ChatbotPanel key={`${user.id_usuario}:${user.rol}`} identity={`${user.id_usuario}:${user.rol}`} role={user.rol} />;
+  return <ChatbotPanel key={`${user.id_usuario}:${user.rol}`} identity={`${user.id_usuario}:${user.rol}`} role={user.rol} embedded={embedded} />;
 }
 
-function ChatbotPanel({ identity, role }: { identity: string; role: string }) {
-  const [open, setOpen] = useState(false);
+function ChatbotPanel({ identity, role, embedded }: { identity: string; role: string; embedded: boolean }) {
+  const [open, setOpen] = useState(embedded);
   const [messages, setMessages] = useState<ChatbotMessage[]>([welcome]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
@@ -97,8 +97,8 @@ function ChatbotPanel({ identity, role }: { identity: string; role: string }) {
     const keys = (event: KeyboardEvent) => {
       // Los modales del sistema conservan prioridad sobre el chat no modal.
       if (!mobile && document.querySelector('.modal[aria-modal="true"]')) return;
-      if (event.key === 'Escape') { event.preventDefault(); close(); }
-      if (mobile && event.key === 'Tab') {
+      if (!embedded && event.key === 'Escape') { event.preventDefault(); close(); }
+      if (!embedded && mobile && event.key === 'Tab') {
         const focusable = panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), textarea:not(:disabled)');
         const first = focusable?.[0];
         const last = focusable?.[focusable.length - 1];
@@ -109,7 +109,7 @@ function ChatbotPanel({ identity, role }: { identity: string; role: string }) {
     const root = document.getElementById('root');
     const previousInert = root?.inert ?? false;
     const previousOverflow = document.body.style.overflow;
-    if (mobile) {
+    if (mobile && !embedded) {
       if (root) root.inert = true;
       document.body.style.overflow = 'hidden';
     }
@@ -128,12 +128,12 @@ function ChatbotPanel({ identity, role }: { identity: string; role: string }) {
       document.removeEventListener('keydown', keys);
       viewport?.removeEventListener('resize', resize);
       viewport?.removeEventListener('scroll', resize);
-      if (mobile) {
+      if (mobile && !embedded) {
         if (root) root.inert = previousInert;
         document.body.style.overflow = previousOverflow;
       }
     };
-  }, [open, mobile]);
+  }, [open, mobile, embedded]);
 
   // Solo presentación: respetar la lectura de mensajes anteriores al llegar una respuesta.
   useLayoutEffect(() => {
@@ -189,18 +189,19 @@ function ChatbotPanel({ identity, role }: { identity: string; role: string }) {
 
   if (ended) return null;
   const close = () => { setOpen(false); launcher.current?.focus(); };
-  return createPortal(
-    <div className="cora-chatbot" data-open={open}>
-      <button ref={launcher} className="cora-chatbot__launcher" aria-label="Abrir Asistente CORA"
+  const content = (
+    <div className={`cora-chatbot${embedded ? ' cora-chatbot--embedded' : ''}`} data-open={open}>
+      {!embedded && <button ref={launcher} className="cora-chatbot__launcher" aria-label="Abrir Asistente CORA"
         aria-expanded={open} aria-controls="cora-chatbot-panel" onClick={() => setOpen(value => !value)}>
-        <i className="bi bi-chat-dots-fill" aria-hidden="true" />
-      </button>
+        <i className="bi bi-robot" aria-hidden="true" />
+        <span>Asistente CORA</span>
+      </button>}
       {open && <div ref={panel} id="cora-chatbot-panel" className="cora-chatbot__panel"
-        role="dialog" aria-modal={mobile ? true : undefined} aria-labelledby="cora-chatbot-title">
+        role={embedded ? 'region' : 'dialog'} aria-modal={!embedded && mobile ? true : undefined} aria-labelledby="cora-chatbot-title">
         <header className="cora-chatbot__header">
-          <span className="cora-chatbot__avatar"><i className="bi bi-chat-heart" aria-hidden="true" /></span>
-          <div><h2 id="cora-chatbot-title">Asistente CORA</h2><p>¿En qué puedo ayudarte?</p></div>
-          <button aria-label="Cerrar Asistente CORA" onClick={close}><i className="bi bi-x-lg" aria-hidden="true" /></button>
+          <span className="cora-chatbot__avatar"><i className="bi bi-robot" aria-hidden="true" /></span>
+          <div><h2 id="cora-chatbot-title">Asistente CORA</h2><p>Ayuda sobre tu panel con IA de Gemini</p></div>
+          {!embedded && <button aria-label="Cerrar Asistente CORA" onClick={close}><i className="bi bi-x-lg" aria-hidden="true" /></button>}
         </header>
         <div className="cora-chatbot__privacy">
           <i className="bi bi-shield-check" aria-hidden="true" />
@@ -256,6 +257,7 @@ function ChatbotPanel({ identity, role }: { identity: string; role: string }) {
             <button type="button" onClick={clear}>Limpiar conversación</button></div>
         </form>
       </div>}
-    </div>, document.body,
+    </div>
   );
+  return embedded ? content : createPortal(content, document.body);
 }

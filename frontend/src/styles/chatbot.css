@@ -5,11 +5,12 @@
 
 .cora-chatbot__launcher {
   position: fixed; right: 24px; bottom: 24px; z-index: 1030;
-  display: grid; place-items: center; width: 56px; height: 56px;
-  border: 0; border-radius: 50%; background: var(--saps-verde); color: var(--saps-blanco);
+  display: flex; align-items: center; justify-content: center; gap: 10px; padding: 0 18px; min-width: 56px; height: 56px;
+  border: 0; border-radius: 28px; background: var(--saps-verde); color: var(--saps-blanco);
   box-shadow: var(--saps-sombra-hover); transition: background-color .15s ease, box-shadow .15s ease;
 }
 .cora-chatbot__launcher > i { font-size: 25px; }
+.cora-chatbot__launcher > span { font-size: 14px; font-weight: 600; }
 .cora-chatbot__launcher:hover { background: var(--saps-verde-oscuro); box-shadow: var(--saps-sombra); }
 .cora-chatbot__panel {
   position: fixed; z-index: 1040; right: 24px; bottom: 92px;
@@ -122,6 +123,12 @@
 .cora-chatbot__panel[data-compact="true"] .cora-chatbot__conversation { padding-block: 12px; }
 .cora-chatbot__panel[data-compact="true"] .cora-chatbot__form { padding-block: 8px; }
 
+.cora-chatbot--embedded { width: 100%; max-width: 900px; margin: 0 auto; }
+.cora-chatbot--embedded .cora-chatbot__panel {
+  position: relative; inset: auto; z-index: auto; width: 100%;
+  height: clamp(420px, calc(100dvh - 180px), 760px); max-height: none;
+}
+
 @media (min-width: 768px) and (max-height: 519.98px) {
   .cora-chatbot__panel { bottom: 20px; height: calc(100dvh - 40px); }
 }
@@ -137,6 +144,12 @@
   .cora-chatbot__header { padding-top: max(10px, env(safe-area-inset-top)); }
   .cora-chatbot__suggestions button { min-height: 44px; }
   .cora-chatbot__footer button { min-height: 32px; }
+  .cora-chatbot--embedded .cora-chatbot__panel {
+    position: relative; inset: auto; height: max(420px, calc(100dvh - 220px));
+    max-height: none; border-radius: 18px; padding-bottom: 0;
+  }
+  .cora-chatbot__launcher { padding: 0; width: 56px; }
+  .cora-chatbot__launcher > span { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .cora-chatbot__launcher, .cora-chatbot__header button, .cora-chatbot__suggestions button, .cora-chatbot__send { transition: none; }

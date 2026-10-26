@@ -17,6 +17,7 @@ import Login from '../pages/auth/Login';
 
 // Layouts y protección de rutas.
 import AppLayout from '../components/layout/AppLayout';
+import Chatbot from '../components/chatbot/Chatbot';
 import PublicLayout from '../components/public/PublicLayout';
 import ProtectedRoute from './ProtectedRoute';
 
@@ -167,6 +168,7 @@ const AppRoutes = () => {
           {/* Rutas disponibles para usuarios autenticados. */}
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>
+              <Route path="/asistente" element={<Chatbot embedded />} />
               {/* Panel principal y notificaciones personales. */}
               <Route
                 path="/panel"

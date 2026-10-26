@@ -51,7 +51,7 @@ const AppLayout = () => {
       </div>
 
       <MobileBottomNav />
-      <Chatbot />
+      {location.pathname !== '/asistente' && <Chatbot />}
     </div>
   );
 };
