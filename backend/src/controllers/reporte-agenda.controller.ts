@@ -39,7 +39,8 @@ export const exportAgendaDiariaController: RequestHandler = async (req, res) => 
   const file = await generateReporteFile(agendaSecciones(
     agenda.listas, 
     agenda.fecha,
-    filters.fecha_hasta
+    filters.fecha_hasta,
+    agenda.contexto
   ), 
   "SAPS TURNO", filters.formato
 );
@@ -68,7 +69,8 @@ export const printAgendaDiariaController: RequestHandler = async (req, res) => {
     agendaHtml(agendaSecciones(
       agenda.listas, 
       agenda.fecha,
-      filters.fecha_hasta)
+      filters.fecha_hasta,
+      agenda.contexto)
     )
   );
 };

@@ -215,7 +215,7 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
       )}
 
       {professional && <p className="text-muted small">
-        Las descargas incluyen las listas de pacientes pendientes de atención del período,
+        Las descargas incluyen todos los turnos del período con su estado actual,
         agrupadas por fecha, salita y especialidad. {!daily && 'Seleccioná un período para descargar.'}
       </p>}
 

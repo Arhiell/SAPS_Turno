@@ -19,6 +19,8 @@ import { generateWord } from
 
 import { generatePdf } from
   "./reporte-pdf.service.js";
+import { reportScopeLabel, reportDate, reportTimestamp } from './reporte-documento.js';
+import type { ReporteSecciones } from '../types/reporte-agenda.types.js';
 
 
 // Obtiene los datos según el reporte pedido.
@@ -43,8 +45,44 @@ export const exportReporte = async (
   const data =
     await getReporteExportData(filters, scope);
 
+  const titles = { resumen: 'Resumen de actividad', especialidades: 'Actividad por especialidad', profesionales: 'Actividad por profesional' };
+  const context = await reportScopeLabel(filters.id_salita, scope);
+  const section: ReporteSecciones['secciones'][number] = {
+    nombre: titles[filters.tipo],
+    cabecera: ['CORA · Salud municipal', titles[filters.tipo],
+      `Período: ${reportDate(filters.fecha_desde)} al ${reportDate(filters.fecha_hasta)}`, ...context],
+    columnas: [], filas: [], pie: [],
+  };
+  if (filters.tipo === 'resumen') {
+    const summary = data as Awaited<ReturnType<typeof getReporteResumen>>;
+    section.columnas = ['Indicador', 'Cantidad'];
+    section.anchos = [4, 1];
+    section.filas = [
+      ['Total de turnos', summary.total_turnos], ['Atenciones realizadas', summary.atenciones_realizadas],
+      ['Cancelaciones', summary.cancelaciones], ['Inasistencias', summary.inasistencias],
+      ['Pacientes atendidos (únicos)', summary.pacientes_atendidos],
+    ];
+  } else if (filters.tipo === 'especialidades') {
+    section.columnas = ['Especialidad', 'Turnos', 'Atendidos', 'Inasistencias', 'Cancelados'];
+    section.anchos = [3, 1, 1, 1.3, 1.2];
+    section.filas = (data as Awaited<ReturnType<typeof getReporteEspecialidades>>).map(row =>
+      [row.nombre, row.total_turnos, row.atendidos, row.inasistencias, row.cancelados]);
+  } else {
+    section.columnas = ['Profesional / matrícula', 'Salitas / especialidades', 'Turnos', 'Atendidos', 'Inasistencias', 'Cancelados'];
+    section.anchos = [2.5, 2.8, 0.8, 1, 1.1, 1];
+    section.filas = (data as Awaited<ReturnType<typeof getReporteProfesionales>>).map(row =>
+      [`${row.profesional}\nMatrícula: ${row.matricula}`, `${row.salitas.join(', ')}\n${row.especialidades.join(', ')}`,
+        row.total_turnos, row.atendidos, row.inasistencias, row.cancelados]);
+  }
+  section.pie = section.filas.length ? ['Fuente: turnos registrados en CORA.'] : ['No hay registros para los filtros seleccionados.'];
+  const document: ReporteSecciones = { generado: reportTimestamp(), secciones: [section] };
+  if (filters.tipo === 'profesionales') document.excel = {
+    nombre: 'Profesionales', columnas: ['Profesional', 'Matrícula', 'Salitas', 'Especialidades', 'Turnos', 'Atendidos', 'Inasistencias', 'Cancelados'],
+    filas: (data as Awaited<ReturnType<typeof getReporteProfesionales>>).map(row =>
+      [row.profesional, row.matricula, row.salitas.join(', '), row.especialidades.join(', '), row.total_turnos, row.atendidos, row.inasistencias, row.cancelados]),
+  };
   return generateReporteFile(
-    data, 
+    document,
     `Reporte SAPS - ${filters.tipo}`,
      filters.formato
     );

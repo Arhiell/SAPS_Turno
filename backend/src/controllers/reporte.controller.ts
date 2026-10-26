@@ -127,6 +127,7 @@ export const exportReporteController = async (
       `attachment; filename="${filename}"`,
     );
 
+    res.setHeader('Cache-Control', 'no-store');
     res.status(200).send(file.buffer);
   } catch (error) {
     next(error);

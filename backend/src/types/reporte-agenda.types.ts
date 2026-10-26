@@ -5,6 +5,7 @@ export interface AgendaPaciente {
   apellido_nombre: string;
   dni: string;
   estado: string;
+  estado_nombre?: string;
   motivo_consulta: string | null;
 }
 export interface AgendaLista {
@@ -14,6 +15,7 @@ export interface AgendaLista {
   direccion: string | null;
   id_profesional: string;
   profesional: string;
+  matricula?: string | null;
   id_especialidad: string;
   especialidad: string;
   total_pacientes: number;
@@ -21,10 +23,14 @@ export interface AgendaLista {
 }
 // Contrato común para los exportadores existentes, independiente del origen de datos.
 export interface ReporteSecciones {
+  generado?: string;
+  excel?: { nombre: string; columnas: string[]; filas: (string | number)[][] };
   secciones: {
+     nombre?: string;
+     anchos?: number[];
      cabecera: string[]; 
      columnas: string[]; 
-     filas: string[][]; 
+     filas: (string | number)[][];
      pie: string[] }[];
 }
 export const esReporteSecciones = (

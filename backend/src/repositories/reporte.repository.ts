@@ -20,6 +20,7 @@ export const findTurnosReporte = async (
   const hasta =
     `${filters.fecha_hasta}T23:59:59.999-03:00`;
 
+  const buildQuery = () => {
   let query = supabase
     .from("turnos")
     .select(`
@@ -42,6 +43,7 @@ export const findTurnosReporte = async (
 
       profesional:profesionales (
         id_profesional,
+        matricula,
         persona:personas (
           nombres,
           apellidos
@@ -65,14 +67,16 @@ export const findTurnosReporte = async (
   }
 
   if (scope !== null) query = query.in("id_salita", scope);
-  const { data, error } = await query;
-
-  if (error) {
-    throw new AppError(
-      "No se pudieron obtener los datos del reporte",
-      500,
-    );
+  return query.order('fecha_hora_inicio').order('id_turno');
+  };
+  // Recorrer todas las páginas evita truncar métricas y archivos al límite de Supabase.
+  const rows: NonNullable<Awaited<ReturnType<typeof buildQuery>>['data']> = [];
+  if (scope?.length === 0) return rows;
+  for (let offset = 0; ; offset += 500) {
+    const { data, error } = await buildQuery().range(offset, offset + 499);
+    if (error) throw new AppError('No se pudieron obtener los datos del reporte', 500);
+    rows.push(...(data ?? []));
+    if (!data || data.length < 500) break;
   }
-
-  return data ?? [];
+  return rows;
 };

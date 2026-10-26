@@ -15,6 +15,9 @@ export const getReporteProfesionales = async (
   const resultado = new Map<string, {
     id_profesional: string;
     profesional: string;
+    matricula: string;
+    salitas: string[];
+    especialidades: string[];
     total_turnos: number;
     atendidos: number;
     inasistencias: number;
@@ -53,6 +56,9 @@ export const getReporteProfesionales = async (
           id_profesional:
             profesional.id_profesional,
           profesional: nombre,
+          matricula: profesional.matricula ?? 'No registrada',
+          salitas: [],
+          especialidades: [],
           total_turnos: 0,
           atendidos: 0,
           inasistencias: 0,
@@ -67,6 +73,10 @@ export const getReporteProfesionales = async (
       )!;
 
     item.total_turnos++;
+    const salita = Array.isArray(turno.salita) ? turno.salita[0] : turno.salita;
+    const especialidad = Array.isArray(turno.especialidad) ? turno.especialidad[0] : turno.especialidad;
+    if (salita?.nombre && !item.salitas.includes(salita.nombre)) item.salitas.push(salita.nombre);
+    if (especialidad?.nombre && !item.especialidades.includes(especialidad.nombre)) item.especialidades.push(especialidad.nombre);
 
     if (estado?.codigo === "ATENDIDO") {
       item.atendidos++;
