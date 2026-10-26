@@ -8,6 +8,7 @@ export default function PersonasACargoPage() {
     <p className="text-muted">Gestioná los turnos de tus hijos, padres, abuelos u otras personas con un vínculo autorizado.</p>
     <div className="patient-section mb-3">
       <h2 className="h5">Agregar una persona a cargo</h2>
+      <p>La persona a cargo no necesita correo ni cuenta: puede ser un menor o un adulto que delega sus turnos. Ingresás y gestionás desde tu propia cuenta.</p>
       <p>Solicitá en la salita el registro del paciente y la vinculación con tu DNI como tutor o responsable.
         Administración verifica el vínculo y habilita el permiso para gestionar turnos. Si ya está registrado, se reutiliza su ficha.</p>
       <p className="mb-0">Cada persona puede tener un turno pendiente por especialidad. Los turnos de una persona no consumen los de las demás; cada reserva necesita su propio horario disponible.</p>

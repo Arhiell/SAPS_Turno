@@ -48,6 +48,11 @@ export default function PatientTutorsPanel({ patientId }: { patientId: string })
     <div className="card-header bg-white py-3"><h3 className="h5 mb-0">Tutores y responsables</h3></div>
     <div className="card-body">
       <p className="text-muted">Autorizá a una persona registrada para solicitar, consultar y cancelar los turnos de este paciente desde su propia cuenta. Verificá el vínculo y la autorización antes de registrarlos.</p>
+      <div className="alert alert-info">
+        El paciente a cargo puede ser menor o adulto y no necesita correo ni cuenta propia.
+        La verificación del vínculo la realiza el personal de la salita; no se envía un código al paciente.
+        Para cambiar de responsable, registrá al nuevo y retirale el permiso al anterior.
+      </div>
       {error && <div className="alert alert-danger" role="alert">{error}</div>}
       {success && <div className="alert alert-success" role="status">{success}</div>}
       {loading ? <p>Cargando responsables…</p> : items.length === 0 ? <p>No hay responsables vigentes.</p> :

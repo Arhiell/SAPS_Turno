@@ -12,6 +12,14 @@ Un usuario con rol PACIENTE puede reservar para sí mismo y para los pacientes v
 
 ## Reglas
 
+### Cuenta propia y cambio de responsable
+
+El correo de la ficha es opcional. No se debe copiar el correo del tutor al menor o adulto a cargo ni crearle una cuenta para poder vincularlo. La verificación de email corresponde únicamente a quien inicia sesión.
+
+Cuando una persona pase a gestionar sus turnos (por ejemplo, al llegar a la mayoría de edad o cuando un adulto mayor elija hacerlo), registra y verifica una cuenta propia. Administración verifica su identidad y usa **Pacientes → detalle → Cuenta propia y gestión de turnos → Vincular una cuenta**. Se vincula esa cuenta a la misma persona y al mismo paciente, conservando todos sus turnos. No se acepta una cuenta ya vinculada a otra persona, incluida la del tutor.
+
+Para cambiar de responsable se registra al nuevo y se retira el permiso del anterior. La cuenta propia y los permisos delegados son independientes: crear o vincular una cuenta no revoca automáticamente a los responsables. Los permisos se revisan expresamente con la persona y administración; no hay una revocación automática por cumpleaños.
+
 - El límite existente es un turno abierto **por paciente y especialidad**, no por cuenta ni por grupo familiar. Dos hijos pueden reservar pediatría, cada uno en un horario disponible distinto del mismo profesional.
 - La disponibilidad, cobertura, sanciones y superposición de horarios se validan para quien recibe la atención.
 - El turno pertenece al paciente atendido; `creado_por` conserva el usuario que lo solicitó. No se duplican las fichas ni se trasladan los turnos al tutor.

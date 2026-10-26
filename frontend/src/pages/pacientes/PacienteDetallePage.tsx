@@ -8,7 +8,7 @@ import {
   useParams,
 } from 'react-router-dom';
 
-import AccountSummary from '../../components/ui/AccountSummary';
+import PatientAccountPanel from '../../components/ui/PatientAccountPanel';
 import PatientTutorsPanel from '../../components/ui/PatientTutorsPanel';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
 import ValidatedInput from '../../components/ui/ValidatedInput';
@@ -621,13 +621,7 @@ const PacienteDetallePage = () => {
         </div>
       )}
 
-      <div className="mb-3">
-        <AccountSummary
-          account={
-            patient.cuenta
-          }
-        />
-      </div>
+      <PatientAccountPanel key={patient.id_paciente} patient={patient} onLinked={() => void loadPatient()} />
 
       <PatientTutorsPanel key={patient.id_paciente} patientId={patient.id_paciente} />
       <div className="card border-0 shadow-sm mb-4">

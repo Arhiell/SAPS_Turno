@@ -1,5 +1,8 @@
 import { patientScope } from "../middlewares/profile-scope.middleware.js";
 import { getManagedPatients } from '../services/patient-managed.service.js';
+import { z } from 'zod';
+import { personEmailSchema } from '../validators/person.validator.js';
+import { linkPatientAccount } from '../services/patient-account.service.js';
 import {
   Router
 } from "express";
@@ -30,6 +33,12 @@ import {
 const router = Router();
 
 router.use(authenticate);
+router.patch('/:id/account', requireRole('SUPER_ADMIN', 'ADMIN_SALITA'), async (req, res) => {
+  const id = z.string().uuid().parse(req.params.id);
+  const input = z.object({ email: personEmailSchema, identidad_verificada: z.literal(true) }).strict().parse(req.body);
+  await linkPatientAccount(id, input.email.toLowerCase(), req.user!);
+  res.json({ success: true, message: 'Cuenta propia vinculada sin modificar el historial del paciente.' });
+});
 router.get('/personas-a-cargo', requireRole('PACIENTE'), async (req, res) => {
   res.json({ data: await getManagedPatients(req.user!) });
 });

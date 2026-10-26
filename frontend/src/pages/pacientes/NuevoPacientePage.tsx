@@ -496,7 +496,7 @@ const NuevoPacientePage = () => {
 
               <div className="col-md-6">
                 <label className="form-label">
-                  Email
+                  Correo propio del paciente (opcional)
                 </label>
 
                 <ValidatedInput
@@ -513,6 +513,10 @@ const NuevoPacientePage = () => {
                     )
                   }
                 />
+                <p className="small text-muted mt-1">
+                  Si no tiene correo, dejalo vacío. No uses el del tutor: el vínculo se registra
+                  en la ficha del paciente, en Tutores y responsables. No necesita verificar un correo para recibir turnos.
+                </p>
               </div>
 
               <div className="col-md-6">
