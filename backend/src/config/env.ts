@@ -2,6 +2,10 @@ import "dotenv/config";
 import { z } from "zod";
 
 const envSchema = z.object({
+  // Prototipo funcional optativo: nunca exige credenciales para iniciar CORA.
+  CHATBOT_ENABLED: z.string().optional().transform(value => value === 'true'),
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().default('gemini-3.5-flash-lite'),
   FRONTEND_URL: z.string().url().default("http://localhost:5173"),
   NODE_ENV: z
     .enum(["development", "test", "production"])

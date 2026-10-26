@@ -4,6 +4,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 
 import routes from "./routes/index.js";
+import { chatbotBodyParser } from "./routes/chatbot.routes.js";
 
 import {
   notFoundHandler
@@ -23,6 +24,8 @@ app.use(
     credentials: true,
   }),
 );
+
+app.use('/api/chatbot', chatbotBodyParser);
 
 app.use(
   express.json({

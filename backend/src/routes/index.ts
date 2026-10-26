@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import chatbotRoutes from './chatbot.routes.js';
 
 import {
   adminContentRoutes,
@@ -42,6 +43,7 @@ import auditoriaRoutes from './auditoria.routes.js';
 import reporteRoutes from './reporte.routes.js';
 
 const router = Router();
+router.use('/chatbot', chatbotRoutes);
 
 // Contenido público y administración de contenido.
 router.use('/public', publicContentRoutes);

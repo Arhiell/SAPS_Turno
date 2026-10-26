@@ -35,6 +35,7 @@ El sistema incluye una **aplicación web** y una **API REST**. Cada usuario acce
 <summary><strong>🧭 Índice de documentación</strong></summary>
 
 - [Funciones principales](#funciones)
+- [Asistente CORA: prototipo funcional, configuración y privacidad](docs/CHATBOT.md)
 - [Roles y alcance](#roles)
 - [Cómo se utiliza](#uso)
 - [Reglas de reservas, sanciones y bloqueos](#reglas)

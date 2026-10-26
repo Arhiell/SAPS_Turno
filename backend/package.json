@@ -25,6 +25,7 @@
   },
   "homepage": "https://github.com/Arhiell/SAPS_Turno_API#readme",
   "dependencies": {
+    "@google/genai": "2.31.0",
     "@supabase/supabase-js": "^2.116.0",
     "argon2": "^0.45.1",
     "cors": "^2.8.6",

@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import MobileBottomNav from './MobileBottomNav';
+import Chatbot from '../chatbot/Chatbot';
 
 // Define la estructura principal de la aplicación.
 const AppLayout = () => {
@@ -50,6 +51,7 @@ const AppLayout = () => {
       </div>
 
       <MobileBottomNav />
+      <Chatbot />
     </div>
   );
 };
