@@ -1,4 +1,5 @@
-/*BIENVENIDA DEL PACIENTE */
+
+/* BIENVENIDA DEL PACIENTE */
 
 /* Mantiene el panel dentro de la pantalla,
    incluso a 320 px. */
@@ -167,7 +168,7 @@
 }
 
 
-/*SECCIONES DEL PACIENTE */
+/* SECCIONES DEL PACIENTE */
 
 /* Tarjeta general utilizada en las
    distintas secciones del paciente. */
@@ -200,6 +201,23 @@
 }
 
 
+/* COBERTURA DEL PACIENTE */
+
+/* Escritorio: muestra toda la información. */
+.patient-coverage-summary {
+  display: none;
+}
+
+.patient-coverage-content {
+  display: block;
+  width: 100%;
+}
+
+.patient-coverage-chevron {
+  transition: transform 0.2s ease;
+}
+
+
 /* HISTORIAL DEL PACIENTE */
 
 /* Línea visual utilizada para representar
@@ -228,11 +246,11 @@
 }
 
 
-/* RESPONSIVE - MÓVILES= */
+/* RESPONSIVE - MÓVILES */
 
 @media (max-width: 767.98px) {
-  /* El panel de notificaciones ocupa el ancho
-     disponible de la pantalla móvil. */
+
+  /* Panel de notificaciones. */
   .notification-message-modal {
     padding: 0.75rem;
   }
@@ -282,5 +300,101 @@
      en dispositivos pequeños. */
   .patient-section {
     padding: 16px;
+  }
+
+  /* RESUMEN DE COBERTURA EN MÓVILES */
+
+  .patient-coverage-summary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    width: 100%;
+    padding: 0;
+
+    border: 0;
+    background: transparent;
+
+    text-align: left;
+    cursor: pointer;
+    color: var(--saps-texto);
+  }
+
+  .patient-coverage-summary:focus-visible {
+    outline: 3px solid var(--saps-azul);
+    outline-offset: 4px;
+    border-radius: 8px;
+  }
+
+  .patient-coverage-summary-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+
+    border-radius: 12px;
+
+    background: var(--saps-verde-claro);
+    color: var(--saps-verde-oscuro);
+
+    font-size: 19px;
+  }
+
+  .patient-coverage-summary-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 3px;
+
+    min-width: 0;
+  }
+
+  .patient-coverage-summary-text strong {
+    color: var(--saps-verde-oscuro);
+    font-size: 1rem;
+  }
+
+  .patient-coverage-summary-text > span {
+    font-size: 0.875rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
+  .patient-coverage-summary-text small {
+    color: var(--saps-texto-secundario);
+    font-size: 0.8rem;
+  }
+
+  .patient-coverage-chevron {
+    flex: 0 0 auto;
+    color: var(--saps-verde-oscuro);
+  }
+
+  /* Oculta el contenido completo inicialmente. */
+  .patient-coverage-content {
+    display: none;
+  }
+
+  /* Muestra el contenido al desplegar. */
+  .patient-coverage-content.is-expanded {
+    display: block;
+    margin-top: 16px;
+  }
+
+  /* El resumen ya contiene el título. */
+  .patient-coverage-content-title {
+    display: none;
+  }
+}
+
+
+/* RESPETAR PREFERENCIAS DE MOVIMIENTO */
+
+@media (prefers-reduced-motion: reduce) {
+  .patient-coverage-chevron {
+    transition: none;
   }
 }
