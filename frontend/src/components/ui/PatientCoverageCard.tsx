@@ -55,6 +55,17 @@ export default function PatientCoverageCard({
 
   return (
     <section className="patient-section h-100 patient-coverage-card">
+      <div className="patient-coverage-header">
+        <div>
+          <span className="patient-selector-kicker">Cobertura</span>
+          <h2 className="h5 mb-0">Mi cobertura</h2>
+        </div>
+        {!loading && !error && (
+          <span className={`coverage-status-pill ${hasCoverage ? 'is-valid' : 'is-warning'}`}>
+            {hasCoverage ? 'Cobertura vigente' : 'Revisión necesaria'}
+          </span>
+        )}
+      </div>
 
       {/* Resumen de cobertura para celulares. */}
       <button
@@ -101,13 +112,20 @@ export default function PatientCoverageCard({
           expanded ? 'is-expanded' : ''
         }`}
       >
-        <h2 className="h5 mb-3 patient-coverage-content-title">
-          <i
-            className="bi bi-hospital me-2"
-            aria-hidden="true"
-          />
-          Mi cobertura
-        </h2>
+        <div className="patient-coverage-grid mb-3">
+          <div className="patient-coverage-mini">
+            <span>Barrio</span>
+            <strong>{barrio?.nombre ?? 'Sin información'}</strong>
+          </div>
+          <div className="patient-coverage-mini">
+            <span>Zona</span>
+            <strong>{zoneName ?? 'Sin información'}</strong>
+          </div>
+          <div className="patient-coverage-mini">
+            <span>Salita</span>
+            <strong>{clinic?.nombre ?? 'Sin información'}</strong>
+          </div>
+        </div>
 
         {loading ? (
           <p role="status">
@@ -130,86 +148,60 @@ export default function PatientCoverageCard({
           </div>
         ) : (
           <>
-            <dl className="mb-0">
-              <dt>Barrio</dt>
+            <dl className="mb-0 patient-coverage-list">
+              <div>
+                <dt>Dirección de la salita</dt>
+                <dd>{clinic?.direccion || 'Sin informar'}</dd>
+              </div>
 
-              <dd>
-                {barrio?.nombre ??
-                  'Sin información disponible'}
-              </dd>
+              <div>
+                <dt>Teléfono</dt>
+                <dd>
+                  {clinic?.telefono ? (
+                    <a
+                      href={`tel:${clinic.telefono.replace(
+                        /[^+\d]/g,
+                        ''
+                      )}`}
+                    >
+                      {clinic.telefono}
+                    </a>
+                  ) : (
+                    'Sin informar'
+                  )}
+                </dd>
+              </div>
 
-              <dt>Zona</dt>
-
-              <dd>
-                {zoneName ??
-                  'Sin información disponible'}
-              </dd>
-
-              <dt>Salita asignada</dt>
-
-              <dd>
-                {clinic?.nombre ??
-                  'Sin información disponible'}
-              </dd>
-
-              <dt>Dirección de la salita</dt>
-
-              <dd>
-                {clinic?.direccion ||
-                  'Sin informar'}
-              </dd>
-
-              <dt>Teléfono</dt>
-
-              <dd>
-                {clinic?.telefono ? (
-                  <a
-                    href={`tel:${clinic.telefono.replace(
-                      /[^+\d]/g,
-                      ''
-                    )}`}
-                  >
-                    {clinic.telefono}
-                  </a>
-                ) : (
-                  'Sin informar'
-                )}
-              </dd>
-
-              <dt>Horario institucional</dt>
-
-              <dd>
-                {clinic?.horario_apertura &&
-                clinic.horario_cierre
-                  ? `${clinic.horario_apertura.slice(
-                      0,
-                      5
-                    )} a ${clinic.horario_cierre.slice(
-                      0,
-                      5
-                    )}`
-                  : 'Consultá los horarios en tu salita'}
-              </dd>
+              <div>
+                <dt>Horario institucional</dt>
+                <dd>
+                  {clinic?.horario_apertura &&
+                  clinic.horario_cierre
+                    ? `${clinic.horario_apertura.slice(
+                        0,
+                        5
+                      )} a ${clinic.horario_cierre.slice(
+                        0,
+                        5
+                      )}`
+                    : 'Consultá los horarios en tu salita'}
+                </dd>
+              </div>
             </dl>
 
-            {/* Advierte si no existe cobertura vigente. */}
             {!hasCoverage && (
               <div className="alert alert-warning mb-0">
-                Tu asignación no tiene cobertura
-                vigente. Contactá a administración
-                para revisarla.
+                Tu asignación no tiene cobertura vigente. Contactá a administración para revisarla.
               </div>
             )}
 
-            {/* Informa otras salitas que cubren el barrio. */}
             {covered.length > 1 && (
               <p className="small text-muted mb-0 mt-3">
                 Salitas que cubren tu barrio:{' '}
                 {covered
                   .map((c) => c.nombre)
                   .join(', ')}
-                . Para reservar se utiliza tu salita
-                asignada.
+                . Para reservar se utiliza tu salita asignada.
               </p>
             )}
           </>

@@ -195,9 +195,10 @@ export default function PatientAppointmentDetailPage() {
     <section>
       {/* Regreso al listado de turnos. */}
       <Link
-        className="btn btn-link px-0 mb-3"
+        className="btn btn-outline-secondary mb-3 d-inline-flex align-items-center"
         to={turno ? `/mis-turnos?paciente=${turno.id_paciente}` : '/mis-turnos'}
       >
+        <i className="bi bi-arrow-left me-2" />
         Volver a mis turnos
       </Link>
 

@@ -188,6 +188,459 @@
   color: var(--saps-verde-oscuro);
 }
 
+.patient-selector-card,
+.patient-filter-panel,
+.patient-section,
+.person-card,
+.booking-form-shell,
+.booking-slots-panel {
+  border: 1px solid var(--saps-borde);
+  border-radius: var(--saps-radio);
+  background: var(--saps-superficie);
+  box-shadow: var(--saps-sombra);
+}
+
+.patient-selector-card {
+  padding: 18px;
+}
+
+.patient-selector-head,
+.patient-coverage-header,
+.booking-slots-header,
+.person-card-header,
+.patient-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.patient-selector-kicker {
+  display: inline-block;
+  margin-bottom: 4px;
+  color: var(--saps-verde-oscuro);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.patient-selector-badge,
+.coverage-status-pill,
+.person-card-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(11, 122, 59, 0.1);
+  color: var(--saps-verde-oscuro);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.patient-selector-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--saps-borde);
+  border-radius: var(--saps-radio-pequeno);
+  background: #f8faf9;
+}
+
+.patient-selector-summary i {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: var(--saps-verde-claro);
+  color: var(--saps-verde-oscuro);
+  font-size: 1.2rem;
+}
+
+.patient-selector-summary strong,
+.patient-selector-summary small {
+  display: block;
+}
+
+.patient-selector-summary small {
+  color: var(--saps-texto-secundario);
+}
+
+.patient-results-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.patient-results-summary > div {
+  padding: 14px 16px;
+  border: 1px solid var(--saps-borde);
+  border-radius: var(--saps-radio-pequeno);
+  background: var(--saps-superficie);
+  box-shadow: var(--saps-sombra);
+}
+
+.patient-results-summary span {
+  display: block;
+  color: var(--saps-texto-secundario);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.patient-results-summary strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 1.5rem;
+  color: var(--saps-verde-oscuro);
+}
+
+.patient-filter-panel {
+  padding: 16px;
+}
+
+.patient-coverage-header {
+  margin-bottom: 14px;
+}
+
+.coverage-status-pill.is-valid {
+  background: rgba(11, 122, 59, 0.12);
+  color: var(--saps-verde-oscuro);
+}
+
+.coverage-status-pill.is-warning {
+  background: rgba(203, 138, 24, 0.12);
+  color: #9a6500;
+}
+
+.patient-coverage-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.patient-coverage-mini {
+  padding: 12px 14px;
+  border: 1px solid var(--saps-borde);
+  border-radius: var(--saps-radio-pequeno);
+  background: #f8faf9;
+}
+
+.patient-coverage-mini span {
+  display: block;
+  color: var(--saps-texto-secundario);
+  font-size: 0.72rem;
+  margin-bottom: 6px;
+}
+
+.patient-coverage-mini strong {
+  color: var(--saps-texto);
+  word-break: break-word;
+}
+
+.patient-coverage-list {
+  display: grid;
+  gap: 12px;
+}
+
+.patient-coverage-list > div {
+  padding: 12px 14px;
+  border: 1px solid var(--saps-borde);
+  border-radius: var(--saps-radio-pequeno);
+  background: #fafcfb;
+}
+
+.patient-coverage-list dt {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+  color: var(--saps-texto-secundario);
+}
+
+.patient-coverage-list dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.booking-form-shell {
+  padding: 18px;
+}
+
+.booking-stepper {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.booking-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--saps-borde);
+  border-radius: var(--saps-radio-pequeno);
+  background: #f8faf9;
+  color: var(--saps-texto-secundario);
+}
+
+.booking-step.is-active {
+  border-color: rgba(11, 122, 59, 0.3);
+  background: rgba(11, 122, 59, 0.06);
+  color: var(--saps-verde-oscuro);
+}
+
+.booking-step span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--saps-verde);
+  color: var(--saps-blanco);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.booking-step small {
+  line-height: 1.2;
+}
+
+.booking-form-fields {
+  margin-top: 6px;
+}
+
+.booking-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.booking-empty-state {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-left: 4px solid var(--saps-amarillo);
+  background: #fffaf0;
+  color: var(--saps-texto);
+  border-radius: 0 var(--saps-radio-pequeno) var(--saps-radio-pequeno) 0;
+}
+
+.booking-slots-panel {
+  margin-top: 18px;
+  padding: 18px;
+}
+
+.booking-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 10px;
+}
+
+.booking-slot-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  border: 1px solid var(--saps-verde);
+  border-radius: 12px;
+  background: var(--saps-blanco);
+  color: var(--saps-verde-oscuro);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.booking-slot-option.is-selected {
+  border-color: var(--saps-verde);
+  background: var(--saps-verde);
+  color: var(--saps-blanco);
+}
+
+.booking-slot-selected,
+.booking-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(11, 122, 59, 0.08);
+  color: var(--saps-verde-oscuro);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.booking-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 14px 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+}
+
+.patient-detail-header {
+  margin-bottom: 14px;
+}
+
+.patient-detail-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(34, 92, 200, 0.08);
+  color: var(--saps-azul);
+}
+
+.patient-detail-status span {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.turno-preview {
+  padding: 18px;
+  border: 1px solid var(--saps-borde);
+  border-radius: var(--saps-radio);
+  background: var(--saps-superficie);
+  box-shadow: var(--saps-sombra);
+}
+
+.turno-preview-header,
+.turno-preview-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.turno-preview time {
+  color: var(--saps-verde-oscuro);
+  font-weight: 700;
+}
+
+.turno-preview-meta {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--saps-borde);
+  color: var(--saps-texto-secundario);
+  font-size: 0.82rem;
+}
+
+.turno-preview-meta-small {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  padding-top: 12px;
+}
+
+.person-card {
+  padding: 18px;
+}
+
+.person-card-info {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0 18px;
+}
+
+.person-card-info div {
+  padding: 12px 14px;
+  border: 1px solid var(--saps-borde);
+  border-radius: var(--saps-radio-pequeno);
+  background: #f8faf9;
+}
+
+.person-card-info span,
+.person-card-info strong {
+  display: block;
+}
+
+.person-card-info span {
+  color: var(--saps-texto-secundario);
+  font-size: 0.72rem;
+  margin-bottom: 6px;
+}
+
+.patient-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.patient-quick-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 110px;
+  padding: 18px 18px 16px;
+  border: 1px solid var(--saps-borde);
+  border-radius: var(--saps-radio);
+  background: var(--saps-superficie);
+  box-shadow: var(--saps-sombra);
+  text-decoration: none;
+  color: var(--saps-texto);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.patient-quick-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--saps-sombra-hover);
+  border-color: rgba(11, 122, 59, 0.25);
+  text-decoration: none;
+}
+
+.patient-quick-card strong,
+.patient-quick-card span {
+  display: block;
+}
+
+.patient-quick-card strong {
+  color: var(--saps-verde-oscuro);
+  font-size: 1rem;
+  margin-bottom: 4px;
+}
+
+.patient-quick-card span {
+  color: var(--saps-texto-secundario);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.patient-quick-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  flex-shrink: 0;
+  background: var(--saps-verde-claro);
+  color: var(--saps-verde-oscuro);
+  font-size: 1.3rem;
+}
+
+.patient-quick-card-primary .patient-quick-icon {
+  background: rgba(11, 122, 59, 0.12);
+}
+
+.patient-quick-card-secondary .patient-quick-icon {
+  background: rgba(34, 92, 200, 0.1);
+  color: var(--saps-azul);
+}
+
+.patient-quick-card-neutral .patient-quick-icon {
+  background: rgba(148, 163, 184, 0.12);
+  color: #475569;
+}
+
 /* Valores mostrados en listas de descripción. */
 .patient-section dd {
   overflow-wrap: anywhere;
@@ -300,6 +753,38 @@
      en dispositivos pequeños. */
   .patient-section {
     padding: 16px;
+  }
+
+  .patient-results-summary,
+  .booking-stepper,
+  .booking-form-grid,
+  .patient-coverage-grid,
+  .person-card-info {
+    grid-template-columns: 1fr;
+  }
+
+  .patient-selector-head,
+  .patient-coverage-header,
+  .booking-slots-header,
+  .person-card-header,
+  .patient-detail-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .patient-quick-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .patient-quick-card {
+    min-height: 92px;
+    padding: 14px 16px;
+  }
+
+  .patient-quick-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 1.1rem;
   }
 
   /* RESUMEN DE COBERTURA EN MÓVILES */

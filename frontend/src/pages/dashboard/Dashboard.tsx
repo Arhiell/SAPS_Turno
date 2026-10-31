@@ -313,6 +313,43 @@ export default function Dashboard() {
   }
 
   // ========================================
+  // ACCESOS RÁPIDOS PACIENTE
+  // ========================================
+
+  const patientQuickActions = patient
+    ? [
+        {
+          to: '/solicitar-turno',
+          label: 'Solicitar turno',
+          description: 'Reservá una consulta con tu especialista.',
+          icon: 'bi-calendar-plus',
+          accent: 'primary',
+        },
+        {
+          to: '/mis-turnos',
+          label: 'Mis turnos',
+          description: 'Revisá tus próximos turnos e historial.',
+          icon: 'bi-calendar2-week',
+          accent: 'secondary',
+        },
+        {
+          to: '/mi-perfil',
+          label: 'Mi perfil',
+          description: 'Actualizá tus datos y cobertura.',
+          icon: 'bi-person-vcard',
+          accent: 'neutral',
+        },
+        {
+          to: '/personas-a-cargo',
+          label: 'Personas a cargo',
+          description: 'Gestioná links y reservas de otros pacientes.',
+          icon: 'bi-people',
+          accent: 'secondary',
+        },
+      ]
+    : [];
+
+  // ========================================
   // INTERFAZ
   // ========================================
 
@@ -467,6 +504,27 @@ export default function Dashboard() {
               </div>
             )
           )}
+        </div>
+      )}
+
+      {patient && (
+        <div className="patient-quick-grid mb-4">
+          {patientQuickActions.map((action) => (
+            <Link
+              key={action.to}
+              className={`patient-quick-card patient-quick-card-${action.accent}`}
+              to={action.to}
+            >
+              <div className="patient-quick-icon">
+                <i className={`bi ${action.icon}`} aria-hidden="true" />
+              </div>
+
+              <div>
+                <strong>{action.label}</strong>
+                <span>{action.description}</span>
+              </div>
+            </Link>
+          ))}
         </div>
       )}
 
