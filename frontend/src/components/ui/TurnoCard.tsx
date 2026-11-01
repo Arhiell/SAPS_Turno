@@ -111,6 +111,12 @@ export default function TurnoCard({
             {turno.motivo_consulta ||
               'Sin informar'}
           </p>
+          <p className="small mb-0">
+            Solicitado por:{' '}
+            {turno.solicitante?.persona
+              ? `${turno.solicitante.persona.apellidos}, ${turno.solicitante.persona.nombres}`
+              : turno.solicitante?.nombre_usuario || 'Cuenta no disponible'}
+          </p>
 
           <div className="d-flex flex-wrap gap-2 mt-3">
             {/* Evita mostrar el enlace cuando

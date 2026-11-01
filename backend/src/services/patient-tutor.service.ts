@@ -1,9 +1,8 @@
 import {
   findActivePatientTutorRelation,
-  findPatientTutorRelation,
   findCurrentPrincipalTutor,
-  createPatientTutorRelation,
   findTutorsByPatientId,
+  findPatientTutorHistory,
   findPatientsByTutorId,
   updatePatientTutorRelation,
   endPatientTutorRelation
@@ -17,23 +16,18 @@ import {
   getTutorById
 } from "./tutor-read.service.js";
 
-import type {
-  CreatePatientTutorInput,
-  UpdatePatientTutorInput
-} from "../validators/patient-tutor.validator.js";
+import type { UpdatePatientTutorInput } from "../validators/patient-tutor.validator.js";
 
 import {
   AppError
 } from "../utils/app-error.js";
 
-import {
-  hasDatabaseCode
-} from "../utils/profile-error.js";
 import { agendaDateTime } from '../utils/turno-time.js';
+import { supabase } from '../config/supabase.js';
 
 
 /**
- * Lista los tutores vigentes de un paciente.
+ * Lista las vinculaciones actuales e históricas de un paciente.
  */
 export const getPatientTutors = async (
   patientId: string
@@ -41,9 +35,41 @@ export const getPatientTutors = async (
   await getPatientById(patientId);
 
   const relations = await findTutorsByPatientId(patientId);
+  const users = [...new Set(relations.flatMap(relation => [
+    relation.id_usuario_creo,
+    relation.id_usuario_modifico,
+  ]).filter((id): id is string => typeof id === 'string'))];
+  const { data: accounts, error } = users.length
+    ? await supabase.from('usuarios')
+      .select('id_usuario,nombre_usuario,persona:personas(nombres,apellidos)')
+      .in('id_usuario', users)
+    : { data: [], error: null };
+  if (error) throw error;
+  const accountById = new Map((accounts ?? []).map(account => [
+    account.id_usuario,
+    account,
+  ]));
+  const historyRows = await findPatientTutorHistory(
+    patientId,
+    relations.map(relation => relation.id_tutor),
+  );
+  const historyByTutor = new Map<string, typeof historyRows>();
+  for (const history of historyRows) {
+    const current = historyByTutor.get(history.id_tutor) ?? [];
+    current.push(history);
+    historyByTutor.set(history.id_tutor, current);
+  }
   return Promise.all(relations.map(async relation => {
     const tutor = await getTutorById(relation.id_tutor);
-    return { ...relation, nombres: tutor.nombres, apellidos: tutor.apellidos, dni: tutor.dni };
+    return {
+      ...relation,
+      nombres: tutor.nombres,
+      apellidos: tutor.apellidos,
+      dni: tutor.dni,
+      creado_por: relation.id_usuario_creo ? accountById.get(relation.id_usuario_creo) ?? null : null,
+      modificado_por: relation.id_usuario_modifico ? accountById.get(relation.id_usuario_modifico) ?? null : null,
+      historial: historyByTutor.get(relation.id_tutor) ?? [],
+    };
   }));
 };
 
@@ -61,120 +87,13 @@ export const getTutorPatients = async (
 
 
 /**
- * Asocia un tutor a un paciente.
- */
-export const addTutorToPatient = async (
-  patientId: string,
-  input: CreatePatientTutorInput
-) => {
-  input = { ...input, fecha_desde: input.fecha_desde ?? agendaDateTime(new Date()).date };
-  const patient =
-    await getPatientById(patientId);
-
-  const tutor =
-    await getTutorById(input.id_tutor);
-  if (patient.id_persona === tutor.id_persona) throw new AppError('Un paciente no puede ser su propio tutor.', 400);
-
-  if (!patient.activo) {
-    throw new AppError(
-      "El paciente debe estar activo",
-      400
-    );
-  }
-
-  if (!tutor.activo) {
-    throw new AppError(
-      "El tutor debe estar activo",
-      400
-    );
-  }
-
-  const existing =
-    await findActivePatientTutorRelation(
-      patientId,
-      input.id_tutor
-    );
-
-  if (existing) {
-    throw new AppError(
-      "El tutor ya está asociado actualmente a este paciente",
-      409
-    );
-  }
-
-  if (
-    input.fecha_desde !== undefined &&
-    input.fecha_hasta !== undefined &&
-    input.fecha_hasta !== null &&
-    input.fecha_hasta < input.fecha_desde
-  ) {
-    throw new AppError(
-      "La fecha_hasta no puede ser anterior a fecha_desde",
-      400
-    );
-  }
-
-  if (input.es_principal === true) {
-    const principal =
-      await findCurrentPrincipalTutor(patientId);
-
-    if (principal) {
-      throw new AppError(
-        "El paciente ya posee un tutor principal vigente",
-        409
-      );
-    }
-  }
-
-  try {
-    // La tabla identifica el vínculo por paciente y tutor; un permiso vencido
-    // se renueva sobre la misma relación, sin duplicar personas ni turnos.
-    const previous = await findPatientTutorRelation(patientId, input.id_tutor);
-    const values = {
-      ...input,
-      fecha_desde: input.fecha_desde ?? agendaDateTime(new Date()).date,
-      fecha_hasta: input.fecha_hasta ?? null,
-    };
-    if (previous) {
-      return await updatePatientTutorRelation(patientId, input.id_tutor, {
-        parentesco: values.parentesco,
-        fecha_desde: values.fecha_desde,
-        fecha_hasta: values.fecha_hasta,
-        es_principal: input.es_principal ?? false,
-        puede_gestionar_turnos: input.puede_gestionar_turnos ?? true,
-      });
-    }
-    return await createPatientTutorRelation(
-      patientId,
-      values
-    );
-  } catch (error) {
-    if (hasDatabaseCode(error, "23505")) {
-      throw new AppError(
-        "Ya existe una relación vigente entre el paciente y el tutor",
-        409
-      );
-    }
-
-    if (hasDatabaseCode(error, "23503")) {
-      throw new AppError(
-        "El paciente o el tutor no existen",
-        404
-      );
-    }
-
-    throw error;
-  }
-};
-
-
-/**
  * Modifica datos de una relación vigente.
  */
 export const editPatientTutorRelation = async (
   patientId: string,
   tutorId: string,
-  input: UpdatePatientTutorInput
+  input: UpdatePatientTutorInput,
+  userId: string,
 ) => {
   await getPatientById(patientId);
   await getTutorById(tutorId);
@@ -191,26 +110,6 @@ export const editPatientTutorRelation = async (
       404
     );
   }
-
-  const fechaDesde =
-    input.fecha_desde ??
-    current.fecha_desde;
-
-  const fechaHasta =
-    input.fecha_hasta !== undefined
-      ? input.fecha_hasta
-      : current.fecha_hasta;
-
-  if (
-    fechaHasta !== null &&
-    fechaHasta < fechaDesde
-  ) {
-    throw new AppError(
-      "La fecha_hasta no puede ser anterior a fecha_desde",
-      400
-    );
-  }
-
   if (
     input.es_principal === true &&
     current.es_principal !== true
@@ -233,7 +132,8 @@ export const editPatientTutorRelation = async (
     await updatePatientTutorRelation(
       patientId,
       tutorId,
-      input
+      input,
+      userId,
     );
 
   if (!updated) {
@@ -252,7 +152,8 @@ export const editPatientTutorRelation = async (
  */
 export const finishPatientTutorRelation = async (
   patientId: string,
-  tutorId: string
+  tutorId: string,
+  userId: string,
 ) => {
   await getPatientById(patientId);
   await getTutorById(tutorId);
@@ -269,21 +170,18 @@ export const finishPatientTutorRelation = async (
       404
     );
   }
+  if (!relation.puede_gestionar_turnos) {
+    throw new AppError('La autorización ya fue revocada.', 409);
+  }
 
   const today = agendaDateTime(new Date()).date;
 
-    if (today < relation.fecha_desde) {
-        throw new AppError(
-        "No se puede finalizar la relación antes de su fecha de inicio",
-        400
-        );
-    }
-
-    const updated =
+  const updated =
     await endPatientTutorRelation(
     patientId,
     tutorId,
-    today
+    relation.fecha_desde > today ? relation.fecha_desde : today,
+    userId,
   );
 
   if (!updated) {

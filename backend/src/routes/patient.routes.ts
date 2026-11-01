@@ -4,6 +4,12 @@ import { z } from 'zod';
 import { personEmailSchema } from '../validators/person.validator.js';
 import { linkPatientAccount } from '../services/patient-account.service.js';
 import {
+  createTutorRequestController,
+  listOwnTutorRequestsController,
+} from '../controllers/tutor-request.controller.js';
+import { getPatientTutors } from '../services/patient-tutor.service.js';
+import { getOwnPatient } from '../services/patient-coverage.service.js';
+import {
   Router
 } from "express";
 
@@ -41,6 +47,14 @@ router.patch('/:id/account', requireRole('SUPER_ADMIN', 'ADMIN_SALITA'), async (
 });
 router.get('/personas-a-cargo', requireRole('PACIENTE'), async (req, res) => {
   res.json({ data: await getManagedPatients(req.user!) });
+});
+router.get('/solicitudes-vinculacion', requireRole('PACIENTE'), listOwnTutorRequestsController);
+router.post('/solicitudes-vinculacion', requireRole('PACIENTE'), createTutorRequestController);
+router.get('/mis-responsables', requireRole('PACIENTE'), async (req, res, next) => {
+  try {
+    const patient = await getOwnPatient(req.user!);
+    res.json({ success: true, data: { tutors: await getPatientTutors(patient.id_paciente) } });
+  } catch (error) { next(error); }
 });
 
 /**

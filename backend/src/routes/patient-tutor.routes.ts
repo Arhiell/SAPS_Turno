@@ -11,7 +11,6 @@ import {
 } from "../middlewares/role.middleware.js";
 
 import {
-  addTutorToPatientController,
   listPatientTutorsController,
   listTutorPatientsController,
   updatePatientTutorController,
@@ -22,10 +21,10 @@ import type { RequestHandler } from 'express';
 import { z } from 'zod';
 import { getTurnoScope, assertTurnoScope } from '../services/turno-access.service.js';
 import { getPatientById } from '../services/patient-read.service.js';
-import { registerExistingTutor } from '../services/tutor.service.js';
-import { addTutorToPatient } from '../services/patient-tutor.service.js';
-import { createPatientTutorSchema } from '../validators/patient-tutor.validator.js';
-import { personDniSchema } from '../validators/person.validator.js';
+import {
+  listAdminTutorRequestsController,
+  resolveTutorRequestController,
+} from '../controllers/tutor-request.controller.js';
 
 const router = Router();
 
@@ -43,28 +42,29 @@ const authorize = [
   requireRole("SUPER_ADMIN", "ADMIN_SALITA", "RECEPCION")
 ];
 
-router.use('/patients/:patientId/tutors', ...authorize, relationScope);
-router.post('/patients/:patientId/tutors/by-dni', async (req, res, next) => {
-  try {
-    const input = createPatientTutorSchema.omit({ id_tutor: true }).extend({
-      dni: personDniSchema,
-      puede_gestionar_turnos: z.literal(true),
-    }).parse(req.body);
-    const { dni, ...relation } = input;
-    const tutor = await registerExistingTutor(dni);
-    const result = await addTutorToPatient(String(req.params.patientId), { ...relation, id_tutor: tutor.id_tutor });
-    res.status(201).json({ success: true, data: { relation: result } });
-  } catch (error) { next(error); }
-});
-
-/**
- * Relaciones desde paciente.
- */
-router.post(
-  "/patients/:patientId/tutors",
-  ...authorize,
-  addTutorToPatientController
+router.get(
+  '/tutor-requests',
+  authenticate,
+  requireRole('SUPER_ADMIN', 'ADMIN_SALITA'),
+  listAdminTutorRequestsController
 );
+router.patch(
+  '/tutor-requests/:requestId',
+  authenticate,
+  requireRole('SUPER_ADMIN', 'ADMIN_SALITA'),
+  resolveTutorRequestController
+);
+
+router.use('/patients/:patientId/tutors', ...authorize, relationScope);
+const requireTutorRequest: RequestHandler = (_req, res) => {
+  res.status(403).json({
+    success: false,
+    message: 'Las autorizaciones deben tramitarse mediante una solicitud y aprobación administrativa.',
+  });
+};
+
+router.post('/patients/:patientId/tutors/by-dni', ...authorize, relationScope, requireTutorRequest);
+router.post('/patients/:patientId/tutors', ...authorize, relationScope, requireTutorRequest);
 
 router.get(
   "/patients/:patientId/tutors",

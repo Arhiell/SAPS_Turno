@@ -10,6 +10,8 @@ export const findTutorUsersByTurno = async (idTurno: string): Promise<string[]> 
   const today = agendaDateTime(new Date()).date;
   const { data: relations, error: relationError } = await supabase.from('paciente_tutores')
     .select('id_tutor').eq('id_paciente', turno.id_paciente).eq('puede_gestionar_turnos', true)
+    .eq('identidad_verificada', true).eq('documentacion_verificada', true)
+    .eq('autorizacion_verificada', true)
     .lte('fecha_desde', today).or(`fecha_hasta.is.null,fecha_hasta.gte.${today}`);
   if (relationError) throw relationError;
   if (!relations?.length) return [];

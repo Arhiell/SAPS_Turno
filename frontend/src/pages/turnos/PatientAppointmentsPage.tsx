@@ -26,7 +26,6 @@ import {
 
 export default function PatientAppointmentsPage() {
   const selection = useManagedPatients();
-  useEffect(() => { setPage(1); }, [selection.id]);
   // FILTROS
 
   // Período seleccionado:
@@ -44,10 +43,17 @@ export default function PatientAppointmentsPage() {
 
   //PAGINACIÓN
 
-  const [
-    page,
-    setPage,
-  ] = useState(1);
+  const [pageState, setPageState] = useState({ patientId: '', page: 1 });
+  const page = pageState.patientId === selection.id ? pageState.page : 1;
+  const setPage = (value: number | ((current: number) => number)) => {
+    setPageState(current => {
+      const currentPage = current.patientId === selection.id ? current.page : 1;
+      return {
+        patientId: selection.id,
+        page: typeof value === 'function' ? value(currentPage) : value,
+      };
+    });
+  };
 
   const [
     pages,
@@ -144,7 +150,7 @@ export default function PatientAppointmentsPage() {
     estado,
     page,
     revision,
-    selection.id, selection.loading, selection.error,
+    selection.id, selection.loading, selection.error, selection.selected,
   ]);
 
   // INTERFAZ
@@ -331,6 +337,7 @@ export default function PatientAppointmentsPage() {
                         'Salita',
                         'Estado',
                         'Motivo / Código',
+                        'Solicitado por',
                         'Detalle',
                       ].map(
                         (label) => (
@@ -409,6 +416,12 @@ export default function PatientAppointmentsPage() {
                             <small>
                               {t.codigo_turno}
                             </small>
+                          </td>
+
+                          <td>
+                            {t.solicitante?.persona
+                              ? `${t.solicitante.persona.apellidos}, ${t.solicitante.persona.nombres}`
+                              : t.solicitante?.nombre_usuario || 'Cuenta no disponible'}
                           </td>
 
                           {/* Acceso al detalle. */}

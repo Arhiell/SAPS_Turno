@@ -17,6 +17,7 @@ export const turnoSelect = `
   cancelado_por,
   fecha_solicitud, 
   fecha_actualizacion, 
+  creado_por,
   ocupa_agenda, 
   impide_otro_misma_especialidad, 
   version,
@@ -32,6 +33,9 @@ export const turnoSelect = `
   paciente:pacientes(
     id_paciente,
     persona:personas(dni,nombres,apellidos)
+  ),
+  solicitante:usuarios!turnos_creado_por_fkey(
+    id_usuario,nombre_usuario,persona:personas(nombres,apellidos)
   ),
   profesional:profesionales(
   id_profesional,

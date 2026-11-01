@@ -5,7 +5,6 @@ import { getTurnoScope } from '../services/turno-access.service.js';
 import { getPatientById } from '../services/patient-read.service.js';
 
 import {
-  createPatientTutorSchema,
   updatePatientTutorSchema,
   patientIdParamSchema,
   tutorIdParamSchema,
@@ -13,52 +12,11 @@ import {
 } from "../validators/patient-tutor.validator.js";
 
 import {
-  addTutorToPatient,
   getPatientTutors,
   getTutorPatients,
   editPatientTutorRelation,
   finishPatientTutorRelation
 } from "../services/patient-tutor.service.js";
-
-
-/**
- * POST /api/patients/:patientId/tutors
- */
-export const addTutorToPatientController: RequestHandler =
-  async (req, res, next) => {
-    const params =
-      patientIdParamSchema.safeParse(req.params);
-
-    const body =
-      createPatientTutorSchema.safeParse(req.body);
-
-    if (!params.success || !body.success) {
-      res.status(400).json({
-        success: false,
-        message: "Datos de relación paciente-tutor inválidos"
-      });
-
-      return;
-    }
-
-    try {
-      const relation =
-        await addTutorToPatient(
-          params.data.patientId,
-          body.data
-        );
-
-      res.status(201).json({
-        success: true,
-        message: "Tutor asociado al paciente correctamente",
-        data: {
-          relation
-        }
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
 
 
 /**
@@ -166,7 +124,8 @@ export const updatePatientTutorController: RequestHandler =
         await editPatientTutorRelation(
           params.data.patientId,
           params.data.tutorId,
-          body.data
+          body.data,
+          req.user!.id_usuario
         );
 
       res.json({
@@ -204,7 +163,8 @@ export const finishPatientTutorController: RequestHandler =
       const relation =
         await finishPatientTutorRelation(
           params.data.patientId,
-          params.data.tutorId
+          params.data.tutorId,
+          req.user!.id_usuario
         );
 
       res.json({

@@ -121,6 +121,12 @@ export interface Turno {
   ocupa_agenda: boolean;
   impide_otro_misma_especialidad: boolean;
   version: number;
+  creado_por?: string | null;
+  solicitante?: {
+    id_usuario: string;
+    nombre_usuario: string;
+    persona: { nombres: string; apellidos: string } | null;
+  } | null;
 
   // Relaciones completas.
   estado: TurnoEstado;
