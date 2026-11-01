@@ -19,6 +19,7 @@ import type { Turno } from '../../types/turno.types';
 import type { ReporteFormato } from '../../types/reporte.types';
 import ProfessionalCalendar from '../../components/turnos/ProfessionalCalendar';
 import ProfessionalTurnoHistory from '../../components/turnos/ProfessionalTurnoHistory';
+import '../../styles/professional-agenda.css';
 
 export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' | 'today' }) {
   const { user } = useAuth();
@@ -241,9 +242,19 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
         <p role="status">
           Cargando turnos…
         </p>
+      ) : !turnos.length && !error ? (
+        <p>
+          {professional
+            ? daily
+              ? `No hay turnos para el día ${today.split('-').reverse().join('/')}.`
+              : filterRange
+                ? `No hay turnos entre el ${fecha.split('-').reverse().join('/')} y el ${fechaHasta.split('-').reverse().join('/')}.`
+                : 'No hay turnos registrados para mostrar.'
+            : 'No hay turnos para mostrar.'}
+        </p>
       ) : (
         <div className="table-responsive">
-          <table className="table saps-responsive-table table-striped align-middle">
+          <table className={`table saps-responsive-table table-striped align-middle${professional ? ' professional-agenda-table' : ''}`}>
             <thead>
               <tr>
                 <th scope="col">Fecha y hora</th>
@@ -348,12 +359,6 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
               ))}
             </tbody>
           </table>
-
-          {!turnos.length && !error && (
-            <p>
-              No hay turnos para mostrar.
-            </p>
-          )}
         </div>
       )}
 

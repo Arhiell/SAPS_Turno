@@ -56,6 +56,7 @@ const ReprogramarTurnoPage = lazy(() => import('../pages/turnos/ReprogramarTurno
 const SolicitarTurnoPage = lazy(() => import('../pages/turnos/SolicitarTurnoPage'));
 const MisTurnosPage = lazy(() => import('../pages/turnos/MisTurnosPage'));
 const PersonasACargoPage = lazy(() => import('../pages/pacientes/PersonasACargoPage'));
+const SolicitudesVinculacionPage = lazy(() => import('../pages/pacientes/SolicitudesVinculacionPage'));
 const PatientAppointmentsPage = lazy(() => import('../pages/turnos/PatientAppointmentsPage'));
 const PatientAppointmentDetailPage = lazy(() => import('../pages/turnos/PatientAppointmentDetailPage'));
 
@@ -363,6 +364,10 @@ const AppRoutes = () => {
                 <Route
                   path="/pacientes"
                   element={<PacientesPage />}
+                />
+                <Route
+                  path="/solicitudes-vinculacion"
+                  element={<SolicitudesVinculacionPage />}
                 />
 
                 <Route

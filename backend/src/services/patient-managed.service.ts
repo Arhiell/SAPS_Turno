@@ -18,6 +18,8 @@ const currentRelations = async (user: AuthenticatedUser) => {
   const { data, error: relationError } = await supabase.from('paciente_tutores')
     .select('id_paciente,parentesco,fecha_desde,fecha_hasta')
     .eq('id_tutor', tutor.id_tutor).eq('puede_gestionar_turnos', true)
+    .eq('identidad_verificada', true).eq('documentacion_verificada', true)
+    .eq('autorizacion_verificada', true)
     .lte('fecha_desde', today).or(`fecha_hasta.is.null,fecha_hasta.gte.${today}`);
   if (relationError) throw relationError;
   const relations = data ?? [];

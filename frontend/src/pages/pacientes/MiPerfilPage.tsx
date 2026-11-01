@@ -107,44 +107,44 @@ function PatientProfile() {
 
   const sections = [
     {
-      title: 'Datos personales',
+      title: 'Información personal',
       fields: {
         Nombres: patient.nombres,
         Apellidos: patient.apellidos,
         DNI: patient.dni,
-        'Fecha de nacimiento':
-          patient.fecha_nacimiento
-            ?.split('-')
-            .reverse()
-            .join('/'),
-        Sexo:
-          patient.sexo
-            ?.replaceAll('_', ' '),
+        'Fecha de nacimiento': patient.fecha_nacimiento?.split('-').reverse().join('/'),
+        Sexo: patient.sexo?.replaceAll('_', ' '),
+      },
+    },
+    {
+      title: 'Datos de contacto',
+      fields: {
         Teléfono: patient.telefono,
         'Correo electrónico': user?.email,
         Dirección: patient.direccion,
       },
     },
     {
-      title: 'Obra social',
+      title: 'Cobertura y salud',
       fields: {
-        'Obra social':
-          patient.obra_social,
-        'Número de afiliado':
-          patient.numero_afiliado,
-      },
-    },
-    {
-      title: 'Contacto de emergencia',
-      fields: {
-        Nombre:
-          patient.contacto_emergencia_nombre,
-        Teléfono:
-          patient.contacto_emergencia_telefono,
+        'Obra social': patient.obra_social,
+        'Número de afiliado': patient.numero_afiliado,
+        'Contacto de emergencia': patient.contacto_emergencia_nombre,
+        'Teléfono de emergencia': patient.contacto_emergencia_telefono,
       },
     },
   ];
-  
+
+  const missingProfileFields = [
+    !patient.nombres && 'nombres',
+    !patient.apellidos && 'apellidos',
+    !patient.dni && 'DNI',
+    !patient.telefono && 'teléfono',
+    !patient.direccion && 'dirección',
+    !patient.id_barrio && 'barrio',
+    !patient.id_salita_asignada && 'salita asignada',
+  ].filter(Boolean) as string[];
+
   // INTERFAZ DEL PACIENTE
 
   return (
@@ -212,6 +212,12 @@ function PatientProfile() {
           role="status"
         >
           {message}
+        </div>
+      )}
+
+      {missingProfileFields.length > 0 && !editing && (
+        <div className="alert alert-warning" role="status">
+          Tu perfil está incompleto. Faltan datos importantes: {missingProfileFields.join(', ')}. Completá esta información para mejorar tu atención.
         </div>
       )}
 

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getTurnos } from '../../services/turnos.service';
 import { authError } from '../../utils/auth-errors';
-import '../../styles/professional-agenda.css';
 
 const dateKey = (date: Date) => new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/Argentina/Buenos_Aires',

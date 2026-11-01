@@ -1,10 +1,7 @@
 import { agendaDateTime } from '../utils/turno-time.js';
 import { supabase } from "../config/supabase.js";
 
-import type {
-  CreatePatientTutorInput,
-  UpdatePatientTutorInput
-} from "../validators/patient-tutor.validator.js";
+import type { UpdatePatientTutorInput } from "../validators/patient-tutor.validator.js";
 
 
 /**
@@ -20,29 +17,6 @@ export const findActivePatientTutorRelation = async (
     .eq("id_paciente", patientId)
     .eq("id_tutor", tutorId)
     .or(`fecha_hasta.is.null,fecha_hasta.gte.${agendaDateTime(new Date()).date}`)
-    .maybeSingle();
-
-  if (error) throw error;
-
-  return data;
-};
-
-
-/**
- * Busca cualquier relación paciente-tutor,
- * incluso si ya fue finalizada.
- */
-export const findPatientTutorRelation = async (
-  patientId: string,
-  tutorId: string
-) => {
-  const { data, error } = await supabase
-    .from("paciente_tutores")
-    .select("*")
-    .eq("id_paciente", patientId)
-    .eq("id_tutor", tutorId)
-    .order("fecha_desde", { ascending: false })
-    .limit(1)
     .maybeSingle();
 
   if (error) throw error;
@@ -72,43 +46,6 @@ export const findCurrentPrincipalTutor = async (
 
 
 /**
- * Crea una nueva relación paciente-tutor.
- */
-export const createPatientTutorRelation = async (
-  patientId: string,
-  input: CreatePatientTutorInput
-) => {
-  const payload = {
-    id_paciente: patientId,
-    id_tutor: input.id_tutor,
-    parentesco: input.parentesco,
-    ...(input.es_principal !== undefined && {
-      es_principal: input.es_principal
-    }),
-    ...(input.puede_gestionar_turnos !== undefined && {
-      puede_gestionar_turnos: input.puede_gestionar_turnos
-    }),
-    ...(input.fecha_desde !== undefined && {
-      fecha_desde: input.fecha_desde
-    }),
-    ...(input.fecha_hasta !== undefined && {
-      fecha_hasta: input.fecha_hasta
-    })
-  };
-
-  const { data, error } = await supabase
-    .from("paciente_tutores")
-    .insert(payload)
-    .select("*")
-    .single();
-
-  if (error) throw error;
-
-  return data;
-};
-
-
-/**
  * Lista los tutores relacionados actualmente con un paciente.
  */
 export const findTutorsByPatientId = async (
@@ -118,12 +55,32 @@ export const findTutorsByPatientId = async (
     .from("paciente_tutores")
     .select("*")
     .eq("id_paciente", patientId)
-    .or(`fecha_hasta.is.null,fecha_hasta.gte.${agendaDateTime(new Date()).date}`)
     .order("es_principal", { ascending: false })
-    .order("fecha_desde", { ascending: true });
+    .order("fecha_desde", { ascending: false });
 
   if (error) throw error;
 
+  return data ?? [];
+};
+
+export const findPatientTutorHistory = async (
+  patientId: string,
+  tutorIds: string[],
+) => {
+  if (tutorIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from('paciente_tutores_historial')
+    .select(`
+      id_historial,id_paciente,id_tutor,accion,fecha,datos_anteriores,datos_nuevos,
+      actor:usuarios!paciente_tutores_historial_id_usuario_fkey(
+        nombre_usuario,persona:personas(nombres,apellidos)
+      )
+    `)
+    .eq('id_paciente', patientId)
+    .in('id_tutor', tutorIds)
+    .order('fecha', { ascending: false });
+
+  if (error) throw error;
   return data ?? [];
 };
 
@@ -134,11 +91,17 @@ export const findTutorsByPatientId = async (
 export const findPatientsByTutorId = async (
   tutorId: string
 ) => {
+  const today = agendaDateTime(new Date()).date;
   const { data, error } = await supabase
     .from("paciente_tutores")
     .select("*")
     .eq("id_tutor", tutorId)
-    .or(`fecha_hasta.is.null,fecha_hasta.gte.${agendaDateTime(new Date()).date}`)
+    .eq("puede_gestionar_turnos", true)
+    .eq("identidad_verificada", true)
+    .eq("documentacion_verificada", true)
+    .eq("autorizacion_verificada", true)
+    .lte("fecha_desde", today)
+    .or(`fecha_hasta.is.null,fecha_hasta.gte.${today}`)
     .order("fecha_desde", { ascending: true });
 
   if (error) throw error;
@@ -153,11 +116,16 @@ export const findPatientsByTutorId = async (
 export const updatePatientTutorRelation = async (
   patientId: string,
   tutorId: string,
-  input: UpdatePatientTutorInput
+  input: UpdatePatientTutorInput,
+  userId: string,
 ) => {
   const { data, error } = await supabase
     .from("paciente_tutores")
-    .update(input)
+    .update({
+      ...input,
+      id_usuario_modifico: userId,
+      fecha_modificacion: new Date().toISOString(),
+    })
     .eq("id_paciente", patientId)
     .eq("id_tutor", tutorId)
     .select("*")
@@ -175,13 +143,16 @@ export const updatePatientTutorRelation = async (
 export const endPatientTutorRelation = async (
   patientId: string,
   tutorId: string,
-  endDate: string
+  endDate: string,
+  userId: string,
 ) => {
   const { data, error } = await supabase
     .from("paciente_tutores")
     .update({
       fecha_hasta: endDate,
-      puede_gestionar_turnos: false
+      puede_gestionar_turnos: false,
+      id_usuario_modifico: userId,
+      fecha_modificacion: new Date().toISOString(),
     })
     .eq("id_paciente", patientId)
     .eq("id_tutor", tutorId)

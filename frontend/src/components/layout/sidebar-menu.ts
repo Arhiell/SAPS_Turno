@@ -95,6 +95,12 @@ export const sidebarMenu: SidebarMenuItem[] = [
     roles: ['SUPER_ADMIN', 'ADMIN_SALITA'],
   },
   {
+    label: 'Solicitudes de vinculación',
+    path: '/solicitudes-vinculacion',
+    icon: 'bi-person-check',
+    roles: ['SUPER_ADMIN', 'ADMIN_SALITA'],
+  },
+  {
     label: 'Profesionales',
     path: '/profesionales',
     icon: 'bi-person-badge',

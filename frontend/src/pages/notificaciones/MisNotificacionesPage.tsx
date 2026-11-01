@@ -230,11 +230,28 @@ export default function MisNotificacionesPage() {
     void loadNotifications(false);
   };
 
+  const unreadCount = data?.notificaciones.filter((item) => !item.leida).length ?? 0;
+
   return (
     <section className="notificaciones-page">
       <h1 className="h3">
         Mis notificaciones
       </h1>
+
+      <div className="patient-results-summary mb-3">
+        <div>
+          <span>Totales</span>
+          <strong>{data?.total ?? 0}</strong>
+        </div>
+        <div>
+          <span>Sin leer</span>
+          <strong>{unreadCount}</strong>
+        </div>
+        <div>
+          <span>Leídas</span>
+          <strong>{(data?.total ?? 0) - unreadCount}</strong>
+        </div>
+      </div>
 
       <div className="d-flex flex-wrap gap-2 align-items-end mb-4">
         <div>

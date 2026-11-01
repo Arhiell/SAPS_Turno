@@ -65,7 +65,7 @@ export default function MobileBottomNav() {
         ? [
             '/panel',
             '/mi-agenda',
-            '/mis-notificaciones',
+            '/mis-pacientes',
           ]
         : [
             '/panel',

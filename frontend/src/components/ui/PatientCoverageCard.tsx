@@ -1,3 +1,6 @@
+
+import { useState } from 'react';
+
 import type {
   Patient,
 } from '../../types/patient.types';
@@ -13,7 +16,8 @@ export default function PatientCoverageCard({
   patient: Pick<Patient, 'id_barrio' | 'id_salita_asignada'>;
   coverage: ReturnType<typeof usePatientCoverage>;
 }) {
-  // Obtiene los datos necesarios de cobertura.
+  const [expanded, setExpanded] = useState(false);
+
   const {
     barrios,
     clinics,
@@ -24,177 +28,185 @@ export default function PatientCoverageCard({
     retry,
   } = coverage;
 
-  // ========================================
-  // DATOS DEL PACIENTE Y SU COBERTURA
-  // ========================================
-
   // Busca el barrio actual del paciente.
   const barrio = barrios.find(
-    (b) =>
-      b.id_barrio === patient.id_barrio
+    (b) => b.id_barrio === patient.id_barrio
   );
 
-  // Busca la salita actualmente asignada.
+  // Busca la salita asignada.
   const clinic = clinics.find(
-    (c) =>
-      c.id_salita ===
-      patient.id_salita_asignada
+    (c) => c.id_salita === patient.id_salita_asignada
   );
 
-  // Obtiene las salitas con cobertura
-  // para el barrio del paciente.
+  // Obtiene las salitas que cubren el barrio.
   const covered = coveredClinics(
     patient.id_barrio,
     clinics,
     relations
   );
 
-  // ========================================
-  // INTERFAZ
-  // ========================================
+  const zoneName = zones.find(
+    (z) => z.id_zona === barrio?.id_zona
+  )?.nombre;
+
+  const hasCoverage = covered.some(
+    (c) => c.id_salita === patient.id_salita_asignada
+  );
 
   return (
-    <section className="patient-section h-100">
-      {/* Título de la sección. */}
-      <h2 className="h5 mb-3">
+    <section className="patient-section h-100 patient-coverage-card">
+      <div className="patient-coverage-header">
+        <div>
+          <span className="patient-selector-kicker">Cobertura</span>
+          <h2 className="h5 mb-0">Mi cobertura</h2>
+        </div>
+        {!loading && !error && (
+          <span className={`coverage-status-pill ${hasCoverage ? 'is-valid' : 'is-warning'}`}>
+            {hasCoverage ? 'Cobertura vigente' : 'Revisión necesaria'}
+          </span>
+        )}
+      </div>
+
+      {/* Resumen de cobertura para celulares. */}
+      <button
+        type="button"
+        className="patient-coverage-summary"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((previous) => !previous)}
+      >
+        <span className="patient-coverage-summary-icon">
+          <i
+            className="bi bi-hospital"
+            aria-hidden="true"
+          />
+        </span>
+
+        <span className="patient-coverage-summary-text">
+          <strong>Mi cobertura</strong>
+
+          <span>
+            {loading
+              ? 'Cargando información…'
+              : clinic?.nombre ?? 'Salita no disponible'}
+          </span>
+
+          {!loading && (
+            <small>
+              {barrio?.nombre ?? 'Barrio sin informar'}
+              {zoneName ? ` · ${zoneName}` : ''}
+            </small>
+          )}
+        </span>
+
         <i
-          className="bi bi-hospital me-2"
+          className={`bi ${
+            expanded ? 'bi-chevron-up' : 'bi-chevron-down'
+          } patient-coverage-chevron`}
           aria-hidden="true"
         />
-        Mi cobertura
-      </h2>
+      </button>
 
-      {loading ? (
-        // Estado de carga.
-        <p role="status">
-          Cargando cobertura…
-        </p>
-      ) : error ? (
-        // Error al obtener la cobertura.
-        <div
-          className="alert alert-danger"
-          role="alert"
-        >
-          {error}{' '}
-
-          <button
-            className="btn btn-outline-danger"
-            onClick={retry}
-          >
-            Reintentar
-          </button>
+      {/* Información completa de cobertura. */}
+      <div
+        className={`patient-coverage-content ${
+          expanded ? 'is-expanded' : ''
+        }`}
+      >
+        <div className="patient-coverage-grid mb-3">
+          <div className="patient-coverage-mini">
+            <span>Barrio</span>
+            <strong>{barrio?.nombre ?? 'Sin información'}</strong>
+          </div>
+          <div className="patient-coverage-mini">
+            <span>Zona</span>
+            <strong>{zoneName ?? 'Sin información'}</strong>
+          </div>
+          <div className="patient-coverage-mini">
+            <span>Salita</span>
+            <strong>{clinic?.nombre ?? 'Sin información'}</strong>
+          </div>
         </div>
-      ) : (
-        <>
-          {/* Información de cobertura del paciente. */}
-          <dl className="mb-0">
-            <dt>
-              Barrio
-            </dt>
 
-            <dd>
-              {barrio?.nombre ??
-                'Sin información disponible'}
-            </dd>
+        {loading ? (
+          <p role="status">
+            Cargando cobertura…
+          </p>
+        ) : error ? (
+          <div
+            className="alert alert-danger"
+            role="alert"
+          >
+            {error}{' '}
 
-            <dt>
-              Zona
-            </dt>
+            <button
+              type="button"
+              className="btn btn-outline-danger"
+              onClick={retry}
+            >
+              Reintentar
+            </button>
+          </div>
+        ) : (
+          <>
+            <dl className="mb-0 patient-coverage-list">
+              <div>
+                <dt>Dirección de la salita</dt>
+                <dd>{clinic?.direccion || 'Sin informar'}</dd>
+              </div>
 
-            <dd>
-              {zones.find(
-                (z) =>
-                  z.id_zona ===
-                  barrio?.id_zona
-              )?.nombre ??
-                'Sin información disponible'}
-            </dd>
+              <div>
+                <dt>Teléfono</dt>
+                <dd>
+                  {clinic?.telefono ? (
+                    <a
+                      href={`tel:${clinic.telefono.replace(
+                        /[^+\d]/g,
+                        ''
+                      )}`}
+                    >
+                      {clinic.telefono}
+                    </a>
+                  ) : (
+                    'Sin informar'
+                  )}
+                </dd>
+              </div>
 
-            <dt>
-              Salita asignada
-            </dt>
+              <div>
+                <dt>Horario institucional</dt>
+                <dd>
+                  {clinic?.horario_apertura &&
+                  clinic.horario_cierre
+                    ? `${clinic.horario_apertura.slice(
+                        0,
+                        5
+                      )} a ${clinic.horario_cierre.slice(
+                        0,
+                        5
+                      )}`
+                    : 'Consultá los horarios en tu salita'}
+                </dd>
+              </div>
+            </dl>
 
-            <dd>
-              {clinic?.nombre ??
-                'Sin información disponible'}
-            </dd>
+            {!hasCoverage && (
+              <div className="alert alert-warning mb-0">
+                Tu asignación no tiene cobertura vigente. Contactá a administración para revisarla.
+              </div>
+            )}
 
-            <dt>
-              Dirección de la salita
-            </dt>
-
-            <dd>
-              {clinic?.direccion ||
-                'Sin informar'}
-            </dd>
-
-            <dt>
-              Teléfono
-            </dt>
-
-            <dd>
-              {clinic?.telefono ? (
-                <a
-                  href={`tel:${clinic.telefono.replace(
-                    /[^+\d]/g,
-                    ''
-                  )}`}
-                >
-                  {clinic.telefono}
-                </a>
-              ) : (
-                'Sin informar'
-              )}
-            </dd>
-
-            <dt>
-              Horario institucional
-            </dt>
-
-            <dd>
-              {clinic?.horario_apertura &&
-              clinic.horario_cierre
-                ? `${clinic.horario_apertura.slice(
-                    0,
-                    5
-                  )} a ${clinic.horario_cierre.slice(
-                    0,
-                    5
-                  )}`
-                : 'Consultá los horarios en tu salita'}
-            </dd>
-          </dl>
-
-          {/* Advierte si la salita asignada ya
-              no posee cobertura vigente. */}
-          {!covered.some(
-            (c) =>
-              c.id_salita ===
-              patient.id_salita_asignada
-          ) && (
-            <div className="alert alert-warning mb-0">
-              Tu asignación no tiene cobertura
-              vigente. Contactá a administración
-              para revisarla.
-            </div>
-          )}
-
-          {/* Informa otras salitas que también
-              poseen cobertura para el barrio. */}
-          {covered.length > 1 && (
-            <p className="small text-muted mb-0">
-              Salitas que cubren tu barrio:{' '}
-              {covered
-                .map(
-                  (c) => c.nombre
-                )
-                .join(', ')}
-              . Para reservar se utiliza tu salita
-              asignada.
-            </p>
-          )}
-        </>
-      )}
+            {covered.length > 1 && (
+              <p className="small text-muted mb-0 mt-3">
+                Salitas que cubren tu barrio:{' '}
+                {covered
+                  .map((c) => c.nombre)
+                  .join(', ')}
+                . Para reservar se utiliza tu salita asignada.
+              </p>
+            )}
+          </>
+        )}
+      </div>
     </section>
   );
 }
