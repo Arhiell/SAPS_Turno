@@ -43,6 +43,7 @@ export default function Dashboard() {
   const {
     user,
     patient: profile,
+    person,
   } = useAuth();
 
   // ========================================
@@ -378,7 +379,9 @@ export default function Dashboard() {
         </p>
 
         <h1>
-          ¡Hola, {user?.nombre_usuario}!
+          ¡Hola, {professional && person
+            ? `${person.nombres} ${person.apellidos}`
+            : user?.nombre_usuario}!
         </h1>
 
         {/* Nombre completo del paciente. */}
@@ -600,12 +603,15 @@ export default function Dashboard() {
                         <h3>
                           {patient
                             ? 'No tenés próximos turnos'
+                            : professional
+                              ? `No hay próximos turnos para hoy (${fecha.split('-').reverse().join('/')})`
                             : 'No hay próximos turnos para hoy'}
                         </h3>
 
                         <p>
-                          Podés consultar el listado
-                          completo desde tus turnos.
+                          {professional
+                            ? 'Podés consultar otro día desde Mi agenda.'
+                            : 'Podés consultar el listado completo desde tus turnos.'}
                         </p>
                       </div>
                     )

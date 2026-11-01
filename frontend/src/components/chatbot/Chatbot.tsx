@@ -193,7 +193,7 @@ function ChatbotPanel({ identity, role, embedded }: { identity: string; role: st
   if (ended) return null;
   const close = () => { setOpen(false); launcher.current?.focus(); };
   const content = (
-    <div className={`cora-chatbot${embedded ? ' cora-chatbot--embedded' : ''}`} data-open={open}>
+    <div className={`cora-chatbot${embedded ? ' cora-chatbot--embedded' : ''}${role === 'PROFESIONAL' ? ' cora-chatbot--professional' : ''}`} data-open={open}>
       {!embedded && !floating.hidden && <button ref={launcher} className="cora-chatbot__launcher" aria-label="Abrir Asistente CORA"
         title="Asistente CORA: arrastrá para mover o tocá para abrir"
         style={floating.style} data-dragging={floating.dragging}

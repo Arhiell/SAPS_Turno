@@ -156,6 +156,8 @@
   }
   .cora-chatbot__launcher { padding: 0; width: 56px; }
   .cora-chatbot__launcher > span { display: none; }
+  /* The professional can open the assistant from the mobile "Más" menu. */
+  .cora-chatbot--professional .cora-chatbot__launcher { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .cora-chatbot__launcher, .cora-chatbot__header button, .cora-chatbot__suggestions button, .cora-chatbot__send { transition: none; }

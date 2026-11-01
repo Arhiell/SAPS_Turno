@@ -16,6 +16,81 @@
 .professional-turno--NO_ASISTIO { --bs-table-bg: var(--saps-amarillo-claro); }
 .professional-turno--CANCELADO { --bs-table-bg: #fce8eb; }
 .professional-turno--REPROGRAMADO { --bs-table-bg: var(--saps-azul-claro); }
+@media (min-width: 768px) and (max-width: 1199.98px) {
+  .professional-agenda-table {
+    display: block;
+    width: 100%;
+  }
+  .professional-agenda-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .professional-agenda-table tbody {
+    display: grid;
+    gap: 12px;
+    width: 100%;
+  }
+  .professional-agenda-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "when status"
+      "patient patient"
+      "dni professional"
+      "salita specialty"
+      "reason reason"
+      "actions actions";
+    min-width: 0;
+    margin: 0;
+    padding: 8px;
+    border: 1px solid var(--saps-borde);
+    border-left: 4px solid var(--saps-verde);
+    border-radius: var(--saps-radio);
+    background: var(--saps-superficie);
+    box-shadow: var(--saps-sombra);
+  }
+  .professional-agenda-table tbody td {
+    display: block;
+    min-width: 0;
+    width: 100%;
+    padding: 8px;
+    border: 0;
+    background: transparent;
+    overflow-wrap: anywhere;
+  }
+  .professional-agenda-table tbody td::before {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--saps-texto-secundario);
+    font-size: 12px;
+    font-weight: 600;
+    content: attr(data-label);
+  }
+  .professional-agenda-table tbody td:nth-child(1) { grid-area: when; }
+  .professional-agenda-table tbody td:nth-child(2) {
+    grid-area: patient;
+    color: var(--saps-texto);
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .professional-agenda-table tbody td:nth-child(3) { grid-area: dni; }
+  .professional-agenda-table tbody td:nth-child(4) { grid-area: professional; }
+  .professional-agenda-table tbody td:nth-child(5) { grid-area: salita; }
+  .professional-agenda-table tbody td:nth-child(6) { grid-area: specialty; }
+  .professional-agenda-table tbody td:nth-child(7) { grid-area: status; }
+  .professional-agenda-table tbody td:nth-child(8) { grid-area: reason; }
+  .professional-agenda-table tbody td:nth-child(9) { grid-area: actions; }
+  .professional-agenda-table tbody td:nth-child(1),
+  .professional-agenda-table tbody td:nth-child(7) {
+    align-self: center;
+  }
+  .professional-agenda-table tbody td:nth-child(9) .btn {
+    min-height: 40px;
+  }
+}
 @media (max-width: 575.98px) {
   .professional-calendar { padding: 10px; }
   .professional-calendar__grid { gap: 3px; }
