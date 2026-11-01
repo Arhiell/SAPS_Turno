@@ -15,6 +15,7 @@ import usePatientCoverage from '../../context/usePatientCoverage';
 import PatientCoverageCard from '../../components/ui/PatientCoverageCard';
 import PatientProfileForm from '../../components/ui/PatientProfileForm';
 import AccountSecuritySection from '../../components/ui/AccountSecuritySection';
+import PrivacySection from '../../components/ui/PrivacySection';
 
 
 
@@ -97,6 +98,7 @@ function PatientProfile() {
         >
           Completar perfil
         </Link>
+        <PrivacySection />
       </div>
     );
   }
@@ -320,6 +322,7 @@ function PatientProfile() {
       </div>
 
       <AccountSecuritySection />
+      <PrivacySection />
     </div>
   );
 }

@@ -29,6 +29,7 @@ const VerifyEmailCodePage = lazy(() => import('../pages/auth/VerifyEmailCodePage
 const CompletePatientProfilePage = lazy(() => import('../pages/auth/CompletePatientProfilePage'));
 const CompleteAdminProfilePage = lazy(() => import('../pages/auth/CompleteAdminProfilePage'));
 const AdminProfilePage = lazy(() => import('../pages/auth/AdminProfilePage'));
+const PrivacyPolicyPage = lazy(() => import('../pages/auth/PrivacyPolicyPage'));
 
 const Dashboard = lazy(() => import('../pages/dashboard/Dashboard'));
 const ConfiguracionPage = lazy(() => import('../pages/dashboard/ConfiguracionPage'));
@@ -169,6 +170,7 @@ const AppRoutes = () => {
           {/* Rutas disponibles para usuarios autenticados. */}
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>
+              <Route path="/privacidad" element={<PrivacyPolicyPage />} />
               <Route path="/asistente" element={<Chatbot embedded />} />
               {/* Panel principal y notificaciones personales. */}
               <Route

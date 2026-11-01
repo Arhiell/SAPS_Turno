@@ -5,6 +5,7 @@ import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import MobileBottomNav from './MobileBottomNav';
 import Chatbot from '../chatbot/Chatbot';
+import PrivacyBanner from '../ui/PrivacyBanner';
 
 // Define la estructura principal de la aplicación.
 const AppLayout = () => {
@@ -23,6 +24,7 @@ const AppLayout = () => {
     return (
       <main className="container py-4">
         <Outlet />
+        <PrivacyBanner />
       </main>
     );
   }
@@ -47,6 +49,7 @@ const AppLayout = () => {
 
           {/* Renderiza el contenido de la ruta actual. */}
           <Outlet />
+          <PrivacyBanner />
         </main>
       </div>
 
