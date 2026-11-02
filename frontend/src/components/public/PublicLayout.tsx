@@ -30,6 +30,7 @@ export default function PublicLayout() {
 
   const {
     isAuthenticated,
+    isLoading,
   } = useAuth();
 
   const {
@@ -180,42 +181,25 @@ export default function PublicLayout() {
               )
             )}
 
-            <Link
-              to="/login"
-              onClick={() =>
-                setOpen(
-                  false
-                )
-              }
-            >
-              Iniciar sesión
-            </Link>
-
-            <Link
-              className="btn btn-success"
-              to="/registro"
-              onClick={() =>
-                setOpen(
-                  false
-                )
-              }
-            >
-              Registrarse
-            </Link>
-
-            {/* Acceso adicional cuando existe una sesión activa. */}
-            {isAuthenticated && (
+            {/* Espera la restauración de la sesión antes de ofrecer acceso o registro. */}
+            {!isLoading && (isAuthenticated ? (
               <Link
+                className="btn btn-success"
                 to="/panel"
-                onClick={() =>
-                  setOpen(
-                    false
-                  )
-                }
+                onClick={() => setOpen(false)}
               >
                 Mi panel
               </Link>
-            )}
+            ) : (
+              <>
+                <Link to="/login" onClick={() => setOpen(false)}>
+                  Iniciar sesión
+                </Link>
+                <Link className="btn btn-success" to="/registro" onClick={() => setOpen(false)}>
+                  Registrarse
+                </Link>
+              </>
+            ))}
           </div>
         </nav>
       </header>

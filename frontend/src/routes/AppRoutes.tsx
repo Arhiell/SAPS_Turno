@@ -6,6 +6,7 @@ import {
 import {
   BrowserRouter,
   Navigate,
+  Outlet,
   Route,
   Routes,
 } from 'react-router-dom';
@@ -105,6 +106,13 @@ const RouteLoading = () => (
   </div>
 );
 
+// Login y registro solo se muestran después de confirmar que no hay una sesión activa.
+const GuestOnlyRoute = () => {
+  const { isAuthenticated, isLoading } = useAuth();
+  if (isLoading) return <RouteLoading />;
+  return isAuthenticated ? <Navigate to="/panel" replace /> : <Outlet />;
+};
+
 // Define las rutas públicas y privadas de la aplicación.
 const AppRoutes = () => {
   const { user } = useAuth();
@@ -133,15 +141,11 @@ const AppRoutes = () => {
           </Route>
 
           {/* Rutas de autenticación y recuperación de acceso. */}
-          <Route
-            path="/acceso-personal"
-            element={<Navigate to="/login" replace />}
-          />
-
-          <Route
-            path="/registro"
-            element={<RegisterPage />}
-          />
+          <Route element={<GuestOnlyRoute />}>
+            <Route path="/acceso-personal" element={<Navigate to="/login" replace />} />
+            <Route path="/registro" element={<RegisterPage />} />
+            <Route path="/login" element={<Login />} />
+          </Route>
 
           <Route
             path="/recuperar-contrasena"
@@ -161,11 +165,6 @@ const AppRoutes = () => {
           <Route
             path="/verificar-codigo"
             element={<VerifyEmailCodePage />}
-          />
-
-          <Route
-            path="/login"
-            element={<Login />}
           />
 
           {/* Rutas disponibles para usuarios autenticados. */}

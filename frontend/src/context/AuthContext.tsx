@@ -194,12 +194,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       response.data.user
     );
 
-    setAccessToken(response.data.accessToken);
-    setUser(response.data.user);
-
     try {
-      // Recupera la información completa del perfil.
+      // Publica la sesión solo cuando el perfil está listo para evaluar las rutas.
       await reloadProfile();
+      setAccessToken(getAccessToken());
     } catch (error) {
       reset();
       throw error;
@@ -219,12 +217,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       response.data.user
     );
 
-    setAccessToken(response.data.accessToken);
-    setUser(response.data.user);
-
     try {
-      // Recupera el perfil asociado a la cuenta.
+      // Google también espera el perfil antes de habilitar la navegación protegida.
       await reloadProfile();
+      setAccessToken(getAccessToken());
     } catch (error) {
       reset();
       throw error;

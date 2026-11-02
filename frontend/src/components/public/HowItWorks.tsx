@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 // Pasos principales para que el paciente pueda solicitar atención.
 const steps = [
@@ -36,6 +37,7 @@ const steps = [
 
 // Explica el funcionamiento general del sistema al paciente.
 export default function HowItWorks() {
+  const { isAuthenticated, isLoading } = useAuth();
   return (
     <>
       <section
@@ -100,22 +102,22 @@ export default function HowItWorks() {
           <div className="col-md-6">
             <div className="card p-4 h-100">
               <h3 className="h5">
-                ¿Todavía no tenés cuenta?
+                {isAuthenticated ? 'Continuá desde tu panel' : '¿Todavía no tenés cuenta?'}
               </h3>
 
               <p>
-                El registro público es exclusivo para pacientes.
-                Una vez que ingreses, completá tu perfil para
-                solicitar atención.
+                {isAuthenticated
+                  ? 'Accedé a las funciones de tu cuenta desde tu panel.'
+                  : 'El registro público es exclusivo para pacientes. Una vez que ingreses, completá tu perfil para solicitar atención.'}
               </p>
 
-              <Link to="/registro">
-                Crear mi cuenta{' '}
+              {!isLoading && <Link to={isAuthenticated ? '/panel' : '/registro'}>
+                {isAuthenticated ? 'Mi panel' : 'Crear mi cuenta'}{' '}
                 <i
                   className="bi bi-arrow-right"
                   aria-hidden="true"
                 />
-              </Link>
+              </Link>}
             </div>
           </div>
 

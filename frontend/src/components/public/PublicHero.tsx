@@ -1,8 +1,10 @@
 
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 // Sección principal de presentación de CORA.
 export default function PublicHero() {
+  const { isAuthenticated, isLoading } = useAuth();
   return (
     <section className="public-hero">
       <div className="container row mx-auto align-items-center g-4">
@@ -26,24 +28,20 @@ export default function PublicHero() {
             y organizá tu próxima atención en un mismo lugar.
           </p>
 
-          <div className="d-flex flex-wrap gap-3 mt-4">
-            <Link
-              className="btn btn-success btn-lg"
-              to="/login"
-            >
-              <i
-                className="bi bi-calendar-plus me-2"
-                aria-hidden="true"
-              />
-              Solicitar / Iniciar sesión
-            </Link>
-
-            <Link
-              className="btn btn-outline-success btn-lg"
-              to="/registro"
-            >
-              Crear cuenta
-            </Link>
+          <div className="d-flex flex-wrap gap-3 mt-4" aria-busy={isLoading}>
+            {!isLoading && (isAuthenticated ? (
+              <Link className="btn btn-success btn-lg" to="/panel">Mi panel</Link>
+            ) : (
+              <>
+                <Link className="btn btn-success btn-lg" to="/login">
+                  <i className="bi bi-calendar-plus me-2" aria-hidden="true" />
+                  Solicitar / Iniciar sesión
+                </Link>
+                <Link className="btn btn-outline-success btn-lg" to="/registro">
+                  Crear cuenta
+                </Link>
+              </>
+            ))}
           </div>
         </div>
 
