@@ -6,6 +6,7 @@ import { roleLabels } from '../../components/layout/sidebar-menu';
 import PersonalProfileForm from '../../components/ui/PersonalProfileForm';
 import ProfileInfoCard from '../../components/ui/ProfileInfoCard';
 import AccountSecuritySection from '../../components/ui/AccountSecuritySection';
+import PrivacySection from '../../components/ui/PrivacySection';
 
 // Muestra el perfil personal y la información de cuenta de administradores y profesionales.
 export default function AdminProfilePage() {
@@ -234,6 +235,7 @@ export default function AdminProfilePage() {
 
       {/* Opciones para administrar la seguridad de la cuenta. */}
       <AccountSecuritySection />
+      <PrivacySection />
     </div>
   );
 }
