@@ -30,6 +30,7 @@ import {
 
 import type {
   Patient,
+  PatientPagination,
 } from '../../types/patient.types';
 
 import type {
@@ -104,8 +105,43 @@ const NuevoTurnoPage = () => {
   }>>({});
   const [clinicSettings, setClinicSettings] = useState<Parametro[]>([]);
 
-  const [selectedPatient, setSelectedPatient] =
-    useState('');
+  const [selectedPatientDetails, setSelectedPatientDetails] = useState<Patient | null>(null);
+  const selectedPatient = selectedPatientDetails?.id_paciente ?? '';
+  const [patientSearch, setPatientSearch] = useState('');
+  const [patientPage, setPatientPage] = useState(1);
+  const [patientPagination, setPatientPagination] = useState<PatientPagination | null>(null);
+  const [loadingPatients, setLoadingPatients] = useState(false);
+  const [patientError, setPatientError] = useState('');
+  const [patientRetry, setPatientRetry] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setPatients([]);
+    setPatientPagination(null);
+    setPatientError('');
+    setLoadingPatients(false);
+
+    if (!patientSearch.trim() || selectedPatient) return;
+
+    setLoadingPatients(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await getPatients(patientPage, 20, patientSearch.trim(), 'activo');
+        if (!active) return;
+        setPatients(response.data.patients);
+        setPatientPagination(response.data.pagination);
+      } catch {
+        if (active) setPatientError('No pudimos buscar pacientes.');
+      } finally {
+        if (active) setLoadingPatients(false);
+      }
+    }, 350);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [patientSearch, patientPage, patientRetry, selectedPatient]);
 
   const [selectedProfessional, setSelectedProfessional] =
     useState('');
@@ -175,8 +211,7 @@ const NuevoTurnoPage = () => {
       try {
         // Cargar primero los datos base para que la pantalla no espere
         // a que terminen todas las consultas de relaciones.
-        const [patientResponse, professionalResponse, settings] = await Promise.all([
-          getPatients(1, 100),
+        const [professionalResponse, settings] = await Promise.all([
           getProfessionals(),
           getParametros(),
         ]);
@@ -184,7 +219,6 @@ const NuevoTurnoPage = () => {
         if (!active) return;
 
         const available = professionalResponse.data.filter((item) => item.activo);
-        setPatients(patientResponse.data.patients.filter((item) => item.activo));
         setProfessionals(available);
         setClinicSettings(settings.filter((item) => item.clave === 'salita.especialidades'));
         setLoadingInitial(false);
@@ -457,7 +491,7 @@ const NuevoTurnoPage = () => {
         detail={
           <>
             <div className="fw-semibold">
-              {patients.find((patient) => patient.id_paciente === selectedPatient)?.apellidos}, {patients.find((patient) => patient.id_paciente === selectedPatient)?.nombres}
+              {selectedPatientDetails?.apellidos}, {selectedPatientDetails?.nombres}
             </div>
             <div className="text-muted small mt-1">
               {fecha} · {selectedSlot?.hora_inicio} - {selectedSlot?.hora_fin}
@@ -526,6 +560,10 @@ const NuevoTurnoPage = () => {
       <form
         onSubmit={(event) => {
           event.preventDefault();
+          if (!selectedPatient) {
+            setError('Seleccione un paciente de los resultados de búsqueda.');
+            return;
+          }
           setConfirmOpen(true);
         }}
       >
@@ -542,55 +580,79 @@ const NuevoTurnoPage = () => {
               <div className="card-body">
                 <div className="row g-3">
                   <div className="col-12">
-                    <label className="form-label">
-                      Paciente *
-                    </label>
-
-                    <select
-                      className="form-select"
-                      value={
-                        selectedPatient
-                      }
-                      disabled={loadingInitial}
-                      onChange={(event) =>
-                        setSelectedPatient(
-                          event.target
-                            .value,
-                        )
-                      }
-                      required
-                    >
-                      <option value="">
-                        Seleccionar paciente
-                      </option>
-
-                      {patients.map(
-                        (patient) => (
-                          <option
-                            key={
-                              patient.id_paciente
-                            }
-                            value={
-                              patient.id_paciente
-                            }
-                          >
-                            {
-                              patient
-                                .apellidos
-                            }
-                            ,{' '}
-                            {
-                              patient
-                                .nombres
-                            }{' '}
-                            — DNI{' '}
-                            {
-                              patient.dni
-                            }
-                          </option>
-                        ),
-                      )}
-                    </select>
+                    {selectedPatientDetails ? (
+                      <div className="border rounded p-3">
+                        <div className="small text-muted">Paciente seleccionado</div>
+                        <div className="fw-semibold text-break">
+                          {selectedPatientDetails.apellidos}, {selectedPatientDetails.nombres}
+                        </div>
+                        <div>DNI {selectedPatientDetails.dni}</div>
+                        <button type="button" className="btn btn-outline-secondary btn-sm mt-2"
+                          onClick={() => setSelectedPatientDetails(null)}>
+                          Cambiar paciente
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <label className="form-label" htmlFor="turno-paciente-search">Paciente *</label>
+                        <input id="turno-paciente-search" type="search" className="form-control"
+                          placeholder="DNI, nombre o apellido..." autoComplete="off" maxLength={150}
+                          value={patientSearch} aria-describedby="turno-paciente-status"
+                          onChange={(event) => {
+                            setPatientSearch(event.target.value);
+                            setPatientPage(1);
+                            setPatients([]);
+                            setPatientPagination(null);
+                            setPatientError('');
+                            setLoadingPatients(Boolean(event.target.value.trim()));
+                          }} />
+                        <div id="turno-paciente-status" className="small text-muted mt-2" role="status">
+                          {!patientSearch.trim()
+                            ? 'Buscá un paciente por DNI, nombre o apellido.'
+                            : loadingPatients
+                              ? 'Buscando pacientes...'
+                              : !patientError && patients.length === 0
+                                ? 'No encontramos pacientes con esos datos.'
+                                : patientPagination
+                                  ? `${patientPagination.total} pacientes encontrados`
+                                  : ''}
+                        </div>
+                        {patientError && (
+                          <div className="alert alert-danger mt-2" role="alert">
+                            {patientError}
+                            <button type="button" className="btn btn-outline-danger btn-sm ms-2"
+                              onClick={() => setPatientRetry((value) => value + 1)}>Reintentar</button>
+                          </div>
+                        )}
+                        {!loadingPatients && !patientError && patients.length > 0 && (
+                          <div className="list-group mt-2" aria-label="Resultados de pacientes">
+                            {patients.map((patient) => (
+                              <button key={patient.id_paciente} type="button"
+                                className="list-group-item list-group-item-action text-break"
+                                onClick={() => setSelectedPatientDetails(patient)}>
+                                <span className="d-block fw-semibold">{patient.apellidos}, {patient.nombres}</span>
+                                <span className="d-block small text-muted">DNI {patient.dni}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {!loadingPatients && patientPagination && patientPagination.totalPages > 1 && (
+                          <nav className="d-flex flex-wrap align-items-center gap-2 mt-2" aria-label="Páginas de pacientes">
+                            <button type="button" className="btn btn-outline-secondary btn-sm"
+                              disabled={patientPage <= 1} onClick={() => {
+                                setLoadingPatients(true);
+                                setPatientPage((page) => page - 1);
+                              }}>Anterior</button>
+                            <span className="small">Página {patientPagination.page} de {patientPagination.totalPages}</span>
+                            <button type="button" className="btn btn-outline-secondary btn-sm"
+                              disabled={patientPage >= patientPagination.totalPages} onClick={() => {
+                                setLoadingPatients(true);
+                                setPatientPage((page) => page + 1);
+                              }}>Siguiente</button>
+                          </nav>
+                        )}
+                      </>
+                    )}
                   </div>
 
                   <div className="col-md-6">
@@ -941,6 +1003,7 @@ const NuevoTurnoPage = () => {
                   className="btn btn-saps w-100"
                   disabled={
                     saving ||
+                    !selectedPatient ||
                     !selectedSlot
                   }
                 >
