@@ -1,7 +1,13 @@
 import { assertClinicSpecialty } from './configuracion.service.js';
 // Servicio de disponibilidad de turnos
 
-import { disponibilidadQuerySchema } from "../validators/disponibilidad.validator.js";
+import { disponibilidadQuerySchema, disponibilidadAdminQuerySchema } from "../validators/disponibilidad.validator.js";
+import { countTurnosDelHorario } from '../repositories/turno-agenda.repository.js';
+import { getTurno } from './turno-read.service.js';
+import { getTurnoScope, assertTurnoScope } from './turno-access.service.js';
+import { agendaDateTime } from '../utils/turno-time.js';
+import { AppError } from '../utils/app-error.js';
+import type { AuthenticatedUser } from '../types/auth.types.js';
 
 import {
   getHorariosParaDisponibilidad,
@@ -63,9 +69,7 @@ type Slot = {
 };
 
 const obtenerDiaSemana = (fecha: string): number => {
-  const fechaObj = new Date(`${fecha}T12:00:00-03:00`);
-  const dia = fechaObj.getDay();
-  return dia === 0 ? 7 : dia;
+  return agendaDateTime(`${fecha}T12:00:00-03:00`).weekday;
 };
 
 const convertirHoraAMinutos = (hora: string): number => {
@@ -215,7 +219,8 @@ const slotEstaOcupado = (
 };
 
 export const obtenerDisponibilidad = async (
-  query: unknown
+  query: unknown,
+  exclude?: string
 ) => {
   const {
     fecha,
@@ -255,7 +260,8 @@ export const obtenerDisponibilidad = async (
 
   const horariosTipados = horarios as unknown as Horario[];
   const bloqueosTipados = bloqueos as unknown as Bloqueo[];
-  const turnosTipados = turnos as unknown as Turno[];
+  const turnosTipados = (turnos as unknown as Turno[])
+    .filter((turno) => turno.id_turno !== exclude);
 
   const slots: Slot[] = [];
   const ahora = Date.now();
@@ -269,18 +275,11 @@ export const obtenerDisponibilidad = async (
       continue;
     }
 
-    // El cupo diario se calcula con turnos que realmente ocupan agenda.
-    const turnosQueOcupanCupo = turnosTipados.filter(
-      (turno) =>
-        turno.ocupa_agenda &&
-        turno.id_profesional === id_profesional &&
-        turno.id_especialidad === id_especialidad &&
-        turno.id_salita === id_salita
-    ).length;
-
+    // Mismo conteo que la reserva: horario, fecha argentina y ocupa_agenda.
+    // Los turnos sin horario siguen bloqueando superposiciones, no este cupo.
     const cupoCompleto =
       horario.cupo_maximo_diario !== null &&
-      turnosQueOcupanCupo >= horario.cupo_maximo_diario;
+      await countTurnosDelHorario(horario.id_horario, fecha, exclude) >= horario.cupo_maximo_diario;
 
     // Generar todas las franjas del horario. No cortar después de
     // cupo_maximo_diario franjas: ese valor es un límite de reservas,
@@ -404,4 +403,22 @@ export const obtenerDisponibilidad = async (
       cupo_maximo_diario: horario.cupo_maximo_diario,
     })),
   };
+};
+
+// Autoriza origen y destino antes de excluir un turno de la disponibilidad.
+export const obtenerDisponibilidadAdministrativa = async (
+  query: unknown,
+  user: AuthenticatedUser
+) => {
+  const { id_turno, ...filters } = disponibilidadAdminQuerySchema.parse(query);
+  assertTurnoScope(await getTurnoScope(user), filters.id_salita);
+
+  if (id_turno) {
+    const turno = await getTurno(id_turno, user);
+    if (turno.estado.es_estado_final) {
+      throw new AppError('El turno tiene un estado final y no admite modificaciones', 409);
+    }
+  }
+
+  return obtenerDisponibilidad(filters, id_turno);
 };

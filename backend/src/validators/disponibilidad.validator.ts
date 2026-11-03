@@ -13,3 +13,8 @@ export const disponibilidadQuerySchema = z
 export type DisponibilidadQuery = z.infer<
   typeof disponibilidadQuerySchema
 >;
+
+// Solo la consulta administrativa permite excluir el turno que se reprograma.
+export const disponibilidadAdminQuerySchema = disponibilidadQuerySchema.extend({
+  id_turno: z.string().uuid().optional(),
+});

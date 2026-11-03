@@ -5,7 +5,7 @@ import type {
 } from 'express';
 
 import {
-  obtenerDisponibilidad,
+  obtenerDisponibilidadAdministrativa,
 } from '../services/disponibilidad.service.js';
 
 import {
@@ -54,7 +54,7 @@ export const obtenerDisponibilidadController = async (
 
     // Para otros roles obtiene la disponibilidad general.
     const disponibilidad =
-      await obtenerDisponibilidad({
+      await obtenerDisponibilidadAdministrativa({
         fecha: String(
           req.query.fecha ?? ''
         ),
@@ -70,7 +70,8 @@ export const obtenerDisponibilidadController = async (
         id_salita: String(
           req.query.id_salita ?? ''
         ),
-      });
+        ...(req.query.id_turno !== undefined ? { id_turno: req.query.id_turno } : {}),
+      }, req.user!);
 
     return res
       .status(200)

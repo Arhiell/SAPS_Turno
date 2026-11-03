@@ -260,6 +260,8 @@ const ReprogramarTurnoPage = () => {
             selectedProfessional,
             selectedSpecialty,
             selectedSalita,
+            undefined,
+            id,
           );
 
         setAvailability(response);
@@ -276,6 +278,7 @@ const ReprogramarTurnoPage = () => {
 
     void loadAvailability();
   }, [
+    id,
     fecha,
     selectedProfessional,
     selectedSpecialty,

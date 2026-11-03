@@ -1,4 +1,5 @@
 import { supabase } from "../config/supabase.js";
+import { agendaDayBounds } from '../utils/turno-time.js';
 
 export const getHorariosParaDisponibilidad = async (
   idProfesional: string,
@@ -84,28 +85,8 @@ export const getTurnosParaDisponibilidad = async (
   idSalita: string,
   fecha: string
 ) => {
-  const inicioDia = `${fecha}T00:00:00-03:00`;
-
-  const fechaSiguiente = new Date(
-    `${fecha}T12:00:00-03:00`
-  );
-
-  fechaSiguiente.setDate(
-    fechaSiguiente.getDate() + 1
-  );
-
-  const siguienteFecha = [
-    fechaSiguiente.getFullYear(),
-    String(
-      fechaSiguiente.getMonth() + 1
-    ).padStart(2, "0"),
-    String(
-      fechaSiguiente.getDate()
-    ).padStart(2, "0"),
-  ].join("-");
-
-  const finDia =
-    `${siguienteFecha}T00:00:00-03:00`;
+  // Usa el mismo día argentino que el conteo de cupos de la reserva.
+  const { start: inicioDia, end: finDia } = agendaDayBounds(fecha);
 
   const { data, error } = await supabase
     .from("turnos")

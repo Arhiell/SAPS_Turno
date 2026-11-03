@@ -106,7 +106,8 @@ export const getDisponibilidad = async (
   idProfesional: string,
   idEspecialidad: string,
   idSalita: string,
-  patientId?: string
+  patientId?: string,
+  turnoId?: string
 ): Promise<DisponibilidadResponse> => {
   const response = await api.get<DisponibilidadResponse>(
     '/disponibilidad',
@@ -117,6 +118,7 @@ export const getDisponibilidad = async (
         id_especialidad: idEspecialidad,
         id_salita: idSalita,
         ...(patientId ? { id_paciente: patientId } : {}),
+        ...(turnoId ? { id_turno: turnoId } : {}),
       },
     }
   );
