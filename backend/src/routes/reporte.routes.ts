@@ -5,6 +5,7 @@ import { authenticate } from
 
 import { requireRole } from
   "../middlewares/role.middleware.js";
+import { getDashboardController } from '../controllers/dashboard.controller.js';
 
 import {
   getReporteResumenController,
@@ -14,6 +15,8 @@ import {
 } from "../controllers/reporte.controller.js";
 
 const router = Router();
+
+router.get('/dashboard', authenticate, requireRole('SUPER_ADMIN'), getDashboardController);
 
 import { getAgendaDiariaController, exportAgendaDiariaController, printAgendaDiariaController }
   from "../controllers/reporte-agenda.controller.js";

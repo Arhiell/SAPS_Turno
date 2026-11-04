@@ -17,17 +17,7 @@ import {
   getTurnos,
 } from '../../services/turnos.service';
 
-import {
-  getPatients,
-} from '../../services/patients.service';
-
-import {
-  getProfessionals,
-} from '../../services/profesionales.service';
-
-import {
-  getSalitas,
-} from '../../services/salitas.service';
+import SuperAdminOverview from './SuperAdminOverview';
 
 import type {
   Turno,
@@ -69,15 +59,6 @@ export default function Dashboard() {
   ] = useState<Turno[]>([]);
 
   const [
-    totals,
-    setTotals,
-  ] = useState<{
-    label: string;
-    value: number | null;
-    icon: string;
-  }[]>([]);
-
-  const [
     loading,
     setLoading,
   ] = useState(true);
@@ -115,7 +96,6 @@ export default function Dashboard() {
     setLoading(true);
     setError('');
     setTurnos([]);
-    setTotals([]);
 
     // Recorre la paginación para no confundir
     // una página con el total del día.
@@ -171,60 +151,6 @@ export default function Dashboard() {
           setLoading(false);
         }
       });
-
-    // Los totales globales no se muestran
-    // en la gestión de una salita.
-    if (global) {
-      void Promise.allSettled([
-        getPatients(1, 1),
-        getProfessionals(),
-        getSalitas(),
-      ]).then(
-        ([
-          p,
-          pr,
-          s,
-        ]) => {
-          if (active) {
-            setTotals([
-              {
-                label:
-                  'Pacientes registrados',
-                value:
-                  p.status === 'fulfilled'
-                    ? p.value.data.pagination.total
-                    : null,
-                icon: 'bi-people',
-              },
-              {
-                label:
-                  'Profesionales activos',
-                value:
-                  pr.status === 'fulfilled'
-                    ? pr.value.data.filter(
-                        (item) =>
-                          item.activo
-                      ).length
-                    : null,
-                icon: 'bi-person-badge',
-              },
-              {
-                label:
-                  'Salitas activas',
-                value:
-                  s.status === 'fulfilled'
-                    ? s.value.data.filter(
-                        (item) =>
-                          item.activo
-                      ).length
-                    : null,
-                icon: 'bi-hospital',
-              },
-            ]);
-          }
-        }
-      );
-    }
 
     // Evita actualizar el estado después
     // de desmontar el componente.
@@ -436,7 +362,9 @@ export default function Dashboard() {
           ESTADÍSTICAS
           ===================================== */}
 
-      {!patient && (
+      {global && <SuperAdminOverview revision={revision} onRefresh={() => setRevision(v => v + 1)} />}
+
+      {!patient && !global && (
         <div className="row g-3 mb-4">
           {/* Estadísticas de actividad diaria. */}
           {stats.map(
@@ -475,38 +403,6 @@ export default function Dashboard() {
             )
           )}
 
-          {/* Totales generales del sistema. */}
-          {totals.map(
-            (stat) => (
-              <div
-                className="col-12 col-sm-6 col-xl-4"
-                key={stat.label}
-              >
-                <div className="dashboard-stat-card">
-                  <div className="dashboard-stat-top">
-                    <i
-                      className={`dashboard-stat-icon bi ${stat.icon}`}
-                      aria-hidden="true"
-                    />
-
-                    <span className="dashboard-stat-label">
-                      {stat.label}
-                    </span>
-                  </div>
-
-                  <div className="dashboard-stat-value">
-                    {stat.value ?? '—'}
-                  </div>
-
-                  <small>
-                    {stat.value === null
-                      ? 'No disponible'
-                      : 'Total del sistema'}
-                  </small>
-                </div>
-              </div>
-            )
-          )}
         </div>
       )}
 
