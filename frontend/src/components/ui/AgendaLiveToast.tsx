@@ -43,6 +43,12 @@ function ToastItem({ evento, onClose }: ToastItemProps) {
           label: 'Bloqueo de agenda',
           badgeClass: 'text-warning',
         };
+      case 'HORARIO_ATENCION_ACTUALIZADO':
+        return {
+          icon: 'bi-clock-history text-primary',
+          label: 'Horario de atención',
+          badgeClass: 'text-primary',
+        };
       default:
         return {
           icon: 'bi-bell-fill text-info',

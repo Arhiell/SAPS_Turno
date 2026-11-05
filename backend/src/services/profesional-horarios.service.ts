@@ -283,11 +283,24 @@ export const getMisHorariosYDisponibilidad = async (
     ? Math.round(duraciones.reduce((acc, curr) => acc + curr, 0) / duraciones.length)
     : 20;
 
-  const horasInicio = horarios.map(h => timeToMinutes(h.hora_inicio));
-  const horasFin = horarios.map(h => timeToMinutes(h.hora_fin));
-  const rangoHorarioGeneral = horasInicio.length && horasFin.length
-    ? `${minutesToTime(Math.min(...horasInicio))} a ${minutesToTime(Math.max(...horasFin))}`
-    : 'Sin horarios configurados';
+  // Analizar si los horarios son uniformes o varían por día
+  const diasConFranjas = cronogramaSemanal.filter(d => d.trabaja);
+  const horariosPorDia = diasConFranjas.map(d => ({
+    dia: d.nombre_dia,
+    franjas: d.franjas.map(f => `${f.hora_inicio} a ${f.hora_fin}`).join(', '),
+  }));
+
+  const franjasUnicas = new Set(horariosPorDia.map(h => h.franjas));
+  const esHorarioUniforme = franjasUnicas.size <= 1;
+
+  let rangoHorarioGeneral = 'Sin horarios configurados';
+  if (diasConFranjas.length > 0) {
+    if (esHorarioUniforme) {
+      rangoHorarioGeneral = horariosPorDia[0]?.franjas ?? 'Sin horarios';
+    } else {
+      rangoHorarioGeneral = 'Horarios diferenciados por día';
+    }
+  }
 
   const salitasUnicas = Array.from(new Set(Array.from(salitasMap.values())));
   const especialidadesUnicas = Array.from(new Set(Array.from(especialidadesMap.values())));
@@ -408,6 +421,8 @@ export const getMisHorariosYDisponibilidad = async (
     informacion_general: {
       dias_laborales: diasLaborales,
       horario_atencion: rangoHorarioGeneral,
+      es_horario_uniforme: esHorarioUniforme,
+      horarios_por_dia: horariosPorDia,
       duracion_turno_minutos: duracionPromedio,
       salitas: salitasUnicas,
       especialidades: especialidadesUnicas,

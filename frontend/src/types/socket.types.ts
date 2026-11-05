@@ -3,13 +3,16 @@ export type TipoEventoAgenda =
   | 'TURNO_REPROGRAMADO'
   | 'TURNO_CANCELADO'
   | 'TURNO_ACTUALIZADO'
-  | 'BLOQUEO_AGENDA';
+  | 'BLOQUEO_AGENDA'
+  | 'HORARIO_ATENCION_ACTUALIZADO';
 
 export interface EventoAgenda {
   id: string;
   tipo: TipoEventoAgenda;
   mensaje: string;
   id_turno?: string;
+  id_horario?: string;
+  dia_semana?: number;
   id_profesional: string;
   id_salita?: string;
   paciente?: string;

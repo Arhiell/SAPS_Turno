@@ -261,6 +261,8 @@ export interface MisHorariosData {
   informacion_general: {
     dias_laborales: string[];
     horario_atencion: string;
+    es_horario_uniforme?: boolean;
+    horarios_por_dia?: { dia: string; franjas: string }[];
     duracion_turno_minutos: number;
     salitas: string[];
     especialidades: string[];

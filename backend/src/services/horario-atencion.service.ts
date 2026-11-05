@@ -6,6 +6,7 @@ import {
   getHorarioById,
   updateHorario,
 } from "../repositories/horario-atencion.repository.js";
+import { emitirHorarioAtencionActualizado } from "./socket.service.js";
 
 import {
   createHorarioAtencionSchema,
@@ -97,7 +98,26 @@ export const crearHorario = async (
     data.activo = validated.activo;
   }
 
-  return await createHorario(data);
+  const created = await createHorario(data);
+  if (created) {
+    try {
+      const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+      const diaNum = Number(created.dia_semana);
+      const nombreDia = dias[diaNum - 1] ?? `Día ${created.dia_semana}`;
+      emitirHorarioAtencionActualizado({
+        id_profesional: created.id_profesional,
+        id_salita: created.id_salita,
+        id_horario: created.id_horario,
+        dia_semana: created.dia_semana,
+        nuevo_horario: `${created.hora_inicio.slice(0, 5)} a ${created.hora_fin.slice(0, 5)}`,
+        mensaje: `Se asignó un nuevo horario de atención para el ${nombreDia} (${created.hora_inicio.slice(0, 5)} a ${created.hora_fin.slice(0, 5)})`,
+      });
+    } catch (err) {
+      console.error('Error al emitir evento de horario creado:', err);
+    }
+  }
+
+  return created;
 };
 
 export const actualizarHorario = async (
@@ -191,7 +211,42 @@ export const actualizarHorario = async (
     data.activo = validated.activo;
   }
 
-  return await updateHorario(id, data);
+  const updated = await updateHorario(id, data);
+  if (updated) {
+    try {
+      const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+      const diaNum = Number(updated.dia_semana);
+      const nombreDia = dias[diaNum - 1] ?? `Día ${updated.dia_semana}`;
+      const horaIni = updated.hora_inicio.slice(0, 5);
+      const horaFin = updated.hora_fin.slice(0, 5);
+      const horaIniAnt = horarioActual?.hora_inicio ? horarioActual.hora_inicio.slice(0, 5) : undefined;
+      const horaFinAnt = horarioActual?.hora_fin ? horarioActual.hora_fin.slice(0, 5) : undefined;
+
+      emitirHorarioAtencionActualizado({
+        id_profesional: updated.id_profesional,
+        id_salita: updated.id_salita,
+        id_horario: updated.id_horario,
+        dia_semana: updated.dia_semana,
+        horario_anterior: horaIniAnt && horaFinAnt ? `${horaIniAnt} a ${horaFinAnt}` : undefined,
+        nuevo_horario: `${horaIni} a ${horaFin}`,
+        mensaje: `Se actualizó tu horario de atención del ${nombreDia} (${horaIni} a ${horaFin})`,
+      });
+
+      if (horarioActual && horarioActual.id_profesional !== updated.id_profesional) {
+        emitirHorarioAtencionActualizado({
+          id_profesional: horarioActual.id_profesional,
+          id_salita: horarioActual.id_salita,
+          id_horario: horarioActual.id_horario,
+          dia_semana: horarioActual.dia_semana,
+          mensaje: `Se reasignó una franja horaria a otro profesional`,
+        });
+      }
+    } catch (err) {
+      console.error('Error al emitir evento de horario actualizado:', err);
+    }
+  }
+
+  return updated;
 };
 
 export const eliminarHorario = async (id: string) => {
@@ -201,5 +256,23 @@ export const eliminarHorario = async (id: string) => {
     return null;
   }
 
-  return await deleteHorario(id);
+  const deleted = await deleteHorario(id);
+  if (deleted) {
+    try {
+      const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+      const diaNum = Number(horario.dia_semana);
+      const nombreDia = dias[diaNum - 1] ?? `Día ${horario.dia_semana}`;
+      emitirHorarioAtencionActualizado({
+        id_profesional: horario.id_profesional,
+        id_salita: horario.id_salita,
+        id_horario: horario.id_horario,
+        dia_semana: horario.dia_semana,
+        mensaje: `Se dio de baja el horario de atención del ${nombreDia}`,
+      });
+    } catch (err) {
+      console.error('Error al emitir evento de horario eliminado:', err);
+    }
+  }
+
+  return deleted;
 };

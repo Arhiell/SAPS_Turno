@@ -167,10 +167,28 @@ export default function MisHorariosPage() {
                   <i className="bi bi-clock-history" aria-hidden="true" />
                 </div>
                 <div className="kpi-content">
-                  <span className="kpi-label">Horario de atención</span>
-                  <div className="kpi-value-highlight">
-                    {data.informacion_general.horario_atencion}
+                  <div className="d-flex align-items-center justify-content-between gap-1">
+                    <span className="kpi-label">Horario de atención</span>
+                    {data.informacion_general.es_horario_uniforme === false && (
+                      <span className="badge bg-light text-secondary border px-1 py-0" style={{ fontSize: '0.68rem' }}>
+                        Por día
+                      </span>
+                    )}
                   </div>
+                  {data.informacion_general.es_horario_uniforme !== false ? (
+                    <div className="kpi-value-highlight">
+                      {data.informacion_general.horario_atencion}
+                    </div>
+                  ) : (
+                    <div className="kpi-schedule-list">
+                      {(data.informacion_general.horarios_por_dia || []).map((h) => (
+                        <div key={h.dia} className="kpi-schedule-item">
+                          <span className="kpi-schedule-day">{h.dia.slice(0, 3)}</span>
+                          <span className="kpi-schedule-time">{h.franjas}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <span className="kpi-subtext">
                     <i className="bi bi-stopwatch me-1" aria-hidden="true" />
                     Turnos de {data.informacion_general.duracion_turno_minutos} minutos

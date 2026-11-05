@@ -13,9 +13,12 @@ export interface EventoAgenda {
     | 'TURNO_REPROGRAMADO'
     | 'TURNO_CANCELADO'
     | 'TURNO_ACTUALIZADO'
-    | 'BLOQUEO_AGENDA';
+    | 'BLOQUEO_AGENDA'
+    | 'HORARIO_ATENCION_ACTUALIZADO';
   mensaje: string;
   id_turno?: string | undefined;
+  id_horario?: string | undefined;
+  dia_semana?: number | undefined;
   id_profesional: string;
   id_salita?: string | undefined;
   paciente?: string | undefined;
@@ -132,4 +135,26 @@ export const emitirCambioAgenda = (
   if (evento.id_salita) {
     io.to(`salita:${evento.id_salita}`).emit('agenda:cambio', payload);
   }
+};
+
+/**
+ * Emite una notificación de actualización de horario de atención laboral
+ * EXCLUSIVAMENTE a la sala privada del profesional correspondiente.
+ */
+export const emitirHorarioAtencionActualizado = (
+  evento: Omit<EventoAgenda, 'id' | 'timestamp' | 'tipo'> & {
+    tipo?: 'HORARIO_ATENCION_ACTUALIZADO' | undefined;
+  }
+) => {
+  if (!io) return;
+
+  const payload: EventoAgenda = {
+    ...evento,
+    tipo: 'HORARIO_ATENCION_ACTUALIZADO',
+    id: randomUUID(),
+    timestamp: new Date().toISOString(),
+  };
+
+  // Enviar el evento ÚNICAMENTE a la sala privada del profesional correspondiente
+  io.to(`profesional:${evento.id_profesional}`).emit('agenda:cambio', payload);
 };
