@@ -8,8 +8,10 @@ import {
 } from './turno-access.service.js';
 import { getTurnoState } from './turno-read.service.js';
 import { notifyTurnoCreado } from './notificacion-turno.service.js';
+import { emitirCambioAgenda } from './socket.service.js';
 
 import { insertTurno } from '../repositories/turno.repository.js';
+import { findPatientById } from '../repositories/patient-read.repository.js';
 
 import { agendaDateTime } from '../utils/turno-time.js';
 import { assertBookingDate } from '../utils/booking-window.js';
@@ -81,6 +83,30 @@ export const createTurno = async (
 
   // Envía la notificación después de registrar el turno.
   await notifyTurnoCreado(turno.id_turno);
+
+  // Emite evento en tiempo real para el profesional afectado
+  try {
+    const patientData = await findPatientById(input.id_paciente);
+    const pacienteNombre = patientData
+      ? `${patientData.apellidos ?? ''} ${patientData.nombres ?? ''}`.trim() || 'Paciente'
+      : 'Paciente';
+
+    const fechaInfo = agendaDateTime(turno.fecha_hora_inicio);
+
+    emitirCambioAgenda({
+      tipo: 'TURNO_CREADO',
+      mensaje: 'Se agregó un nuevo turno a tu agenda',
+      id_turno: turno.id_turno,
+      id_profesional: turno.id_profesional,
+      id_salita: turno.id_salita,
+      paciente: pacienteNombre,
+      nueva_fecha: fechaInfo.date,
+      nuevo_horario: fechaInfo.time.slice(0, 5),
+    });
+  } catch (err) {
+    // La notificación WebSocket no debe impedir la creación del turno
+    console.error('Error al emitir evento de turno creado:', err);
+  }
 
   return turno;
 };

@@ -3,6 +3,7 @@ import { requireRole } from "../middlewares/role.middleware.js";
 import { professionalScope } from "../middlewares/profile-scope.middleware.js";
 import { Router } from "express";
 import { patientProfessionals } from '../controllers/patient-agenda.controller.js';
+import { obtenerMisHorariosController } from '../controllers/profesional-horarios.controller.js';
 
 import {
   getAllProfesionales,
@@ -14,6 +15,7 @@ import {
 
 const router = Router();
 router.get('/', authenticate, patientProfessionals);
+router.get('/me/horarios-disponibilidad', authenticate, requireRole('PROFESIONAL'), obtenerMisHorariosController);
 router.use(authenticate, requireRole("SUPER_ADMIN", "ADMIN_SALITA"));
 
 router.get("/", professionalScope, getAllProfesionales);

@@ -49,6 +49,7 @@ const ProfesionalesPage = lazy(() => import('../pages/profesionales/Profesionale
 const NuevoProfesionalPage = lazy(() => import('../pages/profesionales/NuevoProfesionalPage'));
 const EditarProfesionalPage = lazy(() => import('../pages/profesionales/EditarProfesionalPage'));
 const ProfesionalDetallePage = lazy(() => import('../pages/profesionales/ProfesionalDetallePage'));
+const MisHorariosPage = lazy(() => import('../pages/profesionales/MisHorariosPage'));
 
 const TurnosPage = lazy(() => import('../pages/turnos/TurnosPage'));
 const NuevoTurnoPage = lazy(() => import('../pages/turnos/NuevoTurnoPage'));
@@ -261,6 +262,11 @@ const AppRoutes = () => {
                 <Route
                   path="/mis-pacientes"
                   element={<MisTurnosPage key="today" mode="today" />}
+                />
+
+                <Route
+                  path="/mis-horarios"
+                  element={<MisHorariosPage />}
                 />
               </Route>
 

@@ -1,4 +1,5 @@
 import { timeToSeconds } from "../utils/time.js";
+import { emitirCambioAgenda } from "./socket.service.js";
 
 import {
   createBloqueo,
@@ -65,7 +66,25 @@ export const crearBloqueo = async (
     data.activo = validated.activo;
   }
 
-  return await createBloqueo(data);
+  const nuevoBloqueo = await createBloqueo(data);
+
+  if (nuevoBloqueo?.id_profesional) {
+    try {
+      emitirCambioAgenda({
+        tipo: 'BLOQUEO_AGENDA',
+        mensaje: `Se registró un bloqueo de horario en tu agenda: ${nuevoBloqueo.motivo}`,
+        id_profesional: nuevoBloqueo.id_profesional,
+        id_salita: nuevoBloqueo.id_salita,
+        nueva_fecha: nuevoBloqueo.fecha,
+        nuevo_horario: nuevoBloqueo.hora_inicio ? nuevoBloqueo.hora_inicio.slice(0, 5) : undefined,
+        motivo: nuevoBloqueo.motivo,
+      });
+    } catch (err) {
+      console.error('Error al emitir evento de bloqueo:', err);
+    }
+  }
+
+  return nuevoBloqueo;
 };
 
 export const actualizarBloqueo = async (

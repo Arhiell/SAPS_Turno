@@ -54,6 +54,12 @@ export const sidebarMenu: SidebarMenuItem[] = [
     roles: ['PROFESIONAL'],
   },
   {
+    label: 'Mis horarios',
+    path: '/mis-horarios',
+    icon: 'bi-clock-history',
+    roles: ['PROFESIONAL'],
+  },
+  {
     label: 'Mis turnos',
     path: '/mis-turnos',
     icon: 'bi-calendar-check',

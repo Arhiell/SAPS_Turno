@@ -195,3 +195,89 @@ export const getPatientProfessionals = async (
       }
     )
   ).data.data;
+
+
+export interface SlotDisponibilidad {
+  hora_inicio: string;
+  hora_fin: string;
+  estado: 'DISPONIBLE' | 'OCUPADO' | 'BLOQUEADO';
+  motivo?: string;
+  id_turno?: string;
+  codigo_turno?: string;
+  paciente?: string;
+  dni?: string;
+  estado_turno?: string;
+}
+
+export interface FranjaHorario {
+  id_horario: string;
+  hora_inicio: string;
+  hora_fin: string;
+  duracion_turno_minutos: number;
+  cupo_maximo_diario?: number | null;
+  salita: string;
+  especialidad: string;
+}
+
+export interface CronogramaDia {
+  dia_semana: number;
+  nombre_dia: string;
+  trabaja: boolean;
+  franjas: FranjaHorario[];
+}
+
+export interface DisponibilidadFecha {
+  fecha: string;
+  dia_semana: number;
+  nombre_dia: string;
+  trabaja: boolean;
+  bloqueo_dia_completo: {
+    bloqueado: boolean;
+    motivo?: string;
+  };
+  resumen_slots: {
+    total: number;
+    disponibles: number;
+    ocupados: number;
+    bloqueados: number;
+  };
+  franjas: {
+    id_horario: string;
+    hora_inicio: string;
+    hora_fin: string;
+    duracion_turno_minutos: number;
+    salita: string;
+    especialidad: string;
+    slots: SlotDisponibilidad[];
+  }[];
+}
+
+export interface MisHorariosData {
+  profesional: {
+    id_profesional: string;
+    matricula: string;
+    nombre_completo: string;
+  };
+  informacion_general: {
+    dias_laborales: string[];
+    horario_atencion: string;
+    duracion_turno_minutos: number;
+    salitas: string[];
+    especialidades: string[];
+  };
+  cronograma_semanal: CronogramaDia[];
+  disponibilidad_fecha: DisponibilidadFecha;
+}
+
+// Obtiene los horarios y disponibilidad del profesional autenticado.
+export const getMisHorarios = async (
+  fecha?: string
+): Promise<{ success: boolean; data: MisHorariosData }> => {
+  const response = await api.get<{ success: boolean; data: MisHorariosData }>(
+    '/profesionales/me/horarios-disponibilidad',
+    {
+      params: fecha ? { fecha } : {},
+    }
+  );
+  return response.data;
+};

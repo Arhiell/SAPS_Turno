@@ -1,15 +1,20 @@
+import { createServer } from "node:http";
 import app from "./app.js";
 import { env } from "./config/env.js";
 import { iniciarProcesadorNotificaciones } from "./services/notificacion-worker.service.js";
+import { initSocketServer } from "./services/socket.service.js";
 
 const detenerNotificaciones = iniciarProcesadorNotificaciones();
 
-const server = app.listen(
+const server = createServer(app);
+initSocketServer(server);
+
+server.listen(
   env.PORT,
   () => {
     console.log("");
     console.log("==================================");
-    console.log("🏥 SAPS Turno API");
+    console.log("🏥 SAPS Turno API (con WebSockets)");
     console.log("==================================");
     console.log(`🚀 Servidor: http://localhost:${env.PORT}`);
     console.log(`🌎 Entorno: ${env.NODE_ENV}`);

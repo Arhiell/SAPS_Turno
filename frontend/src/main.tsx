@@ -13,11 +13,14 @@ import "./styles/pacientes.css";
 
 import App from "./App";
 import { AuthProvider } from "./context/AuthContext";
+import { AgendaSocketProvider } from "./context/AgendaSocketContext";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <AuthProvider>
-      <App />
+      <AgendaSocketProvider>
+        <App />
+      </AgendaSocketProvider>
     </AuthProvider>
   </StrictMode>,
 );

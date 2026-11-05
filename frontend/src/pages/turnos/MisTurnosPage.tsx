@@ -19,6 +19,8 @@ import type { Turno } from '../../types/turno.types';
 import type { ReporteFormato } from '../../types/reporte.types';
 import ProfessionalCalendar from '../../components/turnos/ProfessionalCalendar';
 import ProfessionalTurnoHistory from '../../components/turnos/ProfessionalTurnoHistory';
+import { useAgendaSocket } from '../../context/AgendaSocketContext';
+import { AgendaSocketStatusBadge } from '../../components/ui/AgendaLiveToast';
 import '../../styles/professional-agenda.css';
 
 export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' | 'today' }) {
@@ -46,6 +48,13 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [revision, setRevision] = useState(0);
+  const { ultimoEvento } = useAgendaSocket();
+
+  useEffect(() => {
+    if (ultimoEvento) {
+      setRevision((prev) => prev + 1);
+    }
+  }, [ultimoEvento]);
 
   useEffect(() => {
     if (!daily) return;
@@ -151,11 +160,27 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
 
   return (
     <div>
-      <h1 className="h3">
-        {professional
-          ? daily ? 'Pacientes del día' : 'Mi agenda'
-          : 'Mis turnos'}
-      </h1>
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+        <h1 className="h3 mb-0">
+          {professional
+            ? daily ? 'Pacientes del día' : 'Mi agenda'
+            : 'Mis turnos'}
+        </h1>
+        {professional && (
+          <div className="d-flex align-items-center gap-2">
+            <AgendaSocketStatusBadge />
+            <button
+              className="btn btn-outline-secondary btn-sm"
+              disabled={loading || busy}
+              onClick={() => setRevision((r) => r + 1)}
+              title="Actualizar agenda manualmente"
+            >
+              <i className={`bi bi-arrow-clockwise me-1 ${loading ? 'spin' : ''}`} aria-hidden="true" />
+              Actualizar
+            </button>
+          </div>
+        )}
+      </div>
       {professional && <p className="text-muted">{daily
         ? `Atención de hoy (${today.split('-').reverse().join('/')}).`
         : 'Historial completo de tus turnos, con su estado actual y los cambios registrados.'}</p>}

@@ -20,6 +20,8 @@ import {
   AppError 
 } from "../utils/app-error.js";
 
+import { agendaDateTime } from "../utils/turno-time.js";
+
 import type { 
   TurnoRow 
 } from "../types/turno.types.js";
@@ -39,6 +41,9 @@ import {
   notifyCambioProfesional,
 } from "./notificacion-turno.service.js";
 
+import { findPatientById } from "../repositories/patient-read.repository.js";
+import { emitirCambioAgenda } from "./socket.service.js";
+
 const assertEditable = (turno: TurnoRow) => {
   // Respeta el indicador real del catálogo; no se reabren estados finales.
   if (turno.estado.es_estado_final) throw new AppError(
@@ -54,6 +59,16 @@ const requireUpdated = (turno: TurnoRow | null) => {
   );
 
   return turno;
+};
+
+const getPatientName = async (patientId: string): Promise<string> => {
+  try {
+    const p = await findPatientById(patientId);
+    if (!p) return 'Paciente';
+    return `${p.apellidos ?? ''} ${p.nombres ?? ''}`.trim() || 'Paciente';
+  } catch {
+    return 'Paciente';
+  }
 };
 
 export const updateTurno = async (
@@ -75,9 +90,30 @@ export const updateTurno = async (
   ]
     .some(key => key in input);
 
-  if (!scheduleChanged) return requireUpdated(
-    await patchTurno(id, current.version, input)
-  );
+  if (!scheduleChanged) {
+    const updatedNoSchedule = requireUpdated(
+      await patchTurno(id, current.version, input)
+    );
+
+    try {
+      const pacienteNombre = await getPatientName(current.id_paciente);
+
+      emitirCambioAgenda({
+        tipo: 'TURNO_ACTUALIZADO',
+        mensaje: 'Se modificó la información de un turno en tu agenda',
+        id_turno: updatedNoSchedule.id_turno,
+        id_profesional: updatedNoSchedule.id_profesional,
+        id_salita: updatedNoSchedule.id_salita,
+        paciente: pacienteNombre,
+        nueva_fecha: agendaDateTime(updatedNoSchedule.fecha_hora_inicio).date,
+        nuevo_horario: agendaDateTime(updatedNoSchedule.fecha_hora_inicio).time.slice(0, 5),
+      });
+    } catch (err) {
+      console.error('Error al emitir evento de turno actualizado:', err);
+    }
+
+    return updatedNoSchedule;
+  }
 
   const candidate = { 
     id_paciente: current.id_paciente,
@@ -107,16 +143,66 @@ export const updateTurno = async (
     )
   );
 
-  // Notifica después de guardar; compara instantes para evitar avisos por formato de fecha.
-  if (
+  const reprogramado =
     Date.parse(current.fecha_hora_inicio) !== Date.parse(updated.fecha_hora_inicio) ||
-    Date.parse(current.fecha_hora_fin) !== Date.parse(updated.fecha_hora_fin)
-  ) {
+    Date.parse(current.fecha_hora_fin) !== Date.parse(updated.fecha_hora_fin);
+
+  // Notifica después de guardar; compara instantes para evitar avisos por formato de fecha.
+  if (reprogramado) {
     await notifyTurnoReprogramado(updated.id_turno);
   }
 
   if (current.id_profesional !== updated.id_profesional) {
     await notifyCambioProfesional(updated.id_turno);
+  }
+
+  // Emisión en tiempo real vía WebSocket
+  try {
+    const pacienteNombre = await getPatientName(current.id_paciente);
+    const fechaAnt = agendaDateTime(current.fecha_hora_inicio);
+    const fechaNueva = agendaDateTime(updated.fecha_hora_inicio);
+
+    if (reprogramado) {
+      emitirCambioAgenda({
+        tipo: 'TURNO_REPROGRAMADO',
+        mensaje: 'Se reprogramó un turno en tu agenda',
+        id_turno: updated.id_turno,
+        id_profesional: updated.id_profesional,
+        id_salita: updated.id_salita,
+        paciente: pacienteNombre,
+        fecha_anterior: fechaAnt.date,
+        horario_anterior: fechaAnt.time.slice(0, 5),
+        nueva_fecha: fechaNueva.date,
+        nuevo_horario: fechaNueva.time.slice(0, 5),
+      });
+
+      // Si cambió de profesional, también avisar al profesional anterior
+      if (current.id_profesional !== updated.id_profesional) {
+        emitirCambioAgenda({
+          tipo: 'TURNO_CANCELADO',
+          mensaje: 'Un turno de tu agenda fue reasignado a otro profesional',
+          id_turno: updated.id_turno,
+          id_profesional: current.id_profesional,
+          id_salita: current.id_salita,
+          paciente: pacienteNombre,
+          fecha_anterior: fechaAnt.date,
+          horario_anterior: fechaAnt.time.slice(0, 5),
+        });
+      }
+    } else {
+      emitirCambioAgenda({
+        tipo: 'TURNO_ACTUALIZADO',
+        mensaje: 'Se modificó un turno en tu agenda',
+        id_turno: updated.id_turno,
+        id_profesional: updated.id_profesional,
+        id_salita: updated.id_salita,
+        paciente: pacienteNombre,
+        nueva_fecha: fechaNueva.date,
+        nuevo_horario: fechaNueva.time.slice(0, 5),
+      });
+    }
+  } catch (err) {
+    console.error('Error al emitir evento de turno modificado:', err);
   }
 
   return updated;
@@ -197,6 +283,39 @@ export const changeTurnoStatus = async (
   // El código del catálogo identifica la cancelación; los UUID cambian entre bases.
   if (current.estado.codigo !== "CANCELADO" && state.codigo === "CANCELADO") {
     await notifyTurnoCancelado(updated.id_turno);
+  }
+
+  // Emisión en tiempo real vía WebSocket
+  try {
+    const pacienteNombre = await getPatientName(current.id_paciente);
+    const fechaInfo = agendaDateTime(current.fecha_hora_inicio);
+
+    if (state.codigo === 'CANCELADO') {
+      emitirCambioAgenda({
+        tipo: 'TURNO_CANCELADO',
+        mensaje: 'Se canceló un turno de tu agenda',
+        id_turno: updated.id_turno,
+        id_profesional: current.id_profesional,
+        id_salita: current.id_salita,
+        paciente: pacienteNombre,
+        nueva_fecha: fechaInfo.date,
+        nuevo_horario: fechaInfo.time.slice(0, 5),
+        motivo: input.motivo_cancelacion ?? undefined,
+      });
+    } else {
+      emitirCambioAgenda({
+        tipo: 'TURNO_ACTUALIZADO',
+        mensaje: `Un turno de tu agenda cambió a estado ${state.nombre}`,
+        id_turno: updated.id_turno,
+        id_profesional: current.id_profesional,
+        id_salita: current.id_salita,
+        paciente: pacienteNombre,
+        nueva_fecha: fechaInfo.date,
+        nuevo_horario: fechaInfo.time.slice(0, 5),
+      });
+    }
+  } catch (err) {
+    console.error('Error al emitir evento de cambio de estado:', err);
   }
 
   return user.rol === 'PACIENTE' ? { ...updated, observaciones: null, cancelado_por: null } : updated;
