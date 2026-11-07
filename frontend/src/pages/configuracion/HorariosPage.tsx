@@ -1,3 +1,5 @@
+import AgendaImpactPanel from '../../components/turnos/AgendaImpactPanel';
+import { isAgendaConflict, type AgendaChange } from '../../services/agenda-impacto.service';
 import ValidatedInput from '../../components/ui/ValidatedInput';
 import WeeklyScheduleFields from '../../components/profesionales/WeeklyScheduleFields';
 import {
@@ -109,6 +111,7 @@ export default function HorariosPage() {
   const [ready, setReady] = useState(false);
   const [relationLoading, setRelationLoading] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [impact, setImpact] = useState<AgendaChange | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [revision, setRevision] = useState(0);
@@ -437,6 +440,7 @@ export default function HorariosPage() {
       // Fuerza la recarga del listado.
       setRevision((value) => value + 1);
     } catch (cause) {
+      if (editing && isAgendaConflict(cause)) setImpact({ tipo: 'horario', id: editing, datos: { ...form } });
       setError(saved
         ? `Se guardaron ${saved} franjas. Quedan pendientes las que se muestran en el formulario. ${authError(cause)}`
         : authError(cause));
@@ -534,6 +538,9 @@ export default function HorariosPage() {
 
   return (
     <div>
+      {impact && <AgendaImpactPanel cambio={impact} onClose={() => setImpact(null)} onSaved={() => {
+        setImpact(null); reset(); setError(''); setSuccess('Cambio de agenda guardado.'); setRevision(v => v + 1);
+      }} />}
       {/* Navegación contextual */}
       <div className="d-flex flex-wrap gap-2 mb-3">
         {openedFromProfessional &&
@@ -701,7 +708,7 @@ export default function HorariosPage() {
 
         <fieldset
           disabled={
-            busy ||
+            busy || Boolean(impact) ||
             loading ||
             !ready
           }

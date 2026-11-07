@@ -16,12 +16,12 @@ import {
 const router = Router();
 router.get('/', authenticate, patientProfessionals);
 router.get('/me/horarios-disponibilidad', authenticate, requireRole('PROFESIONAL'), obtenerMisHorariosController);
-router.use(authenticate, requireRole("SUPER_ADMIN", "ADMIN_SALITA"));
+router.get('/', authenticate, requireRole('SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION'), professionalScope, getAllProfesionales);
+router.use(authenticate);
 
-router.get("/", professionalScope, getAllProfesionales);
-router.get("/:id", professionalScope, getProfesionalById);
-router.post("/", professionalScope, createProfesional);
-router.put("/:id", professionalScope, updateProfesional);
-router.delete("/:id", professionalScope, deleteProfesional);
+router.get("/:id", requireRole("SUPER_ADMIN", "ADMIN_SALITA"), professionalScope, getProfesionalById);
+router.post("/", requireRole("SUPER_ADMIN", "ADMIN_SALITA"), professionalScope, createProfesional);
+router.put("/:id", requireRole("SUPER_ADMIN", "ADMIN_SALITA"), professionalScope, updateProfesional);
+router.delete("/:id", requireRole("SUPER_ADMIN", "ADMIN_SALITA"), professionalScope, deleteProfesional);
 
 export default router;

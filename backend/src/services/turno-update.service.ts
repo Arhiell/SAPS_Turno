@@ -1,38 +1,27 @@
-import { 
-  patchTurno 
-} from "../repositories/turno-update.repository.js";
 
-import { 
-  getTurno, 
-  getTurnoState 
+import { patchTurno } from "../repositories/turno-update.repository.js";
+
+import {
+  getTurno,
+  getTurnoState,
 } from "./turno-read.service.js";
 
-import { 
-  getTurnoScope, 
-  assertTurnoScope 
+import {
+  getTurnoScope,
+  assertTurnoScope,
 } from "./turno-access.service.js";
 
-import { 
-  validateTurnoAgenda 
-} from "./turno-agenda.service.js";
+import { validateTurnoAgenda } from "./turno-agenda.service.js";
+import { AppError } from "../utils/app-error.js";
 
-import { 
-  AppError 
-} from "../utils/app-error.js";
+import type { TurnoRow } from "../types/turno.types.js";
+import type { AuthenticatedUser } from "../types/auth.types.js";
 
 import { agendaDateTime } from "../utils/turno-time.js";
 
-import type { 
-  TurnoRow 
-} from "../types/turno.types.js";
-
-import type { 
-  AuthenticatedUser 
-} from "../types/auth.types.js";
-
-import type { 
-  UpdateTurnoInput, 
-  TurnoStatusInput 
+import type {
+  UpdateTurnoInput,
+  TurnoStatusInput,
 } from "../validators/turno-update.validator.js";
 
 import {
@@ -44,19 +33,25 @@ import {
 import { findPatientById } from "../repositories/patient-read.repository.js";
 import { emitirCambioAgenda } from "./socket.service.js";
 
+// Verifica que el turno permita modificaciones.
 const assertEditable = (turno: TurnoRow) => {
-  // Respeta el indicador real del catálogo; no se reabren estados finales.
-  if (turno.estado.es_estado_final) throw new AppError(
-    "El turno tiene un estado final y no admite modificaciones",
-    409
-  );
+  // Respeta los estados finales definidos en el catálogo.
+  if (turno.estado.es_estado_final) {
+    throw new AppError(
+      "El turno tiene un estado final y no admite modificaciones",
+      409
+    );
+  }
 };
 
+// Verifica que la actualización se haya realizado correctamente.
 const requireUpdated = (turno: TurnoRow | null) => {
-  if (!turno) throw new AppError(
-    "El turno cambió; vuelva a consultar antes de modificarlo",
-    409
-  );
+  if (!turno) {
+    throw new AppError(
+      "El turno cambió; vuelva a consultar antes de modificarlo",
+      409
+    );
+  }
 
   return turno;
 };
@@ -71,25 +66,57 @@ const getPatientName = async (patientId: string): Promise<string> => {
   }
 };
 
+// Actualiza los datos o reprograma un turno existente.
 export const updateTurno = async (
-  id: string, 
-  input: UpdateTurnoInput, 
-  user: AuthenticatedUser
+  id: string,
+  request: UpdateTurnoInput,
+  user: AuthenticatedUser,
+  context?: {
+    version: number;
+    motivo: string;
+  }
 ) => {
-  if (["PACIENTE", "PROFESIONAL"].includes(user.rol)) throw new AppError("No tiene permisos para reprogramar turnos", 403);
+  const {
+    motivo_reprogramacion,
+    version,
+    ...input
+  } = request;
+
+  const expectedVersion = context?.version ?? version;
+
+  // Restringe la reprogramación según el rol del usuario.
+  if (["PACIENTE", "PROFESIONAL"].includes(user.rol)) {
+    throw new AppError(
+      "No tiene permisos para reprogramar turnos",
+      403
+    );
+  }
+
   const current = await getTurno(id, user);
 
   assertEditable(current);
 
-  const scheduleChanged = [
-    "id_profesional", 
-    "id_especialidad", 
-    "id_salita", 
-    "id_horario", 
-    "fecha_hora_inicio"
-  ]
-    .some(key => key in input);
+  // Comprueba que el turno conserve la versión esperada.
+  if (
+    expectedVersion !== undefined &&
+    current.version !== expectedVersion
+  ) {
+    throw new AppError(
+      'El turno cambió; volvé a consultarlo antes de confirmar',
+      409
+    );
+  }
 
+  // Identifica si se modifican datos relacionados con la agenda.
+  const scheduleChanged = [
+    "id_profesional",
+    "id_especialidad",
+    "id_salita",
+    "id_horario",
+    "fecha_hora_inicio",
+  ].some((key) => key in input);
+
+  // Actualiza la información y avisa al profesional después de guardar.
   if (!scheduleChanged) {
     const updatedNoSchedule = requireUpdated(
       await patchTurno(id, current.version, input)
@@ -115,30 +142,52 @@ export const updateTurno = async (
     return updatedNoSchedule;
   }
 
-  const candidate = { 
+  // Construye los datos del turno que será reprogramado.
+  const candidate = {
     id_paciente: current.id_paciente,
     id_profesional: input.id_profesional ?? current.id_profesional,
     id_especialidad: input.id_especialidad ?? current.id_especialidad,
     id_salita: input.id_salita ?? current.id_salita,
     fecha_hora_inicio: input.fecha_hora_inicio ?? current.fecha_hora_inicio,
-    ...(input.id_horario ? { id_horario: input.id_horario } : {}) 
+    ...(input.id_horario
+      ? { id_horario: input.id_horario }
+      : {}),
   };
 
+  const motivo = context?.motivo ?? motivo_reprogramacion;
+
+  // Exige un motivo para realizar la reprogramación.
+  if (!motivo) {
+    throw new AppError(
+      'Indicá el motivo de la reprogramación',
+      400
+    );
+  }
+
+  // Verifica el acceso a la salita de destino.
   assertTurnoScope(
-    await getTurnoScope(user), 
+    await getTurnoScope(user),
     candidate.id_salita
   );
 
-  // Reprogramar revalida toda la agenda, excluyendo solamente este mismo turno.
-  const agenda = await validateTurnoAgenda(candidate, id);
+  // Revalida la agenda excluyendo únicamente el turno actual.
+  const agenda = await validateTurnoAgenda(
+    candidate,
+    id
+  );
 
+  // Guarda la reprogramación con control de versión.
   const updated = requireUpdated(
     await patchTurno(
-      id, 
-      current.version, 
-      { 
-        ...input, 
-        ...agenda 
+      id,
+      current.version,
+      {
+        ...input,
+        ...agenda,
+      },
+      {
+        usuario: user.id_usuario,
+        motivo,
       }
     )
   );
@@ -149,9 +198,13 @@ export const updateTurno = async (
 
   // Notifica después de guardar; compara instantes para evitar avisos por formato de fecha.
   if (reprogramado) {
-    await notifyTurnoReprogramado(updated.id_turno);
+    await notifyTurnoReprogramado(
+      updated.id_turno,
+      current.fecha_hora_inicio
+    );
   }
 
+  // Notifica cuando cambia el profesional asignado.
   if (current.id_profesional !== updated.id_profesional) {
     await notifyCambioProfesional(updated.id_turno);
   }
@@ -208,56 +261,93 @@ export const updateTurno = async (
   return updated;
 };
 
+// Modifica el estado de un turno según los permisos del usuario.
 export const changeTurnoStatus = async (
-  id: string, 
-  input: TurnoStatusInput, 
+  id: string,
+  input: TurnoStatusInput,
   user: AuthenticatedUser
 ) => {
-  if (user.rol === "PROFESIONAL" && !["ATENDIDO", "NO_ASISTIO"].includes(input.estado)) {
-    throw new AppError("Solo puede marcar ATENDIDO o NO_ASISTIO", 403);
+  // Restringe los estados permitidos para profesionales.
+  if (
+    user.rol === "PROFESIONAL" &&
+    !["ATENDIDO", "NO_ASISTIO"].includes(input.estado)
+  ) {
+    throw new AppError(
+      "Solo puede marcar ATENDIDO o NO_ASISTIO",
+      403
+    );
   }
-  if (user.rol === "PACIENTE" && input.estado !== 'CANCELADO') {
-    throw new AppError('Solo podés cancelar tus turnos', 403);
+
+  // Los pacientes únicamente pueden cancelar sus turnos.
+  if (
+    user.rol === "PACIENTE" &&
+    input.estado !== 'CANCELADO'
+  ) {
+    throw new AppError(
+      'Solo podés cancelar tus turnos',
+      403
+    );
   }
+
   const current = await getTurno(id, user);
 
-  if (['ATENDIDO', 'NO_ASISTIO'].includes(input.estado) && Date.parse(current.fecha_hora_inicio) > Date.now()) {
-    throw new AppError('No se puede registrar atención o inasistencia antes del inicio del turno.', 409);
+  // Impide registrar atención o inasistencia antes del turno.
+  if (
+    ['ATENDIDO', 'NO_ASISTIO'].includes(input.estado) &&
+    Date.parse(current.fecha_hora_inicio) > Date.now()
+  ) {
+    throw new AppError(
+      'No se puede registrar atención o inasistencia antes del inicio del turno.',
+      409
+    );
   }
 
-  if (user.rol === 'PACIENTE' && Date.parse(current.fecha_hora_inicio) <= Date.now()) {
-    throw new AppError('El turno ya comenzó. Contactá a tu salita.', 409);
+  // Impide que el paciente cancele un turno que ya comenzó.
+  if (
+    user.rol === 'PACIENTE' &&
+    Date.parse(current.fecha_hora_inicio) <= Date.now()
+  ) {
+    throw new AppError(
+      'El turno ya comenzó. Contactá a tu salita.',
+      409
+    );
   }
 
   assertEditable(current);
 
+  // Obtiene el estado solicitado desde el catálogo.
   const state = await getTurnoState(input.estado);
 
-  if (state.id_estado === current.id_estado) throw new AppError(
-    "El turno ya tiene ese estado",
-    409
-  );
+  if (state.id_estado === current.id_estado) {
+    throw new AppError(
+      "El turno ya tiene ese estado",
+      409
+    );
+  }
 
+  // Revalida la disponibilidad cuando el nuevo estado ocupa agenda.
   if (state.ocupa_agenda) {
-    // Confirmar o registrar llegada no reprograma un turno que ya comenzó.
     const agenda = await validateTurnoAgenda(
-      { id_paciente: current.id_paciente,
+      {
+        id_paciente: current.id_paciente,
         id_profesional: current.id_profesional,
         id_especialidad: current.id_especialidad,
-        id_salita: current.id_salita, 
+        id_salita: current.id_salita,
         fecha_hora_inicio: current.fecha_hora_inicio,
-        ...(current.id_horario ? { 
-          id_horario: current.id_horario 
-        } : {}) 
-      }, 
-      id, 
+        ...(current.id_horario
+          ? { id_horario: current.id_horario }
+          : {}),
+      },
+      id,
       current.ocupa_agenda,
       !current.ocupa_agenda
     );
 
-    if (Date.parse(
-      agenda.fecha_hora_fin
-    ) !== Date.parse(current.fecha_hora_fin)) {
+    // Verifica que la duración del turno no haya cambiado.
+    if (
+      Date.parse(agenda.fecha_hora_fin) !==
+      Date.parse(current.fecha_hora_fin)
+    ) {
       throw new AppError(
         "La duración del horario cambió; debe reprogramar el turno",
         409
@@ -265,23 +355,29 @@ export const changeTurnoStatus = async (
     }
   }
 
-  // Cancelación lógica: mantiene fecha, paciente, profesional e historial del trigger.
+  // Actualiza el estado y registra los datos de cancelación.
   const updated = requireUpdated(
     await patchTurno(
-      id, 
-      current.version, 
+      id,
+      current.version,
       {
         id_estado: state.id_estado,
-        ...(state.codigo === "CANCELADO" ? { 
-          motivo_cancelacion: input.motivo_cancelacion ?? null,
-          cancelado_por: user.id_usuario,
-          fecha_cancelacion: new Date().toISOString() 
-        } : {}
-      )
-  }));
+        ...(state.codigo === "CANCELADO"
+          ? {
+              motivo_cancelacion: input.motivo_cancelacion ?? null,
+              cancelado_por: user.id_usuario,
+              fecha_cancelacion: new Date().toISOString(),
+            }
+          : {}),
+      }
+    )
+  );
 
-  // El código del catálogo identifica la cancelación; los UUID cambian entre bases.
-  if (current.estado.codigo !== "CANCELADO" && state.codigo === "CANCELADO") {
+  // Notifica la cancelación utilizando el código del catálogo.
+  if (
+    current.estado.codigo !== "CANCELADO" &&
+    state.codigo === "CANCELADO"
+  ) {
     await notifyTurnoCancelado(updated.id_turno);
   }
 
@@ -318,5 +414,12 @@ export const changeTurnoStatus = async (
     console.error('Error al emitir evento de cambio de estado:', err);
   }
 
-  return user.rol === 'PACIENTE' ? { ...updated, observaciones: null, cancelado_por: null } : updated;
+  // Oculta determinados datos cuando la respuesta es para un paciente.
+  return user.rol === 'PACIENTE'
+    ? {
+        ...updated,
+        observaciones: null,
+        cancelado_por: null,
+      }
+    : updated;
 };

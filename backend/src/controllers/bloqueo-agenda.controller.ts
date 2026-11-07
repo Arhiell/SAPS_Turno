@@ -1,7 +1,8 @@
-import type { 
-  Request, 
-  Response, 
-  NextFunction 
+
+import type {
+  Request,
+  Response,
+  NextFunction,
 } from "express";
 
 import {
@@ -12,6 +13,7 @@ import {
   getBloqueos,
 } from "../services/bloqueo-agenda.service.js";
 
+// Obtiene los bloqueos de agenda según las salitas autorizadas.
 export const obtenerBloqueos = async (
   _req: Request,
   res: Response,
@@ -26,6 +28,7 @@ export const obtenerBloqueos = async (
   }
 };
 
+// Obtiene un bloqueo de agenda por su identificador.
 export const obtenerBloqueo = async (
   req: Request,
   res: Response,
@@ -36,6 +39,7 @@ export const obtenerBloqueo = async (
 
     const bloqueo = await getBloqueo(id);
 
+    // Verifica que el bloqueo exista.
     if (!bloqueo) {
       return res.status(404).json({
         message: "Bloqueo no encontrado",
@@ -48,13 +52,17 @@ export const obtenerBloqueo = async (
   }
 };
 
+// Crea un bloqueo de agenda asociado al usuario autenticado.
 export const crearBloqueoController = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const bloqueo = await crearBloqueo(req.body);
+    const bloqueo = await crearBloqueo(
+      req.body,
+      req.user!.id_usuario
+    );
 
     return res.status(201).json(bloqueo);
   } catch (error) {
@@ -62,6 +70,7 @@ export const crearBloqueoController = async (
   }
 };
 
+// Actualiza un bloqueo de agenda existente.
 export const actualizarBloqueoController = async (
   req: Request,
   res: Response,
@@ -70,8 +79,13 @@ export const actualizarBloqueoController = async (
   try {
     const id = String(req.params.id);
 
-    const bloqueo = await actualizarBloqueo(id, req.body);
+    const bloqueo = await actualizarBloqueo(
+      id,
+      req.body,
+      req.user!.id_usuario
+    );
 
+    // Verifica que el bloqueo exista antes de responder.
     if (!bloqueo) {
       return res.status(404).json({
         message: "Bloqueo no encontrado",
@@ -84,6 +98,7 @@ export const actualizarBloqueoController = async (
   }
 };
 
+// Desactiva un bloqueo de agenda existente.
 export const eliminarBloqueoController = async (
   req: Request,
   res: Response,
@@ -92,8 +107,12 @@ export const eliminarBloqueoController = async (
   try {
     const id = String(req.params.id);
 
-    const bloqueo = await eliminarBloqueo(id);
+    const bloqueo = await eliminarBloqueo(
+      id,
+      req.user!.id_usuario
+    );
 
+    // Verifica que el bloqueo exista.
     if (!bloqueo) {
       return res.status(404).json({
         message: "Bloqueo no encontrado",

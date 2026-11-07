@@ -1,10 +1,11 @@
-import { timeToSeconds } from "../utils/time.js";
+
+import { assertNoAgendaAffected } from './agenda-impacto.service.js';
+import { saveAgenda } from '../repositories/agenda-impacto.repository.js';
+import { validarHorario } from '../validators/horario-rules.js';
+
 import {
-  createHorario,
-  deleteHorario,
   getAllHorarios,
   getHorarioById,
-  updateHorario,
 } from "../repositories/horario-atencion.repository.js";
 import { emitirHorarioAtencionActualizado } from "./socket.service.js";
 
@@ -15,41 +16,29 @@ import {
   type UpdateHorarioAtencionInput,
 } from "../validators/horario-atencion.validator.js";
 
-export const getHorarios = async (scope: string[] | null = null) => {
+type Horario = NonNullable<Awaited<ReturnType<typeof getHorarioById>>>;
+
+// Obtiene los horarios de atención según las salitas autorizadas.
+export const getHorarios = async (
+  scope: string[] | null = null
+) => {
   return await getAllHorarios(scope);
 };
 
+// Obtiene un horario de atención por su identificador.
 export const getHorario = async (id: string) => {
   return await getHorarioById(id);
 };
 
-const validarHorario = (
-  horaInicio: string,
-  horaFin: string,
-  vigenciaDesde?: string,
-  vigenciaHasta?: string | null
-) => {
-  if (timeToSeconds(horaInicio) >= timeToSeconds(horaFin)) {
-    throw new Error("La hora de inicio debe ser menor que la hora de fin");
-  }
-
-  if (
-    vigenciaHasta !== undefined &&
-    vigenciaHasta !== null &&
-    vigenciaDesde !== undefined &&
-    vigenciaHasta < vigenciaDesde
-  ) {
-    throw new Error(
-      "La fecha de vigencia hasta debe ser mayor o igual a la fecha de vigencia desde"
-    );
-  }
-};
-
+// Crea un nuevo horario de atención.
 export const crearHorario = async (
-  input: CreateHorarioAtencionInput
+  input: CreateHorarioAtencionInput,
+  usuario: string
 ) => {
+  // Valida los datos recibidos.
   const validated = createHorarioAtencionSchema.parse(input);
 
+  // Verifica las horas y el período de vigencia.
   validarHorario(
     validated.hora_inicio,
     validated.hora_fin,
@@ -57,6 +46,7 @@ export const crearHorario = async (
     validated.vigencia_hasta
   );
 
+  // Prepara los datos del nuevo horario.
   const data: {
     id_profesional: string;
     id_especialidad: string;
@@ -78,6 +68,7 @@ export const crearHorario = async (
     hora_fin: validated.hora_fin,
   };
 
+  // Incorpora únicamente los campos opcionales definidos.
   if (validated.duracion_turno_minutos !== undefined) {
     data.duracion_turno_minutos = validated.duracion_turno_minutos;
   }
@@ -98,7 +89,7 @@ export const crearHorario = async (
     data.activo = validated.activo;
   }
 
-  const created = await createHorario(data);
+  const created = await saveAgenda<Horario>('horario', null, data, usuario);
   if (created) {
     try {
       const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
@@ -120,10 +111,13 @@ export const crearHorario = async (
   return created;
 };
 
+// Actualiza un horario de atención existente.
 export const actualizarHorario = async (
   id: string,
-  input: UpdateHorarioAtencionInput
+  input: UpdateHorarioAtencionInput,
+  usuario: string
 ) => {
+  // Valida los datos de actualización.
   const validated = updateHorarioAtencionSchema.parse(input);
 
   const horarioActual = await getHorarioById(id);
@@ -132,6 +126,7 @@ export const actualizarHorario = async (
     return null;
   }
 
+  // Obtiene los valores actuales o los nuevos valores enviados.
   const horaInicio =
     validated.hora_inicio ?? horarioActual.hora_inicio;
 
@@ -146,6 +141,7 @@ export const actualizarHorario = async (
       ? validated.vigencia_hasta
       : horarioActual.vigencia_hasta;
 
+  // Verifica las horas y el período de vigencia actualizado.
   validarHorario(
     horaInicio,
     horaFin,
@@ -153,6 +149,7 @@ export const actualizarHorario = async (
     vigenciaHasta
   );
 
+  // Prepara únicamente los campos que serán actualizados.
   const data: {
     id_profesional?: string;
     id_especialidad?: string;
@@ -211,7 +208,13 @@ export const actualizarHorario = async (
     data.activo = validated.activo;
   }
 
-  const updated = await updateHorario(id, data);
+  // No emite cambios si la agenda todavía tiene turnos incompatibles.
+  await assertNoAgendaAffected('horario', {
+    ...horarioActual,
+    ...data,
+  });
+
+  const updated = await saveAgenda<Horario>('horario', id, data, usuario);
   if (updated) {
     try {
       const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
@@ -249,14 +252,23 @@ export const actualizarHorario = async (
   return updated;
 };
 
-export const eliminarHorario = async (id: string) => {
+// Desactiva un horario de atención existente.
+export const eliminarHorario = async (
+  id: string,
+  usuario: string
+) => {
   const horario = await getHorarioById(id);
 
   if (!horario) {
     return null;
   }
 
-  const deleted = await deleteHorario(id);
+  await assertNoAgendaAffected('horario', {
+    ...horario,
+    activo: false,
+  });
+
+  const deleted = await saveAgenda<Horario>('horario', id, { activo: false }, usuario);
   if (deleted) {
     try {
       const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];

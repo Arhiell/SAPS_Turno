@@ -53,6 +53,7 @@ const formatTurnoDateTime = (
 const sendTurnoEmail = async (
   idTurno: string,
   tipo: TipoNotificacionTurno,
+  anterior?: string,
 ) => {
   const context =
     await findTurnoEmailContextById(idTurno);
@@ -146,6 +147,7 @@ const sendTurnoEmail = async (
       email =
         buildTurnoReprogramadoEmail(
           emailData,
+          anterior ? formatTurnoDateTime(anterior) : undefined,
         );
       break;
 
@@ -218,21 +220,32 @@ export const notifyTurnoCreado = async (
 
 export const notifyTurnoReprogramado = async (
   idTurno: string,
+  anterior?: string,
 ) => {
-  const systemNotification = await safeNotify(() =>
-    notifyTurno(
+  const systemNotification = await safeNotify(async () => {
+    const context = await findTurnoEmailContextById(idTurno);
+    const nueva = context ? formatTurnoDateTime(context.fecha_hora_inicio) : null;
+    const previa = anterior ? formatTurnoDateTime(anterior) : null;
+    const mensaje = [
+      'Tu turno fue reprogramado por un cambio en la agenda de atención.',
+      context ? `Especialidad: ${firstRelation(context.especialidad)?.nombre ?? ''}. Salita: ${firstRelation(context.salita)?.nombre ?? ''}.` : '',
+      previa ? `Anterior: ${previa.fecha} ${previa.hora}.` : '',
+      nueva ? `Nuevo: ${nueva.fecha} ${nueva.hora}.` : '',
+    ].filter(Boolean).join(' ');
+    return notifyTurno(
       idTurno,
       "TURNO_REPROGRAMADO",
       "Turno reprogramado",
-      "La fecha u horario de tu turno fue modificado.",
-    ),
-  );
+      mensaje,
+    );
+  });
 
   // El correo se procesa en segundo plano para no hacer esperar la respuesta HTTP.
   void safeNotify(() =>
     sendTurnoEmail(
       idTurno,
       "TURNO_REPROGRAMADO",
+      anterior,
     ),
   );
 

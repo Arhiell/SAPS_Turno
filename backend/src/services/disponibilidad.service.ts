@@ -264,6 +264,7 @@ export const obtenerDisponibilidad = async (
     .filter((turno) => turno.id_turno !== exclude);
 
   const slots: Slot[] = [];
+  const cuposDisponibles = new Map<string, number | null>();
   const ahora = Date.now();
 
   for (const horario of horariosTipados) {
@@ -277,9 +278,10 @@ export const obtenerDisponibilidad = async (
 
     // Mismo conteo que la reserva: horario, fecha argentina y ocupa_agenda.
     // Los turnos sin horario siguen bloqueando superposiciones, no este cupo.
-    const cupoCompleto =
-      horario.cupo_maximo_diario !== null &&
-      await countTurnosDelHorario(horario.id_horario, fecha, exclude) >= horario.cupo_maximo_diario;
+    const cupoDisponible = horario.cupo_maximo_diario === null ? null : Math.max(0,
+      horario.cupo_maximo_diario - await countTurnosDelHorario(horario.id_horario, fecha, exclude));
+    cuposDisponibles.set(horario.id_horario, cupoDisponible);
+    const cupoCompleto = cupoDisponible === 0;
 
     // Generar todas las franjas del horario. No cortar después de
     // cupo_maximo_diario franjas: ese valor es un límite de reservas,
@@ -401,6 +403,7 @@ export const obtenerDisponibilidad = async (
       hora_fin: horario.hora_fin,
       duracion_turno_minutos: horario.duracion_turno_minutos,
       cupo_maximo_diario: horario.cupo_maximo_diario,
+      cupo_disponible: cuposDisponibles.get(horario.id_horario) ?? null,
     })),
   };
 };

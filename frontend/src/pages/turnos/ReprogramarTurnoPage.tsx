@@ -1,4 +1,5 @@
 import ValidatedInput from '../../components/ui/ValidatedInput';
+import { authError } from '../../utils/auth-errors';
 import {
   useEffect,
   useMemo,
@@ -115,6 +116,7 @@ const ReprogramarTurnoPage = () => {
 
   const [confirmOpen, setConfirmOpen] =
     useState(false);
+  const [motivo, setMotivo] = useState('');
 
   useEffect(() => {
     if (!id) {
@@ -346,10 +348,10 @@ const ReprogramarTurnoPage = () => {
       !selectedSpecialty ||
       !selectedSalita ||
       !fecha ||
-      !selectedSlot
+      !selectedSlot || motivo.trim().length < 3
     ) {
       setError(
-        'Seleccione profesional, especialidad, salita, fecha y horario.',
+        'Seleccione profesional, especialidad, salita, fecha, horario e indique un motivo.',
       );
 
       return;
@@ -363,6 +365,8 @@ const ReprogramarTurnoPage = () => {
         `${fecha}T${selectedSlot.hora_inicio}:00-03:00`;
 
       await reprogramarTurno(id, {
+        motivo_reprogramacion: motivo.trim(),
+        version: turno.version,
         id_profesional:
           selectedProfessional,
 
@@ -387,7 +391,7 @@ const ReprogramarTurnoPage = () => {
       console.error(error);
 
       setError(
-        'No se pudo reprogramar el turno. El horario puede haber sido ocupado o no estar disponible.',
+        authError(error),
       );
     } finally {
       setSaving(false);
@@ -841,12 +845,17 @@ const ReprogramarTurnoPage = () => {
               </div>
 
               <div className="card-footer bg-white border-0">
+                <label className="form-label w-100">Motivo interno de la reprogramación
+                  <textarea className="form-control" required minLength={3} maxLength={500} rows={2}
+                    disabled={saving} value={motivo} onChange={event => setMotivo(event.target.value)} />
+                  <span className="form-text">Se registra en el historial administrativo y no se envía al paciente.</span>
+                </label>
                 <button
                   type="submit"
                   className="btn btn-saps w-100"
                   disabled={
                     saving ||
-                    !selectedSlot
+                    !selectedSlot || motivo.trim().length < 3
                   }
                 >
                   {saving ? (

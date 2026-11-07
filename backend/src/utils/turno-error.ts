@@ -1,11 +1,8 @@
-import { 
-  AppError 
-} from "./app-error.js";
-import { 
-  hasDatabaseCode 
-} from "./profile-error.js";
 
-// Traduce solamente los errores conocidos de los triggers de Turnos.
+import { AppError } from "./app-error.js";
+import { hasDatabaseCode } from "./profile-error.js";
+
+// Traduce los errores conocidos de los triggers de turnos.
 const triggerErrors: Record<string, number> = {
   "El estado del turno no existe o esta inactivo": 400,
   "El horario seleccionado no existe o esta inactivo": 400,
@@ -16,39 +13,80 @@ const triggerErrors: Record<string, number> = {
   "Se alcanzo el cupo maximo diario del horario": 409,
   "El profesional no esta habilitado para esa especialidad o salita": 400,
   "La agenda esta bloqueada para la fecha y horario solicitados": 409,
-  "El paciente posee una restriccion vigente para esta especialidad": 409
+  "El paciente posee una restriccion vigente para esta especialidad": 409,
 };
 
+// Convierte errores específicos de la base de datos en errores de aplicación.
 export const rethrowTurnoError = (error: unknown): never => {
-  const message = typeof error === "object" && error !== null && "message" in error
-    ? String(error.message) : "";
+  // Extrae el mensaje del error cuando está disponible.
+  const message =
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error
+      ? String(error.message)
+      : "";
 
-  if (hasDatabaseCode(error, 'P0001') && message === 'PATIENT_SANCTIONED') {
+  // Verifica errores de permisos sobre la agenda o salita.
+  if (hasDatabaseCode(error, '42501')) {
     throw new AppError(
-      'Tenés una sanción vigente que impide reservar en todas las especialidades. Consultá en tu salita para conocer el vencimiento.',
-      409, 'PATIENT_SANCTIONED',
+      'No tiene permisos sobre esta agenda o salita',
+      403
     );
   }
-  if (hasDatabaseCode(error, "P0001") && triggerErrors[message]) {
+
+  // Detecta conflictos al modificar la agenda.
+  if (
+    hasDatabaseCode(error, 'P0001') &&
+    message === 'AGENDA_CONFLICT'
+  ) {
     throw new AppError(
-      message, 
+      'La agenda cambi? o todav?a existen turnos afectados. Revis? la propuesta antes de guardar.',
+      409,
+      'AGENDA_CONFLICT'
+    );
+  }
+
+  // Detecta restricciones por sanciones vigentes del paciente.
+  if (
+    hasDatabaseCode(error, 'P0001') &&
+    message === 'PATIENT_SANCTIONED'
+  ) {
+    throw new AppError(
+      'Tenés una sanción vigente que impide reservar en todas las especialidades. Consultá en tu salita para conocer el vencimiento.',
+      409,
+      'PATIENT_SANCTIONED'
+    );
+  }
+
+  // Traduce los errores de validación definidos en los triggers.
+  if (
+    hasDatabaseCode(error, "P0001") &&
+    triggerErrors[message]
+  ) {
+    throw new AppError(
+      message,
       triggerErrors[message]
     );
   }
 
+  // Detecta superposiciones de turnos del paciente o profesional.
   if (hasDatabaseCode(error, "23P01")) {
-    throw new AppError(message.includes("paciente")
-      ? "El paciente ya posee un turno en ese horario"
-      : "El profesional ya posee un turno asignado en ese horario", 409);
+    throw new AppError(
+      message.includes("paciente")
+        ? "El paciente ya posee un turno en ese horario"
+        : "El profesional ya posee un turno asignado en ese horario",
+      409
+    );
   }
 
+  // Detecta registros duplicados o turnos abiertos existentes.
   if (hasDatabaseCode(error, "23505")) {
     throw new AppError(
       "Ya existe un turno abierto para el paciente y la especialidad o un código duplicado",
       409
     );
   }
-  
-  // El middleware de Leo conserva el manejo de FK, CHECK y fallos inesperados.
+
+  // Delega los errores de FK, CHECK y fallos inesperados al middleware.
   throw error;
 };

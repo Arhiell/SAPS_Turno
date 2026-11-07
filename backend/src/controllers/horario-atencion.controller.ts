@@ -1,7 +1,8 @@
-import type { 
-  Request, 
-  Response, 
-  NextFunction 
+
+import type {
+  Request,
+  Response,
+  NextFunction,
 } from "express";
 
 import {
@@ -12,6 +13,7 @@ import {
   getHorarios,
 } from "../services/horario-atencion.service.js";
 
+// Obtiene los horarios de atención de las salitas autorizadas.
 export const obtenerHorarios = async (
   _req: Request,
   res: Response,
@@ -26,6 +28,7 @@ export const obtenerHorarios = async (
   }
 };
 
+// Obtiene un horario de atención por su identificador.
 export const obtenerHorario = async (
   req: Request,
   res: Response,
@@ -36,6 +39,7 @@ export const obtenerHorario = async (
 
     const horario = await getHorario(id);
 
+    // Verifica que el horario exista.
     if (!horario) {
       return res.status(404).json({
         message: "Horario no encontrado",
@@ -48,13 +52,17 @@ export const obtenerHorario = async (
   }
 };
 
+// Crea un horario de atención asociado al usuario autenticado.
 export const crearHorarioController = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const horario = await crearHorario(req.body);
+    const horario = await crearHorario(
+      req.body,
+      req.user!.id_usuario
+    );
 
     return res.status(201).json(horario);
   } catch (error) {
@@ -62,6 +70,7 @@ export const crearHorarioController = async (
   }
 };
 
+// Actualiza un horario de atención existente.
 export const actualizarHorarioController = async (
   req: Request,
   res: Response,
@@ -70,8 +79,13 @@ export const actualizarHorarioController = async (
   try {
     const id = String(req.params.id);
 
-    const horario = await actualizarHorario(id, req.body);
+    const horario = await actualizarHorario(
+      id,
+      req.body,
+      req.user!.id_usuario
+    );
 
+    // Verifica que el horario exista.
     if (!horario) {
       return res.status(404).json({
         message: "Horario no encontrado",
@@ -84,6 +98,7 @@ export const actualizarHorarioController = async (
   }
 };
 
+// Desactiva un horario de atención existente.
 export const eliminarHorarioController = async (
   req: Request,
   res: Response,
@@ -92,8 +107,12 @@ export const eliminarHorarioController = async (
   try {
     const id = String(req.params.id);
 
-    const horario = await eliminarHorario(id);
+    const horario = await eliminarHorario(
+      id,
+      req.user!.id_usuario
+    );
 
+    // Verifica que el horario exista.
     if (!horario) {
       return res.status(404).json({
         message: "Horario no encontrado",

@@ -205,6 +205,8 @@ export interface CreateTurnoRequest {
 // Campos permitidos al modificar
 // un turno existente.
 export interface UpdateTurnoRequest {
+  motivo_reprogramacion?: string;
+  version?: number;
   id_profesional?: string;
   id_especialidad?: string;
   id_salita?: string;

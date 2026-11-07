@@ -190,7 +190,7 @@ export const buildTurnoReprogramadoEmail = (
   const text = `
 Hola ${data.pacienteNombre}.
 
-Le informamos que su turno fue reprogramado.
+Le informamos que su turno fue reprogramado por un cambio en la agenda de atención.
 
 ${
   anterior?.fecha || anterior?.hora
@@ -220,7 +220,7 @@ Por favor, no responda a este correo.
 
     <p>Hola ${data.pacienteNombre}.</p>
 
-    <p>Le informamos que su turno fue reprogramado.</p>
+    <p>Le informamos que su turno fue reprogramado por un cambio en la agenda de atención.</p>
 
     ${
       anterior?.fecha || anterior?.hora

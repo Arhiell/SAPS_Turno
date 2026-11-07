@@ -125,6 +125,12 @@ export const sidebarMenu: SidebarMenuItem[] = [
     roles: ['SUPER_ADMIN', 'ADMIN_SALITA'],
   },
   {
+    label: 'Ausencias y reprogramación',
+    path: '/configuracion/bloqueos',
+    icon: 'bi-calendar-x',
+    roles: ['RECEPCION'],
+  },
+  {
     label: 'Configuración',
     path: '/configuracion',
     icon: 'bi-gear',
@@ -202,10 +208,10 @@ export const configurationMenu: (SidebarMenuItem & {
     description: 'Administrá los valores configurables del sistema o de tu salita.',
   },
   {
-    label: 'Bloqueos de agenda',
+    label: 'Ausencias y reprogramación',
     path: '/configuracion/bloqueos',
     icon: 'bi-calendar-x',
     roles: ['SUPER_ADMIN', 'ADMIN_SALITA'],
-    description: 'Configurá cierres o ausencias por día completo o por franja horaria.',
+    description: 'Registrá una ausencia puntual y reorganizá los turnos afectados desde la misma pantalla.',
   },
 ];

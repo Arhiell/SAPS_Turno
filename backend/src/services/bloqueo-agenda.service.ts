@@ -1,12 +1,12 @@
+
+import { assertNoAgendaAffected } from './agenda-impacto.service.js';
+import { saveAgenda } from '../repositories/agenda-impacto.repository.js';
 import { timeToSeconds } from "../utils/time.js";
 import { emitirCambioAgenda } from "./socket.service.js";
 
 import {
-  createBloqueo,
-  deleteBloqueo,
   getAllBloqueos,
   getBloqueoById,
-  updateBloqueo,
 } from "../repositories/bloqueo-agenda.repository.js";
 
 import {
@@ -16,19 +16,29 @@ import {
   type UpdateBloqueoAgendaInput,
 } from "../validators/bloqueo-agenda.validator.js";
 
-export const getBloqueos = async (scope: string[] | null = null) => {
+type Bloqueo = NonNullable<Awaited<ReturnType<typeof getBloqueoById>>>;
+
+// Obtiene los bloqueos de agenda según las salitas autorizadas.
+export const getBloqueos = async (
+  scope: string[] | null = null
+) => {
   return await getAllBloqueos(scope);
 };
 
+// Obtiene un bloqueo de agenda por su identificador.
 export const getBloqueo = async (id: string) => {
   return await getBloqueoById(id);
 };
 
+// Crea un nuevo bloqueo de agenda.
 export const crearBloqueo = async (
-  input: CreateBloqueoAgendaInput
+  input: CreateBloqueoAgendaInput,
+  usuario: string
 ) => {
+  // Valida los datos recibidos.
   const validated = createBloqueoAgendaSchema.parse(input);
 
+  // Prepara los datos del nuevo bloqueo.
   const data: {
     id_profesional?: string | null;
     id_salita: string;
@@ -46,6 +56,7 @@ export const crearBloqueo = async (
     motivo: validated.motivo,
   };
 
+  // Incorpora únicamente los campos opcionales definidos.
   if (validated.id_profesional !== undefined) {
     data.id_profesional = validated.id_profesional;
   }
@@ -66,7 +77,13 @@ export const crearBloqueo = async (
     data.activo = validated.activo;
   }
 
-  const nuevoBloqueo = await createBloqueo(data);
+  // Comprueba el impacto y guarda con el actor antes de emitir el evento.
+  await assertNoAgendaAffected('bloqueo', {
+    activo: true,
+    ...data,
+  });
+
+  const nuevoBloqueo = await saveAgenda<Bloqueo>('bloqueo', null, data, usuario);
 
   if (nuevoBloqueo?.id_profesional) {
     try {
@@ -87,10 +104,13 @@ export const crearBloqueo = async (
   return nuevoBloqueo;
 };
 
+// Actualiza un bloqueo de agenda existente.
 export const actualizarBloqueo = async (
   id: string,
-  input: UpdateBloqueoAgendaInput
+  input: UpdateBloqueoAgendaInput,
+  usuario: string
 ) => {
+  // Valida los datos de actualización.
   const validated = updateBloqueoAgendaSchema.parse(input);
 
   const bloqueoActual = await getBloqueoById(id);
@@ -99,6 +119,7 @@ export const actualizarBloqueo = async (
     return null;
   }
 
+  // Obtiene los valores actuales o los nuevos valores enviados.
   const diaCompleto =
     validated.dia_completo ?? bloqueoActual.dia_completo;
 
@@ -112,6 +133,7 @@ export const actualizarBloqueo = async (
       ? validated.hora_fin
       : bloqueoActual.hora_fin;
 
+  // Valida las horas según el tipo de bloqueo.
   if (diaCompleto) {
     if (horaInicio !== null || horaFin !== null) {
       throw new Error(
@@ -138,6 +160,7 @@ export const actualizarBloqueo = async (
     }
   }
 
+  // Prepara únicamente los campos que serán actualizados.
   const data: {
     id_profesional?: string | null;
     id_salita?: string;
@@ -186,15 +209,35 @@ export const actualizarBloqueo = async (
     data.activo = validated.activo;
   }
 
-  return await updateBloqueo(id, data);
+  // Verifica que los cambios no afecten turnos vigentes.
+  await assertNoAgendaAffected('bloqueo', {
+    ...bloqueoActual,
+    ...data,
+  });
+
+  return await saveAgenda(
+    'bloqueo',
+    id,
+    data,
+    usuario
+  );
 };
 
-export const eliminarBloqueo = async (id: string) => {
+// Desactiva un bloqueo de agenda existente.
+export const eliminarBloqueo = async (
+  id: string,
+  usuario: string
+) => {
   const bloqueo = await getBloqueoById(id);
 
   if (!bloqueo) {
     return null;
   }
 
-  return await deleteBloqueo(id);
+  return await saveAgenda(
+    'bloqueo',
+    id,
+    { activo: false },
+    usuario
+  );
 };

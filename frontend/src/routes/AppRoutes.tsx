@@ -270,6 +270,10 @@ const AppRoutes = () => {
                 />
               </Route>
 
+              <Route element={<ProtectedRoute roles={['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION']} />}>
+                <Route path="/configuracion/bloqueos" element={<BloqueosPage />} />
+              </Route>
+
               {/* Rutas para administradores de salitas y superadministradores. */}
               <Route
                 element={
@@ -354,10 +358,7 @@ const AppRoutes = () => {
                   element={<ParametrosPage />}
                 />
 
-                <Route
-                  path="/configuracion/bloqueos"
-                  element={<BloqueosPage />}
-                />
+
 
                 {/* Administración de cuentas de acceso. */}
                 <Route

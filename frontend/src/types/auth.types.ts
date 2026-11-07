@@ -2,6 +2,7 @@
 export type UserRole =
   | 'SUPER_ADMIN'
   | 'ADMIN_SALITA'
+  | 'RECEPCION'
   | 'PROFESIONAL'
   | 'PACIENTE';
 

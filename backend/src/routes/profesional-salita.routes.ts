@@ -11,28 +11,32 @@ import {
 } from "../controllers/profesional-salita.controller.js";
 
 const router = Router();
-router.use(authenticate, requireRole("SUPER_ADMIN", "ADMIN_SALITA"));
+router.use(authenticate);
 
 router.get(
   "/:id/salitas",
+  requireRole('SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION'),
   professionalScope,
   getSalitas
 );
 
 router.post(
   "/:id/salitas",
+  requireRole('SUPER_ADMIN', 'ADMIN_SALITA'),
   professionalScope,
   createSalita
 );
 
 router.put(
   "/:id/salitas/:idSalita",
+  requireRole('SUPER_ADMIN', 'ADMIN_SALITA'),
   professionalScope,
   updateSalita
 );
 
 router.delete(
   "/:id/salitas/:idSalita",
+  requireRole('SUPER_ADMIN', 'ADMIN_SALITA'),
   professionalScope,
   deleteSalita
 );
