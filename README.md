@@ -39,6 +39,8 @@ El sistema incluye una **aplicación web** y una **API REST**. Cada usuario acce
 - [Roles y alcance](#roles)
 - [Cómo se utiliza](#uso)
 - [Reglas de reservas, sanciones y bloqueos](#reglas)
+- [Agenda, reprogramación y calendario institucional](#agenda)
+- [Seguridad, privacidad y límites actuales](#seguridad)
 - [Herramientas y tecnologías](#tecnologias)
 - [Arquitectura y organización](#arquitectura)
 - [Instalación y configuración](#instalacion)
@@ -58,16 +60,20 @@ El sistema incluye una **aplicación web** y una **API REST**. Cada usuario acce
 | Módulo | Acciones disponibles |
 | --- | --- |
 | 🔐 **Acceso y cuentas** | Inicio de sesión, verificación de correo, recuperación de contraseña, acceso con Google para pacientes y administración de cuentas según permisos. |
-| 👥 **Pacientes y tutores** | Registro de datos personales, perfil del paciente, información de contacto y vínculos con tutores. |
+| 👥 **Pacientes y personas a cargo** | Fichas personales, solicitudes de vinculación, aprobación administrativa, delegación de gestión y revocación de autorizaciones. |
 | 🏥 **Salitas y cobertura** | Gestión de salitas, barrios, zonas y relaciones que determinan la cobertura territorial. |
 | 🩺 **Profesionales** | Registro de profesionales, matrícula, especialidades, asignaciones a salitas y cuentas de acceso. |
 | 🗓️ **Horarios y disponibilidad** | Carga de varios días y franjas, duración de turnos, cupos, vigencias y bloqueos de agenda. |
 | 🎟️ **Turnos** | Solicitud, consulta, confirmación, cancelación, reprogramación administrativa e historial de cambios. |
+| 🔄 **Reprogramación asistida** | Análisis de turnos afectados, búsqueda de destinos, propuestas y confirmación individual por turno con control de versión. |
+| 🏛️ **Calendario institucional** | Feriados, asuetos y cierres globales o por salita; sincronización manual y semanal de feriados nacionales desde ArgentinaDatos. |
 | ⚖️ **Sanciones** | Restricciones de reserva por inasistencia, consulta de sanciones y anulación administrativa según permisos. |
 | 🔔 **Notificaciones** | Avisos internos, comunicaciones administrativas y envíos por correo según configuración. |
 | 📊 **Reportes** | Resúmenes de actividad, información por especialidad y profesional, agenda diaria y exportaciones en PDF, Excel o Word según el reporte. |
+| 📈 **Dashboard general** | Totales de entidades, turnos registrados/programados hoy y actividad reciente para SUPER_ADMIN. |
 | 📰 **Contenido público** | Página pública, novedades y administración de publicaciones. |
 | ⚙️ **Configuración y auditoría** | Catálogos, parámetros del sistema y consulta de registros de auditoría mediante la API autorizada. |
+| 💬 **Asistente CORA** | Prototipo optativo de orientación sobre pantallas y funciones; deshabilitado por defecto, sin acceso a datos del negocio ni ejecución de operaciones. |
 
 <a id="roles"></a>
 
@@ -80,7 +86,7 @@ Los permisos se verifican en el servidor. Una opción visible en la interfaz no 
 | 👑 `SUPER_ADMIN` | Administración general del sistema, salitas, cuentas, catálogos, agendas y reportes. | Gestión global, sujeta a las validaciones de cada operación. |
 | 🏥 `ADMIN_SALITA` | Gestión operativa de pacientes, profesionales, horarios, turnos y comunicaciones. | Salitas autorizadas para su cuenta. |
 | 🩺 `PROFESIONAL` | Consulta de su agenda y registro de atención o inasistencia. | Información vinculada a su perfil y turnos autorizados. |
-| 👤 `PACIENTE` | Gestión de su perfil, solicitud y cancelación de turnos propios, consulta de avisos. | Su cuenta, su cobertura y sus reservas. |
+| 👤 `PACIENTE` | Gestión de su perfil, solicitud y cancelación de turnos, consulta de avisos y solicitudes de vinculación. | Su cuenta y los pacientes sobre los que tiene una autorización aprobada y vigente. |
 | 🧾 `RECEPCION` | Operaciones de atención administrativa habilitadas en determinadas rutas. | Rol contemplado en la API; no cuenta con un recorrido independiente completo en la interfaz actual. |
 
 > [!NOTE]
@@ -95,9 +101,11 @@ Los permisos se verifican en el servidor. Una opción visible en la interfaz no 
 1. Registrarse o iniciar sesión y completar las verificaciones requeridas.
 2. Completar sus datos personales y revisar su cobertura.
 3. Ingresar a **Solicitar turno**.
-4. Elegir especialidad y profesional.
+4. Elegir para quién se solicita el turno —titular o persona a cargo autorizada—, especialidad y profesional.
 5. Seleccionar uno de los **días disponibles** del desplegable y luego un horario.
 6. Confirmar la solicitud y consultar el turno desde **Mis turnos**.
+
+En **Personas a cargo** puede solicitarse gestionar los turnos de otra persona o delegar la gestión propia. El parentesco y el envío de la solicitud no conceden acceso: la administración debe verificar identidad, documentación y autorización. La cobertura, sanciones y límites se aplican al paciente que recibe la atención. Los historiales se consultan por separado. Ver [personas a cargo](docs/personas-a-cargo.md).
 
 ### 🏥 Recorrido administrativo
 
@@ -106,6 +114,8 @@ Los permisos se verifican en el servidor. Una opción visible en la interfaz no 
 3. Configurar los días de atención, las franjas horarias y la vigencia.
 4. Gestionar reservas, cancelaciones y reprogramaciones.
 5. Consultar la agenda, los reportes y las comunicaciones del equipo.
+
+La administración también revisa solicitudes de vinculación y gestiona ausencias y cierres. Si un cambio manual de agenda afecta reservas, debe resolverlas antes de guardar. Los feriados importados tienen un tratamiento específico explicado en [calendario institucional](#agenda).
 
 Al crear horarios, las asignaciones únicas se seleccionan automáticamente. Cuando hay varias opciones autorizadas, el administrador elige la correspondiente. Un mismo día puede tener más de una franja, por ejemplo mañana y tarde.
 
@@ -161,6 +171,76 @@ Una cuenta deshabilitada o temporalmente bloqueada no puede continuar operando c
 
 **Sanción de reservas** y **bloqueo de cuenta** son situaciones distintas: la primera restringe la solicitud de turnos; el segundo restringe el acceso a la cuenta.
 
+### Vigencia de asociaciones profesional-salita
+
+Una asociación operativa requiere `activo = true`, `fecha_desde <= fecha evaluada` y `fecha_hasta` nula o igual/posterior a esa fecha. Ambas fechas son inclusivas y se almacenan como `DATE`; `fecha_desde` no admite NULL y `fecha_hasta = NULL` significa sin finalización definida.
+
+- Disponibilidad y horarios propios evalúan la fecha consultada.
+- Creación, confirmación y reprogramación evalúan la fecha argentina del turno o del nuevo destino.
+- El alcance para crear cuentas profesionales se evalúa respecto de hoy en Argentina.
+- Las consultas administrativas históricas conservan las relaciones vencidas. El vencimiento de una salita no invalida las otras asignaciones del profesional.
+- Acortar una asociación no cancela ni reprograma automáticamente turnos existentes.
+
+El repositorio reutiliza `getSalitasByProfesional` con una fecha opcional para las consultas operativas. La validación SQL complementaria se encuentra en [20261109_profesional_salita_vigencia.sql](backend/src/BBDD/20261109_profesional_salita_vigencia.sql).
+
+<a id="agenda"></a>
+
+## 🗓️ Agenda, reprogramación y calendario institucional
+
+### Horarios, cupos y estados
+
+`cupo_maximo_diario` limita los turnos que ocupan agenda por horario de atención y día argentino; no representa capacidad simultánea de un mismo slot. NULL significa sin ese límite diario. La duración y la finalización del turno se obtienen del horario configurado.
+
+| Estados iniciales del catálogo | Ocupan agenda |
+| --- | --- |
+| `SOLICITADO`, `CONFIRMADO`, `EN_ESPERA` | Sí |
+| `ATENDIDO`, `NO_ASISTIO`, `CANCELADO`, `REPROGRAMADO` | No |
+
+Los indicadores se derivan del catálogo mediante un trigger. La reprogramación administrativa actual modifica el mismo turno y conserva su estado operativo; no lo convierte automáticamente al estado final `REPROGRAMADO`.
+
+### Ausencias y reprogramación asistida
+
+Los bloqueos afectan una salita y una fecha, con profesional y especialidad opcionales. Admiten día completo o franja parcial. El flujo permite analizar afectados, consultar destinos, revisar una propuesta y confirmar cambios. Cada turno se guarda con control de versión y en su propia transacción: una confirmación de lote puede informar éxitos y fallos parciales.
+
+Los bloqueos y cierres manuales rechazan su guardado mientras queden turnos afectados pendientes. La vista de horarios habituales orienta la elección de fechas; no garantiza lugares libres. Más detalles en [agenda asistida](docs/agenda-reprogramacion-asistida.md) y [ausencias y reprogramación rápida](docs/ausencias-reprogramacion-rapida.md).
+
+### Feriados y cierres
+
+Desde **Configuración → Feriados y cierres**, SUPER_ADMIN gestiona cierres globales o por salita; ADMIN_SALITA gestiona los de sus salitas y consulta los globales. Los cierres pueden abarcar varias fechas inclusivas, días completos o una franja repetida cada día.
+
+- SUPER_ADMIN puede solicitar **Actualizar feriados nacionales**.
+- La sincronización intenta el año argentino actual y el siguiente, sin copiar ni inventar fechas.
+- La ejecución automática corresponde al sábado a las **03:00 de Argentina**, en el siguiente ciclo del procesador del backend. Al reiniciar recupera la ejecución debida.
+- Un lease persistente coordina las instancias; si un año no puede consultarse o su respuesta es inválida, se conserva la información anterior.
+- Los importados son de solo lectura y bloquean nuevas reservas inmediatamente. Los turnos existentes permanecen como afectados hasta que administración los resuelve; no se mueven automáticamente.
+- Las consultas de disponibilidad leen la base SAPS, sin llamar al proveedor externo durante una reserva.
+
+Consultar [cierres institucionales](docs/feriados-cierres-institucionales.md) y [sincronización con ArgentinaDatos](docs/argentinadatos-calendario.md), incluidas sus limitaciones sobre fechas que desaparecen o cambian en la fuente.
+
+### Consistencia y concurrencia
+
+La disponibilidad es informativa y puede cambiar antes de reservar. El backend revalida la operación y PostgreSQL constituye la última protección de la escritura:
+
+- Turnos, horarios, bloqueos y cierres comparten el advisory lock transaccional `pg_advisory_xact_lock(20261103, 1)`.
+- Los triggers comprueban cupos, bloqueos y cierres dentro de la transacción. Las RPC de agenda reutilizan el mismo lock.
+- Las restricciones de exclusión impiden superposiciones por profesional y por paciente; el índice único parcial evita otro turno abierto de la misma especialidad.
+- Los intervalos son `[inicio, fin)`: dos turnos que solo comparten un extremo son adyacentes.
+- Historial y auditoría se registran junto con la escritura; correos y eventos de interfaz se procesan después.
+
+Estas garantías requieren las migraciones y triggers instalados. El lock es global y puede hacer esperar operaciones de salitas diferentes. Las consultas previas realizadas desde TypeScript no forman por sí mismas una transacción común.
+
+<a id="seguridad"></a>
+
+## 🔐 Seguridad, privacidad y límites actuales
+
+La API verifica identidad, rol, alcance y relaciones autorizadas. Las claves de servidor permanecen en el backend; ocultar una opción en React no sustituye la autorización. La autenticación propia y sus flujos se describen en [AUTENTICACION.md](docs/AUTENTICACION.md).
+
+El aviso de privacidad informa sobre datos y almacenamiento del navegador. **Entendido** registra la lectura del aviso, no un consentimiento para tratamientos adicionales. La política incluida es un borrador de prueba pendiente de validación institucional. Ver [privacidad del navegador](docs/PRIVACIDAD_NAVEGADOR.md).
+
+El **Asistente CORA** es un prototipo académico optativo, no habilitado para uso sanitario real. Orienta sobre funciones: no diagnostica, reserva ni consulta pacientes o agendas. El texto libre se interpreta localmente; al proveedor se envían preguntas canónicas y documentación estática autorizada. Su configuración, límites por proceso y tratamiento de datos están en [CHATBOT.md](docs/CHATBOT.md).
+
+El dashboard distingue entidades activas de asociaciones vigentes y turnos registrados hoy de turnos programados para hoy. Sus conteos son independientes, no una fotografía transaccional única. Ver [dashboard de SUPER_ADMIN](docs/DASHBOARD_SUPER_ADMIN.md).
+
 ---
 
 <a id="tecnologias"></a>
@@ -177,6 +257,8 @@ Una cuenta deshabilitada o temporalmente bloqueada no puede continuar operando c
 | Validación | Zod | Validación de entradas y variables de entorno. |
 | Autenticación | Argon2 · JOSE · Google Auth Library | Contraseñas, tokens y verificación de identidad con Google. |
 | Correo | Nodemailer · SMTP | Verificación de correo y comunicaciones. |
+| Tiempo real | Socket.IO · Socket.IO Client | Eventos de cambios de agenda para actualizar la interfaz autenticada. |
+| Integraciones | ArgentinaDatos · RSS municipal · Gemini optativo | Importación de feriados, lectura de novedades y orientación funcional del asistente. |
 | Documentos | PDFKit · ExcelJS · docx | Generación de reportes y exportaciones. |
 | Verificación | Node Test Runner · tsx · TypeScript · Oxlint | Pruebas del backend, comprobación de tipos y análisis estático del frontend. |
 | Middleware | Helmet · CORS · Morgan | Cabeceras HTTP, acceso entre orígenes y registro de solicitudes. |
@@ -195,6 +277,10 @@ flowchart LR
     S --> R["🗃️ Repositorios"]
     R --> D[("Supabase · PostgreSQL")]
     S --> M["✉️ Correo SMTP"]
+    A <-->|"Socket.IO"| F
+    W["Procesador periódico"] --> S
+    S --> E["ArgentinaDatos / RSS municipal"]
+    S -.-> G["Gemini · asistente optativo"]
 ```
 
 ```text
@@ -222,7 +308,8 @@ SAPS_Turno/
 │       ├── styles/         Estilos de la aplicación
 │       ├── types/          Tipos del frontend
 │       └── utils/          Utilidades
-└── README.md
+├── docs/                  Documentación funcional y técnica por módulo
+└── README.md              Presentación, configuración y mapa de documentación
 ```
 
 ---
@@ -233,7 +320,7 @@ SAPS_Turno/
 
 ### 1. Preparar el entorno
 
-Se necesita Node.js compatible con las dependencias del proyecto, npm, una base de Supabase configurada y credenciales SMTP. Para el acceso mediante Google se requiere configurar su cliente de identidad.
+Se necesita Node.js compatible con las versiones fijadas en los archivos de bloqueo, npm, una base de Supabase configurada y credenciales SMTP. El esquema de entorno actual también exige `GOOGLE_CLIENT_ID`. Los paquetes no declaran una versión unificada de Node para todo el repositorio: comprobar los requisitos de las dependencias antes de preparar el entorno.
 
 ```bash
 git clone https://github.com/Arhiell/SAPS_Turno.git
@@ -257,8 +344,11 @@ La definición que valida los nombres, requisitos y valores predeterminados est�
 | Recuperación y verificación | `PASSWORD_RECOVERY_MINUTES`, `EMAIL_VERIFICATION_HOURS` |
 | Google | `GOOGLE_CLIENT_ID` |
 | Correo | `MAIL_HOST`, `MAIL_PORT`, `MAIL_SECURE`, `MAIL_USER`, `MAIL_PASSWORD`, `MAIL_FROM_NAME`, `MAIL_FROM_EMAIL` |
+| Asistente optativo | `CHATBOT_ENABLED`, `GEMINI_API_KEY`, `GEMINI_MODEL` |
 
 El archivo de ejemplo puede contener nombres históricos: usar `env.ts` como referencia para la configuración vigente. El backend valida su configuración al iniciar.
+
+El asistente permanece apagado salvo que `CHATBOT_ENABLED=true`. No hace falta una clave Gemini para iniciar los demás módulos. El nombre de modelo configurado no garantiza disponibilidad ni cuota del proveedor; consultar la [configuración del asistente](docs/CHATBOT.md) antes de habilitarlo.
 
 ### 3. Configurar el frontend
 
@@ -280,7 +370,21 @@ El directorio [`backend/src/BBDD`](backend/src/BBDD) contiene el esquema y las m
 
 - **Instalación nueva:** revisar el esquema inicial y las migraciones necesarias.
 - **Base existente:** aplicar únicamente las migraciones pendientes, respetando sus dependencias.
-- **Sanciones automáticas:** verificar especialmente la migración del **20/10/2026**.
+- Las migraciones se aplican manualmente; los comandos `dev`, `build` y `start` no las ejecutan.
+
+Además de las migraciones anteriores de autenticación, correo, notificaciones y contenido, revisar estas dependencias funcionales:
+
+| Orden relativo | Archivo | Función |
+| --- | --- | --- |
+| 1 | [20261020_sancion_global_inasistencia.sql](backend/src/BBDD/20261020_sancion_global_inasistencia.sql) | Sanción global automática por inasistencia. |
+| 2 | [20261031_solicitudes_vinculacion.sql](backend/src/BBDD/20261031_solicitudes_vinculacion.sql) | Solicitudes, aprobación y trazabilidad de personas a cargo. |
+| 3 | [20261103_agenda_impacto.sql](backend/src/BBDD/20261103_agenda_impacto.sql) | Impacto, protección de horarios/bloqueos y serialización compartida. |
+| 4 | [20261103_agenda_escritura.sql](backend/src/BBDD/20261103_agenda_escritura.sql) | RPC de escritura y reprogramación; requiere la anterior. |
+| 5 | [20261107_cierres_calendario.sql](backend/src/BBDD/20261107_cierres_calendario.sql) | Cierres institucionales; requiere las dos migraciones de agenda. |
+| 6 | [20261108_argentinadatos.sql](backend/src/BBDD/20261108_argentinadatos.sql) | Importación y coordinación persistente de feriados; requiere cierres. |
+| 7 | [20261109_profesional_salita_vigencia.sql](backend/src/BBDD/20261109_profesional_salita_vigencia.sql) | Completa la comprobación de asociaciones en `validar_turno`. |
+
+La tabla no reemplaza el inventario completo de `BBDD`: revisar las cabeceras y dependencias de cada archivo, especialmente las migraciones de notificaciones del mismo día. No todos los scripts están preparados para ejecutarse repetidamente. La presencia de un archivo no confirma su aplicación en Supabase.
 
 > [!CAUTION]
 > El esquema `SAPS_Turno_BBDD3_FINAL.sql` contiene instrucciones de eliminación de tablas. No utilizarlo como actualización de una base con datos que deban conservarse.
@@ -305,11 +409,22 @@ npm run dev --prefix frontend
 | ⚙️ API | `http://localhost:3000/api` — salvo que se cambie `PORT` |
 | 💚 Estado de la API | `http://localhost:3000/api/health` |
 
+### 6. Consideraciones de ejecución y despliegue
+
+- `server.ts` inicia la API, Socket.IO y el procesador periódico de notificaciones, que también revisa la sincronización del calendario. Con el backend apagado no se procesan esas tareas.
+- Configurar el alojamiento del frontend para servir las rutas de React y apuntar `VITE_API_URL` a la API correspondiente. Las variables `VITE_*` se resuelven al compilar.
+- El proxy del backend debe permitir las conexiones de Socket.IO además del tráfico HTTP de `/api`.
+- Configurar `FRONTEND_URL` y el origen autorizado del cliente Google para el entorno destino.
+- La consulta de salud no demuestra que todas las migraciones, el correo o los proveedores externos estén operativos.
+- El limitador del asistente mantiene contadores por proceso; no representa una cuota coordinada entre varias réplicas.
+
 <a id="comandos"></a>
 
 ## 🛠️ Comandos de desarrollo
 
 Ejecutar desde la raíz del repositorio:
+
+En PowerShell, si la política de ejecución bloquea `npm.ps1`, utilizar `npm.cmd` con los mismos argumentos. Los comandos siguientes están documentados para ejecución manual; no implican que las comprobaciones hayan pasado en el estado actual del proyecto.
 
 | Acción | Comando |
 | --- | --- |
@@ -350,13 +465,18 @@ Todas las rutas siguientes utilizan el prefijo **`/api`**. La tabla identifica m
 | `/auth`, `/auth/google`, `/auth/email`, `/auth/password` | Sesiones, identidad, correo y recuperación de acceso. |
 | `/users`, `/access-management` | Usuarios y administración de cuentas. |
 | `/patients`, `/tutors` | Pacientes y tutores. |
+| `/patients/personas-a-cargo`, `/patients/mis-responsables`, `/patients/solicitudes-vinculacion`, `/tutor-requests` | Gestión delegada y aprobación administrativa de vinculaciones. |
 | `/salitas`, `/barrios`, `/zonas`, `/salita-barrios` | Catálogos territoriales y cobertura. |
 | `/profesionales`, `/especialidades` | Profesionales, asignaciones y especialidades. |
 | `/horarios-atencion`, `/bloqueos-agenda` | Configuración de la agenda. |
+| `/cierres-calendario`, `/cierres-calendario/sincronizacion` | Cierres institucionales, consulta de sincronización e importación manual autorizada. |
 | `/disponibilidad`, `/disponibilidad/fechas` | Horarios disponibles y fechas habilitadas para pacientes. |
 | `/turnos`, `/sanciones` | Reservas y restricciones. |
+| `/turnos/reprogramacion/impacto`, `/turnos/reprogramacion/propuesta`, `/turnos/reprogramacion/disponibilidad`, `/turnos/reprogramacion/confirmar` | Flujo de reprogramación asistida. |
 | `/notificaciones`, `/reportes`, `/auditoria` | Comunicaciones, indicadores y trazabilidad. |
+| `/reportes/dashboard` | Resumen general reservado a SUPER_ADMIN. |
 | `/configuracion`, `/public`, `/contenido` | Parámetros, contenido público y publicaciones. |
+| `/chatbot` | Orientación funcional optativa para roles autorizados. |
 
 ### 📚 Referencias del repositorio
 
@@ -366,6 +486,20 @@ Todas las rutas siguientes utilizan el prefijo **`/api`**. La tabla identifica m
 - [Pruebas del backend](backend/tests).
 - [Esquema y migraciones SQL](backend/src/BBDD).
 - [Migración de sanción global por inasistencia](backend/src/BBDD/20261020_sancion_global_inasistencia.sql).
+
+| Tema | Documentación |
+| --- | --- |
+| Acceso y cuentas | [Autenticación](docs/AUTENTICACION.md) |
+| Autoservicio del paciente | [Perfil, cobertura y reservas](docs/PACIENTE_AUTOGESTION.md) |
+| Gestión delegada | [Personas a cargo y solicitudes](docs/personas-a-cargo.md) |
+| Cambios de agenda | [Reprogramación asistida](docs/agenda-reprogramacion-asistida.md) · [Ausencias y reprogramación rápida](docs/ausencias-reprogramacion-rapida.md) |
+| Calendario institucional | [Feriados y cierres](docs/feriados-cierres-institucionales.md) · [ArgentinaDatos](docs/argentinadatos-calendario.md) |
+| Comunicaciones | [Notificaciones](docs/NOTIFICACIONES.md) |
+| Contenido y métricas | [Contenido público](docs/CONTENIDO_PUBLICO.md) · [Dashboard general](docs/DASHBOARD_SUPER_ADMIN.md) |
+| Asistente | [Configuración y alcance](docs/CHATBOT.md) · [Verificación documentada](docs/CHATBOT_VERIFICACION.md) |
+| Privacidad | [Aviso y almacenamiento del navegador](docs/PRIVACIDAD_NAVEGADOR.md) |
+
+Los informes de verificación describen ejecuciones históricas, no certifican el estado actual. Ante diferencias, contrastar la documentación con las rutas, validadores, scripts y migraciones vigentes del repositorio.
 
 <a id="contribuciones"></a>
 
