@@ -1,4 +1,5 @@
-import { supabase } from '../config/supabase.js';
+import { getSalitasByProfesional } from '../repositories/profesional-salita.repository.js';
+import { agendaDateTime } from '../utils/turno-time.js';
 
 import type {
   CreateAdminInput,
@@ -164,16 +165,9 @@ export const createProfessionalAccount = async (
 
   if (scope !== null) {
     // Verifica que el profesional pertenezca a una salita autorizada.
-    const { data, error } = await supabase
-      .from('profesional_salita')
-      .select('id_profesional')
-      .eq('id_profesional', input.id_profesional)
-      .in('id_salita', scope)
-      .eq('activo', true);
-
-    if (error) {
-      throw error;
-    }
+    const data = await getSalitasByProfesional(
+      input.id_profesional, scope, agendaDateTime(new Date()).date
+    );
 
     if (!data?.length) {
       throw new AppError(

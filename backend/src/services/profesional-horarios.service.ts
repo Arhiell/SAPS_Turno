@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase.js';
+import { getSalitasByProfesional } from '../repositories/profesional-salita.repository.js';
 import { getOwnEntity } from './auth-profile.service.js';
 import { agendaDateTime, agendaDayBounds } from '../utils/turno-time.js';
 import { AppError } from '../utils/app-error.js';
@@ -146,7 +147,11 @@ export const getMisHorariosYDisponibilidad = async (
 
   if (errHorarios) throw errHorarios;
 
-  const horarios = (horariosData ?? []) as HorarioDb[];
+  const asociaciones = await getSalitasByProfesional(idProfesional, null, fecha);
+  const salitasVigentes = new Set((asociaciones ?? []).map(row => row.id_salita));
+  const horarios = ((horariosData ?? []) as HorarioDb[]).filter(h =>
+    salitasVigentes.has(h.id_salita) && h.vigencia_desde <= fecha &&
+    (h.vigencia_hasta === null || h.vigencia_hasta >= fecha));
 
   // 5. Cargar nombres de salitas y especialidades referenciadas sin joins de FK
   const salitaIds = Array.from(new Set(horarios.map(h => h.id_salita)));

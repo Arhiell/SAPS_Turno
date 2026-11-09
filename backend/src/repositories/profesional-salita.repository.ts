@@ -1,4 +1,5 @@
 import { supabase } from "../config/supabase.js";
+import { agendaDateTime } from '../utils/turno-time.js';
 
 const profesionalSalitaSelect = `
   id_profesional,
@@ -23,13 +24,18 @@ const profesionalSalitaSelect = `
 `;
 
 export const getSalitasByProfesional = async (
-  idProfesional: string, scope: string[] | null = null
+  idProfesional: string, scope: string[] | null = null, fecha?: string
 ) => {
   let query = supabase
     .from("profesional_salita")
     .select(profesionalSalitaSelect)
     .eq("id_profesional", idProfesional)
   if (scope !== null) query = query.in("id_salita", scope);
+  // Sin fecha conserva el historial; con fecha devuelve solo asociaciones vigentes.
+  if (fecha !== undefined) {
+    query = query.eq("activo", true).lte("fecha_desde", fecha)
+      .or(`fecha_hasta.is.null,fecha_hasta.gte.${fecha}`);
+  }
   const { data, error } = await query.order("fecha_desde", { ascending: false });
 
   if (error) {
@@ -94,9 +100,7 @@ export const deleteProfesionalSalita = async (
     .from("profesional_salita")
     .update({
       activo: false,
-      fecha_hasta: new Date()
-        .toISOString()
-        .split("T")[0]
+      fecha_hasta: agendaDateTime(new Date()).date
     })
     .eq("id_profesional", idProfesional)
     .eq("id_salita", idSalita)

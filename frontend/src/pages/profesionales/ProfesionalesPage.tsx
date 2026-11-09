@@ -1,4 +1,5 @@
 import AccountSummary from '../../components/ui/AccountSummary';
+import { agendaToday } from '../../utils/agenda-display';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -138,7 +139,7 @@ const ProfesionalesPage = () => {
       const value =
         search.trim().toLowerCase();
 
-      const today = new Date().toISOString().slice(0, 10);
+      const today = agendaToday();
 
       return professionals.filter(
         (professional) => {

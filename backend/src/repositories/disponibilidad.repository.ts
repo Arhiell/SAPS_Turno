@@ -1,5 +1,6 @@
 import { supabase } from "../config/supabase.js";
 import { agendaDayBounds } from '../utils/turno-time.js';
+import { getSalitasByProfesional } from './profesional-salita.repository.js';
 
 export const getHorariosParaDisponibilidad = async (
   idProfesional: string,
@@ -8,6 +9,9 @@ export const getHorariosParaDisponibilidad = async (
   diaSemana: number,
   fecha: string
 ) => {
+  const asociaciones = await getSalitasByProfesional(idProfesional, [idSalita], fecha);
+  if (!asociaciones?.length) return [];
+
   const { data, error } = await supabase
     .from("horarios_atencion")
     .select(`
