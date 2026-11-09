@@ -3,10 +3,10 @@
 ## Instalación
 
 1. Instalar dependencias del backend con `npm install` (se agregó `fast-xml-parser` para RSS).
-2. Ejecutar **una sola vez** `backend/src/BBDD/20261007_contenido_publico.sql` en el SQL Editor de Supabase, sobre la base existente. La migración es transaccional y requiere las tablas de usuarios, roles, salitas, asignaciones y la función `auditar_cambios` del esquema base.
+2. Comprobar si `backend/src/BBDD/20261007_contenido_publico.sql` ya se aplicó en el entorno. Si está pendiente, revisar sus dependencias y aplicarla una sola vez en el SQL Editor de Supabase, sobre la base existente. La migración es transaccional y requiere las tablas de usuarios, roles, salitas, asignaciones y la función `auditar_cambios` del esquema base.
 3. Reiniciar backend y frontend. No se necesitan nuevas variables de entorno.
 
-La migración no fue aplicada a una base remota durante esta implementación. Hasta aplicarla, noticias y editor mostrarán error de carga; la portada y sus otras secciones siguen disponibles. No se crean noticias ficticias.
+**Registro de la entrega inicial (07/10/2026):** en esa implementación no se aplicó la migración a una base remota. Ese dato histórico no confirma el estado actual de ningún entorno. La presencia del archivo tampoco demuestra que esté aplicado; verificarlo con el procedimiento de [migraciones](MIGRACIONES.md) antes de desplegar.
 
 ## Integración
 
@@ -66,4 +66,4 @@ No se implementó estado del río: aparece como ejemplo en el pedido, pero no en
 9. Probar carga, vacío y error por sección. Simular caída del RSS: la portada debe seguir usable, sin consultas repetidas por visitante.
 10. Revisar 320, 375, 425, 768, 1024 y 1440 px: menú, botones, cards, imágenes, editor y ausencia de scroll horizontal; teclado, Escape, foco y carruseles.
 
-No se agregaron tests automáticos. Validaciones de compilación: backend `npm run typecheck` y `npm run build`; frontend `npm run build`. La revisión visual quedó pendiente porque no se autorizó iniciar el servidor de vista previa.
+**Registro de verificación de la entrega inicial:** no se agregaron tests automáticos y la revisión visual quedó pendiente en esa implementación. Estas notas no acreditan el resultado actual de builds, pruebas o despliegues; ejecutar las comprobaciones pertinentes al cambio antes de publicarlo.

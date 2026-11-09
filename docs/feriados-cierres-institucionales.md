@@ -2,6 +2,8 @@
 
 Continuación: [integración con ArgentinaDatos](argentinadatos-calendario.md). La versión actual agrega sincronización semanal/manual en este mismo calendario. Los feriados importados quedan vigentes de inmediato y sus afectados se resuelven después; los cierres manuales conservan el flujo descrito aquí. Para esa versión también debe aplicarse `20261108_argentinadatos.sql` después de la migración de cierres.
 
+La sección **Guía para el equipo** describe el flujo operativo. Las secciones posteriores conservan el análisis técnico de implementación; la presencia de una migración en el repositorio no confirma que esté aplicada. Para el estado de agenda y sus garantías, consultar también [turnos y disponibilidad](TURNOS_Y_DISPONIBILIDAD.md) y [concurrencia](CONCURRENCIA_AGENDA.md).
+
 ## Guía para el equipo
 
 En **Configuración → Feriados y cierres**, registramos las fechas en que la institución o una salita no atiende. El horario habitual del profesional sigue siendo el mismo. Si falta solamente un profesional, seguimos usando **Ausencias y reprogramación**.

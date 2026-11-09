@@ -64,6 +64,6 @@ No usar `localStorage.clear()`: eliminaría también la sesión.
 
 Comprobar: ausencia en rutas públicas y de acceso; presencia en el panel; consulta de política sin registrar lectura; regreso al panel con aviso pendiente; Entendido, recarga y sincronización entre pestañas; consulta desde el perfil; acceso a la política con perfil incompleto; almacenamiento bloqueado. Confirmar que los ajustes del chatbot y las claves de autenticación no cambian al pulsar Entendido. Revisar desktop, mobile y detalles expandidos con las etiquetas nuevas.
 
-## Resultado de la revisión actual
+## Registro de una revisión anterior
 
-Build aprobado, lint sin errores (con advertencias del proyecto) y cinco pruebas unitarias aprobadas. En Edge headless se probaron los componentes reales con MemoryRouter y almacenamiento aislado: presencia inicial, apertura del borrador sin registrar lectura, ocultamiento temporal del banner en la política, regreso con aviso pendiente, Entendido, conservación de sesión y ajustes del chatbot, persistencia al remontar y enlace desde el perfil. La prueba no incluyó autenticación contra el backend real.
+En una revisión anterior se registraron un build aprobado, lint sin errores (con advertencias del proyecto) y cinco pruebas unitarias aprobadas. También se probaron componentes con Edge headless, MemoryRouter y almacenamiento aislado: presencia inicial, apertura del borrador sin registrar lectura, ocultamiento temporal del banner en la política, regreso con aviso pendiente, Entendido, conservación de sesión y ajustes del chatbot, persistencia al remontar y enlace desde el perfil. La prueba no incluyó autenticación contra el backend real. Este resultado es histórico y no certifica el estado actual del código, las pruebas ni un despliegue.

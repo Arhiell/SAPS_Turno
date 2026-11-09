@@ -26,7 +26,7 @@
 | PROFESIONAL | `/mi-agenda` y `/mis-pacientes`. Turnos propios, estados ATENDIDO/NO_ASISTIO y agenda diaria PDF. |
 | PACIENTE | Completar perfil si falta; luego `/mis-turnos` y `/mi-perfil`. |
 
-La reserva, cancelación y reprogramación del paciente continúan mediante la salita: la API original solo habilitaba esas operaciones a administración. La pantalla informa esta regla. No se ampliaron esas facultades.
+El paciente puede solicitar y cancelar sus propios turnos desde la aplicación; también puede gestionar los turnos de otra persona cuando exista una vinculación aprobada y vigente con permiso para hacerlo. La reprogramación continúa siendo una operación administrativa. El backend vuelve a validar titularidad, delegación, cobertura y reglas de agenda; la interfaz no sustituye esos controles.
 
 El menú comparte AppLayout, Sidebar y Navbar. ProtectedRoute controla los roles; el backend verifica además la identidad y el alcance de los datos. No se alteró el mecanismo de almacenamiento de tokens. Las renovaciones concurrentes del frontend comparten una petición.
 

@@ -4,6 +4,8 @@
 
 Entrar en **Configuración → Feriados y cierres**. SUPER_ADMIN dispone de **Actualizar feriados nacionales**. La confirmación explica que los nuevos feriados bloquean reservas inmediatamente, pero no mueven turnos existentes.
 
+Las instrucciones de esta sección describen el uso actual. Las secciones numeradas documentan decisiones y límites técnicos de la implementación; no prueban el estado de una base remota ni la disponibilidad actual del proveedor.
+
 El resultado indica, por año, nuevos, actualizados, sin cambios, coincidencias con carga manual y turnos pendientes al sincronizar. **Actualizar estado y calendario** vuelve a leer SAPS, sin llamar a ArgentinaDatos. La última actualización válida corresponde al año actual; el resultado separado del año siguiente permite ver si todavía no está disponible.
 
 Las tarjetas importadas muestran **ArgentinaDatos (solo lectura)**, el tipo original y la cantidad actual de turnos pendientes en el alcance del usuario. **Ver turnos afectados / reprogramar** abre el panel ya existente. Elegir, revisar y confirmar nuevos horarios continúa siendo una decisión administrativa.

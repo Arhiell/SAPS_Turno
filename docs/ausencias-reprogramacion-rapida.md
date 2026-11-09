@@ -4,6 +4,8 @@ Fecha de revisión: 07/11/2026.
 
 Este informe distingue la implementación que ya estaba en el árbol de trabajo de los cambios de esta revisión. No se revirtieron commits ni cambios previos. La reconstrucción se hizo leyendo código, migraciones e historial Git; no se consultó la base remota ni se ejecutaron pruebas funcionales.
 
+Este archivo conserva el registro técnico de esa revisión. Para instrucciones dirigidas al equipo, consultar [Manual funcional por rol](MANUAL_USUARIO.md); las reglas vigentes de reserva y concurrencia están resumidas en [turnos y disponibilidad](TURNOS_Y_DISPONIBILIDAD.md) y [concurrencia de agenda](CONCURRENCIA_AGENDA.md). Los datos históricos de la revisión no certifican el estado de una base desplegada.
+
 ## 1. Qué había implementado anteriormente
 
 La base original (`backend/src/BBDD/SAPS_Turno_BBDD3_FINAL.sql`) ya contiene horarios_atencion, bloqueos_agenda, turnos, historial_turnos, auditoria y notificaciones. Turnos ya tiene versión, indicadores derivados del estado y exclusiones de superposición para profesional y paciente.
