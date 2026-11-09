@@ -199,8 +199,9 @@ const procesarEntrega =
 
 // Inicia el procesador de la cola de notificaciones.
 export const iniciarProcesadorNotificaciones =
-  () => {
+  (tareaPeriodica?: () => Promise<void>) => {
     let stopped = false;
+    let periodic: Promise<void> | undefined;
 
     let timer:
       ReturnType<
@@ -216,6 +217,10 @@ export const iniciarProcesadorNotificaciones =
     const tick =
       async () => {
         let more = false;
+        if (tareaPeriodica && !periodic && !stopped) {
+          periodic = tareaPeriodica().catch(error => console.error('No se pudo procesar el calendario institucional', error))
+            .finally(() => { periodic = undefined; });
+        }
 
         try {
           // Procesa hasta 50 entregas por ciclo.
@@ -275,5 +280,6 @@ export const iniciarProcesadorNotificaciones =
       }
 
       await running;
+      await periodic;
     };
   };

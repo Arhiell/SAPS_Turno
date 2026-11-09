@@ -2,9 +2,11 @@
 import { obtenerDisponibilidad } from './disponibilidad.service.js';
 import { validateTurnoAgenda } from './turno-agenda.service.js';
 import { getAgendaImpact } from './agenda-impacto.service.js';
+
 import { agendaDateTime } from '../utils/turno-time.js';
 import { AppError } from '../utils/app-error.js';
 import { timeToSeconds } from '../utils/time.js';
+
 import type { AgendaChange } from '../validators/agenda-impacto.validator.js';
 import type { AuthenticatedUser } from '../types/auth.types.js';
 
@@ -25,9 +27,15 @@ export const destinationAllowed = (
   const start = agendaDateTime(inicio);
   const end = agendaDateTime(fin);
 
+  // Comprueba que el destino no coincida con el bloqueo o cierre.
   return (
     b.activo === false ||
-    start.date !== b.fecha ||
+    (
+      change.tipo === 'cierre'
+        ? start.date < change.datos.fecha_inicio ||
+          start.date > change.datos.fecha_fin
+        : start.date !== change.datos.fecha
+    ) ||
     (
       !b.dia_completo &&
       (
@@ -44,17 +52,19 @@ export const generateAgendaProposal = async (
   dias: number,
   user: AuthenticatedUser
 ) => {
+  // Obtiene los turnos afectados por el cambio de agenda.
   const { afectados } = await getAgendaImpact(change, user);
 
-  // Almacena la disponibilidad y los cambios de cupo calculados.
+  // Almacena la disponibilidad consultada para evitar solicitudes repetidas.
   const availability = new Map<
     string,
     Awaited<ReturnType<typeof obtenerDisponibilidad>>
   >();
 
+  // Registra los cambios de cupo de los horarios.
   const capacityChanges = new Map<string, number>();
 
-  // Registra los turnos asignados para evitar superposiciones.
+  // Registra las asignaciones para evitar superposiciones.
   const assigned: {
     profesional: string;
     paciente: string;
@@ -77,7 +87,9 @@ export const generateAgendaProposal = async (
       Date.parse(turno.fecha_hora_inicio) > Date.now() &&
       !turno.estado.es_estado_final
     ) {
-      const first = agendaDateTime(turno.fecha_hora_inicio).date;
+      const first = agendaDateTime(
+        turno.fecha_hora_inicio
+      ).date;
 
       // Busca disponibilidad dentro del período solicitado.
       search: for (let day = 0; day < dias; day++) {
@@ -89,6 +101,7 @@ export const generateAgendaProposal = async (
           ? turno.id_turno
           : undefined;
 
+        // Identifica la consulta de disponibilidad.
         const key = `${turno.id_profesional}/${turno.id_especialidad}/${turno.id_salita}/${fecha}/${exclude ?? ''}`;
 
         let available = availability.get(key);
@@ -106,6 +119,7 @@ export const generateAgendaProposal = async (
               exclude
             );
           } catch (error) {
+            // Omite fechas con errores de validación o acceso.
             if (
               error instanceof AppError &&
               error.statusCode < 500
@@ -120,9 +134,12 @@ export const generateAgendaProposal = async (
         }
 
         // Recorre las franjas disponibles en orden cronológico.
-        for (const slot of [...available.slots].sort(
-          (a, b) => a.hora_inicio.localeCompare(b.hora_inicio)
-        )) {
+        for (
+          const slot of [...available.slots].sort(
+            (a, b) =>
+              a.hora_inicio.localeCompare(b.hora_inicio)
+          )
+        ) {
           if (slot.estado !== 'DISPONIBLE') {
             continue;
           }
@@ -144,6 +161,7 @@ export const generateAgendaProposal = async (
               h.hora_fin.slice(0, 5) >= slot.hora_fin
           );
 
+          // Verifica que el horario exista y permita la reprogramación.
           if (
             !horario ||
             !destinationAllowed(
@@ -196,6 +214,7 @@ export const generateAgendaProposal = async (
               turno.id_turno
             );
           } catch (error) {
+            // Descarta destinos que no superen las validaciones.
             if (
               error instanceof AppError &&
               error.statusCode < 500
@@ -207,7 +226,10 @@ export const generateAgendaProposal = async (
           }
 
           // Registra el cupo utilizado en el nuevo horario.
-          capacityChanges.set(capacityKey, count + 1);
+          capacityChanges.set(
+            capacityKey,
+            count + 1
+          );
 
           // Libera el cupo del horario original.
           if (turno.id_horario) {
@@ -227,6 +249,7 @@ export const generateAgendaProposal = async (
             fin: Date.parse(fin),
           });
 
+          // Finaliza la búsqueda al encontrar un destino válido.
           break search;
         }
       }

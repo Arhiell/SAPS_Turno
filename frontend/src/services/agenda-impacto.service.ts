@@ -1,5 +1,6 @@
 
 import api from './api';
+import type { CierreInput } from '../types/cierre-calendario.types';
 import { isAxiosError } from 'axios';
 
 import type {
@@ -11,6 +12,7 @@ import type { Turno } from '../types/turno.types';
 
 // Define los tipos de cambios permitidos en la agenda.
 export type AgendaChange =
+  | { tipo: 'cierre'; id?: string; datos: CierreInput }
   | {
       tipo: 'horario';
       id: string;

@@ -6,7 +6,7 @@ import { rethrowTurnoError } from '../utils/turno-error.js';
 
 // Obtiene todos los turnos afectados por un cambio de agenda.
 export const findAgendaAffected = async (
-  tipo: 'horario' | 'bloqueo',
+  tipo: 'horario' | 'bloqueo' | 'cierre',
   datos: object
 ) => {
   const rows: TurnoRow[] = [];
@@ -14,10 +14,8 @@ export const findAgendaAffected = async (
   // Pagina los resultados para evitar el límite de registros de PostgREST.
   for (let from = 0; ; from += 500) {
     const { data, error } = await supabase
-      .rpc('agenda_turnos_afectados', {
-        p_tipo: tipo,
-        p_datos: datos,
-      })
+      .rpc(tipo === 'cierre' ? 'cierre_turnos_afectados' : 'agenda_turnos_afectados',
+        tipo === 'cierre' ? { p_datos: datos } : { p_tipo: tipo, p_datos: datos })
       .select(
         turnoSelect.replace(
           'dni,nombres,apellidos',

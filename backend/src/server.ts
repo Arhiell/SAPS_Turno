@@ -3,8 +3,9 @@ import app from "./app.js";
 import { env } from "./config/env.js";
 import { iniciarProcesadorNotificaciones } from "./services/notificacion-worker.service.js";
 import { initSocketServer } from "./services/socket.service.js";
+import { revisarSincronizacionCalendario } from './services/calendario-sync.service.js';
 
-const detenerNotificaciones = iniciarProcesadorNotificaciones();
+const detenerNotificaciones = iniciarProcesadorNotificaciones(revisarSincronizacionCalendario);
 
 const server = createServer(app);
 initSocketServer(server);

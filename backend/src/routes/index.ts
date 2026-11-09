@@ -1,4 +1,6 @@
+
 import { Router } from 'express';
+
 import chatbotRoutes from './chatbot.routes.js';
 
 import {
@@ -31,6 +33,7 @@ import profesionalSalitaRoutes from './profesional-salita.routes.js';
 
 import horarioAtencionRoutes from './horario-atencion.routes.js';
 import bloqueoAgendaRoutes from './bloqueo-agenda.routes.js';
+import cierreCalendarioRoutes from './cierre-calendario.routes.js';
 import disponibilidadRoutes from './disponibilidad.routes.js';
 
 import turnoRoutes from './turno.routes.js';
@@ -42,7 +45,10 @@ import accessManagementRoutes from './access-management.routes.js';
 import auditoriaRoutes from './auditoria.routes.js';
 import reporteRoutes from './reporte.routes.js';
 
+// Inicializa el enrutador principal de la API.
 const router = Router();
+
+// Rutas del chatbot.
 router.use('/chatbot', chatbotRoutes);
 
 // Contenido público y administración de contenido.
@@ -55,23 +61,23 @@ router.use('/configuracion', configuracionRoutes);
 // Estado general de la API.
 router.use('/health', healthRoutes);
 
-// Gestión de usuarios.
+// Gestión de usuarios y permisos de acceso.
 router.use('/users', userRoutes);
 router.use('/access-management', accessManagementRoutes);
 
-// Autenticación y acceso.
+// Autenticación, recuperación de contraseña y verificación de correo.
 router.use('/auth', authRoutes);
 router.use('/auth/password', passwordRecoveryRoutes);
 router.use('/auth/email', emailVerificationRoutes);
 router.use('/auth/google', googleAuthRoutes);
 
-// Catálogos principales.
+// Catálogos principales del sistema.
 router.use('/especialidades', especialidadRoutes);
 router.use('/salitas', salitaRoutes);
 router.use('/barrios', barrioRoutes);
 router.use('/zonas', zonaRoutes);
 
-// Pacientes y tutores.
+// Gestión de pacientes, tutores y sus relaciones.
 router.use('/patients', patientRoutes);
 router.use('/tutors', tutorRoutes);
 router.use('/', patientTutorRoutes);
@@ -79,27 +85,28 @@ router.use('/', patientTutorRoutes);
 // Cobertura de barrios por salita.
 router.use('/salita-barrios', salitaBarrioRoutes);
 
-// Profesionales y sus asignaciones.
+// Gestión de profesionales y sus asignaciones.
 router.use('/profesionales', profesionalRoutes);
 router.use('/profesionales', profesionalEspecialidadRoutes);
 router.use('/profesionales', profesionalSalitaRoutes);
 
-// Gestión de agenda y disponibilidad.
+// Gestión de horarios, bloqueos, cierres y disponibilidad.
 router.use('/horarios-atencion', horarioAtencionRoutes);
 router.use('/bloqueos-agenda', bloqueoAgendaRoutes);
+router.use('/cierres-calendario', cierreCalendarioRoutes);
 router.use('/disponibilidad', disponibilidadRoutes);
 
-// Turnos e historial de cambios.
+// Gestión de turnos e historial de modificaciones.
 router.use('/turnos', turnoRoutes);
 router.use('/', historialTurnoRoutes);
 
-// Sanciones por inasistencia.
+// Gestión de sanciones por inasistencia.
 router.use('/sanciones', sancionRoutes);
 
 // Notificaciones internas del usuario.
 router.use('/notificaciones', notificacionRoutes);
 
-// Auditoría general del sistema.
+// Auditoría de las operaciones del sistema.
 router.use('/auditoria', auditoriaRoutes);
 
 // Reportes y estadísticas.

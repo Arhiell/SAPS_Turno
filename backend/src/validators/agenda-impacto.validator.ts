@@ -1,10 +1,19 @@
 
 import { z } from 'zod';
+
+import { cierreSchema } from './cierre-calendario.validator.js';
 import { updateHorarioAtencionSchema } from './horario-atencion.validator.js';
 import { createBloqueoAgendaSchema } from './bloqueo-agenda.validator.js';
 
 // Valida los cambios de agenda según el tipo de configuración.
 export const agendaChangeSchema = z.discriminatedUnion('tipo', [
+  // Creación o modificación de un cierre institucional.
+  z.object({
+    tipo: z.literal('cierre'),
+    id: z.string().uuid().optional(),
+    datos: cierreSchema,
+  }).strict(),
+
   // Modificación de un horario de atención existente.
   z.object({
     tipo: z.literal('horario'),
@@ -57,6 +66,7 @@ export const agendaConfirmSchema = z.object({
     .max(100),
 })
   .strict()
+
   // Impide incluir el mismo turno más de una vez.
   .refine(
     (v) =>
@@ -72,6 +82,7 @@ export const agendaConfirmSchema = z.object({
 export type AgendaChange = z.infer<typeof agendaChangeSchema>;
 export type AgendaConfirmation = z.infer<typeof agendaConfirmSchema>;
 
+// Valida la consulta de disponibilidad para reprogramar un turno.
 export const agendaAvailabilitySchema = z.object({
   cambio: agendaChangeSchema,
   id_turno: z.string().uuid(),

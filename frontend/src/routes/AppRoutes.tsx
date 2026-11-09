@@ -67,6 +67,7 @@ const CoberturaPage = lazy(() => import('../pages/configuracion/CoberturaPage'))
 const HorariosPage = lazy(() => import('../pages/configuracion/HorariosPage'));
 const ParametrosPage = lazy(() => import('../pages/configuracion/ParametrosPage'));
 const BloqueosPage = lazy(() => import('../pages/configuracion/BloqueosPage'));
+const CierresPage = lazy(() => import('../pages/configuracion/CierresPage'));
 
 const ReportesPage = lazy(() => import('../pages/reportes/ReportesPage'));
 
@@ -282,6 +283,7 @@ const AppRoutes = () => {
                   />
                 }
               >
+                <Route path="/configuracion/cierres" element={<CierresPage />} />
                 {/* Gestión de noticias y contenido. */}
                 <Route
                   path="/contenido"

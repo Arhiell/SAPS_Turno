@@ -4,6 +4,8 @@ import { assertOwnCoverage } from './patient-coverage.service.js';
 import { resolveManagedPatient } from './patient-managed.service.js';
 import { validateTurnoEntities } from './turno-entities.service.js';
 import { obtenerDisponibilidad } from './disponibilidad.service.js';
+import { findCierres } from '../repositories/cierre-calendario.repository.js';
+import { cierreEtiqueta } from '../utils/cierre-calendario.js';
 
 import { findOpenTurno } from '../repositories/turno-agenda.repository.js';
 import { findPatientProfessionals } from '../repositories/patient-agenda.repository.js';
@@ -284,8 +286,22 @@ export const getPatientAvailableDates = async (
 
   // Consulta las fechas secuencialmente para no saturar la base de datos.
   const fechas: string[] = [];
+  // Una consulta para todo el período; solo etiquetas públicas salen de este servicio.
+  const cierres = await findCierres([query.id_salita], window.desde, window.hasta, true);
+  const dias = window.fechas.map(fecha => {
+    const aplicables = cierres.filter(c => c.fecha_inicio <= fecha && c.fecha_fin >= fecha);
+    const completo = aplicables.find(c => c.dia_completo);
+    const etiqueta = completo ?? aplicables[0];
+    return { fecha, disponible: false,
+      estado: completo ? 'CERRADO' : candidates.includes(fecha) ? 'SIN_CUPOS' : 'SIN_HORARIO',
+      cierre: etiqueta ? cierreEtiqueta(etiqueta) : null,
+      franjas_cerradas: completo ? ['Todo el día'] : [...new Set(aplicables.map(c => `${c.hora_inicio!.slice(0, 5)}–${c.hora_fin!.slice(0, 5)}`))],
+    };
+  });
 
   for (const fecha of candidates) {
+    const dia = dias.find(d => d.fecha === fecha)!;
+    if (dia.estado === 'CERRADO') continue;
     try {
       // Reutiliza las validaciones de cobertura, sanciones y turnos abiertos.
       const result = await getPatientAvailability(
@@ -298,6 +314,10 @@ export const getPatientAvailableDates = async (
 
       if (result.slots.length) {
         fechas.push(fecha);
+        dia.disponible = true;
+        dia.estado = 'DISPONIBLE';
+      } else if (result.sin_horarios_por_cierre) {
+        dia.estado = 'CERRADO';
       }
     } catch (error) {
       // Omite asociaciones vencidas sin ocultar errores de permisos o infraestructura.
@@ -315,6 +335,7 @@ export const getPatientAvailableDates = async (
 
   return {
     fechas,
+    dias,
     ventana: window,
   };
 };

@@ -166,6 +166,11 @@ export const configurationMenu: (SidebarMenuItem & {
   description: string;
 })[] = [
   {
+    label: 'Feriados y cierres', path: '/configuracion/cierres', icon: 'bi-calendar-x',
+    roles: ['SUPER_ADMIN', 'ADMIN_SALITA'],
+    description: 'Administrá feriados, asuetos y cierres de todas las salitas o de una salita. Revisá los turnos afectados antes de guardar.',
+  },
+  {
     label: 'Zonas',
     path: '/configuracion/zonas',
     icon: 'bi-map',

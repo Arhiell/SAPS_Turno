@@ -1,4 +1,6 @@
 import { assertClinicSpecialty } from './configuracion.service.js';
+import { findCierres } from '../repositories/cierre-calendario.repository.js';
+import { cierreAfecta, cierreEtiqueta } from '../utils/cierre-calendario.js';
 // Servicio de disponibilidad de turnos
 
 import { disponibilidadQuerySchema, disponibilidadAdminQuerySchema } from "../validators/disponibilidad.validator.js";
@@ -237,6 +239,7 @@ export const obtenerDisponibilidad = async (
     horarios,
     bloqueos,
     turnos,
+    cierres,
   ] = await Promise.all([
     getHorariosParaDisponibilidad(
       id_profesional,
@@ -256,6 +259,7 @@ export const obtenerDisponibilidad = async (
       id_salita,
       fecha
     ),
+    findCierres([id_salita], fecha, fecha, true),
   ]);
 
   const horariosTipados = horarios as unknown as Horario[];
@@ -294,6 +298,12 @@ export const obtenerDisponibilidad = async (
       const horaInicio = convertirMinutosAHora(minutoActual);
       const horaFin = convertirMinutosAHora(minutoActual + duracion);
       const inicioSlot = obtenerFechaHoraArgentina(fecha, horaInicio);
+
+      const cierre = cierres.find(c => cierreAfecta(c, id_salita, fecha, horaInicio, horaFin));
+      if (cierre) {
+        slots.push({ hora_inicio: horaInicio, hora_fin: horaFin, estado: 'BLOQUEADO', motivo: cierreEtiqueta(cierre) });
+        continue;
+      }
 
       // No ofrecer horarios cuyo inicio ya pasó en Argentina.
       if (inicioSlot.getTime() <= ahora) {
@@ -386,6 +396,8 @@ export const obtenerDisponibilidad = async (
 
   return {
     fecha,
+    sin_horarios_por_cierre: slots.length > 0 && slots.every(s =>
+      s.estado === 'BLOQUEADO' && ['FERIADO', 'NO LABORABLE', 'SALITA CERRADA'].includes(s.motivo ?? '')),
     dia_semana: diaSemana,
     id_profesional,
     id_especialidad,

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { getPatientProfessionals } from '../../services/profesionales.service';
-import { getPatientAvailableDates } from '../../services/turnos.service';
+import { getPatientAvailableDates, type PatientAvailableDates } from '../../services/turnos.service';
 
 import type { PatientProfessional } from '../../types/profesional.types';
 
@@ -37,6 +37,7 @@ export default function PatientBookingForm({
   const [professional, setProfessional] = useState('');
   const [date, setDate] = useState('');
   const [dates, setDates] = useState<string[]>([]);
+  const [calendar, setCalendar] = useState<PatientAvailableDates['dias']>([]);
 
   // Controla los estados de carga y las solicitudes.
   const [loading, setLoading] = useState(true);
@@ -130,6 +131,7 @@ export default function PatientBookingForm({
     let active = true;
 
     setDatesError('');
+    setCalendar([]);
 
     // Limpia las fechas cuando falta seleccionar una atención.
     if (!professional || !specialty) {
@@ -153,6 +155,7 @@ export default function PatientBookingForm({
         }
 
         setDates(result.fechas);
+        setCalendar(result.dias ?? []);
 
         // Conserva la fecha seleccionada si sigue disponible.
         setDate((current) =>
@@ -164,6 +167,8 @@ export default function PatientBookingForm({
       .catch((cause) => {
         if (active) {
           setDate('');
+          setDates([]);
+          setCalendar([]);
           setDatesError(authError(cause));
         }
       })
@@ -312,7 +317,7 @@ export default function PatientBookingForm({
           {/* Selección de una fecha con turnos disponibles. */}
           {professional && (
             <label className="form-label w-100 mt-2">
-              Días disponibles
+              Días de atención
 
               <select
                 className="form-select mt-1"
@@ -330,17 +335,31 @@ export default function PatientBookingForm({
                     : 'Seleccioná un día'}
                 </option>
 
-                {dates.map((day) => (
+                {(calendar.length ? calendar.map(d => d.fecha) : dates).map((day) => (
                   <option
                     value={day}
                     key={day}
+                    disabled={!dates.includes(day)}
                   >
-                    {dateLabel(day)}
+                    {dateLabel(day)}{calendar.find(d => d.fecha === day)?.cierre ? ` · ${calendar.find(d => d.fecha === day)!.cierre}${dates.includes(day) ? ' (parcial)' : ' · No disponible'}` : !dates.includes(day) ? ' · No disponible' : ''}
                   </option>
                 ))}
               </select>
             </label>
           )}
+
+          {professional && !loadingDates && !datesError && calendar.length > 0 && <div className="mt-2" aria-label="Estado de los días de atención">
+            <p className="small text-muted">Los días con cierre completo no se pueden elegir. Si el cierre es parcial, solo se ofrecen horarios fuera de esa franja.</p>
+            <ul className="list-unstyled">
+              {calendar.map(day => <li key={day.fecha} className={`border rounded p-2 mb-2 ${day.cierre ? 'border-danger bg-danger-subtle text-danger' : day.disponible ? 'border-success' : 'text-muted'}`}>
+                <strong>{dateLabel(day.fecha)}</strong><br />
+                {day.cierre ? <>
+                  <span className="badge text-bg-danger me-2">{day.cierre}</span>
+                  {day.franjas_cerradas.join(' / ')} · {day.disponible ? 'Hay horarios disponibles fuera del cierre' : day.estado === 'SIN_HORARIO' ? 'Sin horario de atención' : day.estado === 'SIN_CUPOS' ? 'Sin cupos disponibles fuera del cierre' : 'No disponible para esta atención'}
+                </> : day.disponible ? 'Disponible' : day.estado === 'SIN_HORARIO' ? 'Sin horario de atención' : 'Sin cupos disponibles'}
+              </li>)}
+            </ul>
+          </div>}
 
           {/* Informa cuando no quedan fechas disponibles. */}
           {professional &&

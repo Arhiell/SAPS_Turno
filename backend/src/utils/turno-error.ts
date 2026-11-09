@@ -26,6 +26,9 @@ export const rethrowTurnoError = (error: unknown): never => {
       ? String(error.message)
       : "";
 
+  if (hasDatabaseCode(error, 'P0001') && message === 'INSTITUTIONAL_CLOSURE') {
+    throw new AppError('La salita está cerrada en la fecha o franja solicitada. Actualizá la disponibilidad.', 409, 'INSTITUTIONAL_CLOSURE');
+  }
   // Verifica errores de permisos sobre la agenda o salita.
   if (hasDatabaseCode(error, '42501')) {
     throw new AppError(

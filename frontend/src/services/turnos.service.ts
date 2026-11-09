@@ -129,6 +129,12 @@ export const getDisponibilidad = async (
 // Define las fechas disponibles y la ventana de reserva.
 export interface PatientAvailableDates {
   fechas: string[];
+  dias: {
+    fecha: string; disponible: boolean;
+    estado: 'DISPONIBLE' | 'CERRADO' | 'SIN_CUPOS' | 'SIN_HORARIO';
+    cierre: 'FERIADO' | 'NO LABORABLE' | 'SALITA CERRADA' | null;
+    franjas_cerradas: string[];
+  }[];
 
   ventana: {
     desde: string;

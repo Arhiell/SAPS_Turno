@@ -21,6 +21,8 @@ import { timeToSeconds } from '../utils/time.js';
 import { AppError } from '../utils/app-error.js';
 
 import type { CreateTurnoInput } from '../validators/turno.validator.js';
+import { findCierres } from '../repositories/cierre-calendario.repository.js';
+import { cierreAfecta } from '../utils/cierre-calendario.js';
 
 type Horario = NonNullable<
   Awaited<ReturnType<typeof getHorarioById>>
@@ -131,6 +133,11 @@ export const validateTurnoAgenda = async (
 
   const inicio = start.toISOString();
   const fin = end.toISOString();
+
+  const cierres = await findCierres([input.id_salita], local.date, local.date, true);
+  if (cierres.some(c => cierreAfecta(c, input.id_salita, local.date, local.time, agendaDateTime(end).time))) {
+    throw new AppError('La salita está cerrada en la fecha o franja solicitada.', 409, 'INSTITUTIONAL_CLOSURE');
+  }
 
   // Verifica que no existan bloqueos de agenda.
   if (

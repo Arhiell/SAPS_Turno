@@ -3,6 +3,8 @@ import { getOwnEntity } from './auth-profile.service.js';
 import { agendaDateTime, agendaDayBounds } from '../utils/turno-time.js';
 import { AppError } from '../utils/app-error.js';
 import type { AuthenticatedUser } from '../types/auth.types.js';
+import { findCierres } from '../repositories/cierre-calendario.repository.js';
+import { cierreAfecta, cierreEtiqueta } from '../utils/cierre-calendario.js';
 
 interface HorarioDb {
   id_horario: string;
@@ -148,6 +150,7 @@ export const getMisHorariosYDisponibilidad = async (
 
   // 5. Cargar nombres de salitas y especialidades referenciadas sin joins de FK
   const salitaIds = Array.from(new Set(horarios.map(h => h.id_salita)));
+  const cierres = await findCierres(salitaIds, fecha, fecha, true);
   const especialidadIds = Array.from(new Set(horarios.map(h => h.id_especialidad)));
 
   const salitasMap = new Map<string, string>();
@@ -335,6 +338,13 @@ export const getMisHorariosYDisponibilidad = async (
       const slotFinDate = new Date(`${fecha}T${slotFinStr}:00-03:00`);
 
       totalSlots++;
+
+      const cierre = cierres.find(c => cierreAfecta(c, h.id_salita, fecha, slotInicioStr, slotFinStr));
+      if (cierre) {
+        bloqueadosSlots++;
+        slots.push({ hora_inicio: slotInicioStr, hora_fin: slotFinStr, estado: 'BLOQUEADO', motivo: cierreEtiqueta(cierre) });
+        continue;
+      }
 
       // Revisar si está bloqueado por día completo
       if (bloqueoDiaCompleto) {
