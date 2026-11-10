@@ -1,16 +1,17 @@
-﻿import { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../../context/AuthContext';
 import { changePassword } from '../../services/auth.service';
 import { authError, passwordError } from '../../utils/auth-errors';
+import { PROFESSIONAL_MESSAGE_TIMEOUT_MS, useAutoDismiss } from '../../utils/useAutoDismiss';
 
 import PasswordInput from '../../pages/auth/PasswordInput';
 import ConfirmationModal from './ConfirmationModal';
 
 // Gestiona el cambio de contraseña del usuario autenticado.
 export default function AccountPasswordForm() {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   // Controla el formulario y los datos de la contraseña.
@@ -23,6 +24,8 @@ export default function AccountPasswordForm() {
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
   const [error, setError] = useState('');
+
+  useAutoDismiss(error, setError, PROFESSIONAL_MESSAGE_TIMEOUT_MS, user?.rol === 'PROFESIONAL');
 
   // Controla la apertura del modal de confirmación.
   const [confirmOpen, setConfirmOpen] = useState(false);

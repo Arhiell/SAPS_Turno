@@ -1,4 +1,4 @@
-﻿import { useRef, useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 
 import {
   requestEmailChange,
@@ -7,6 +7,7 @@ import {
 
 import { useAuth } from '../../context/AuthContext';
 import { authError } from '../../utils/auth-errors';
+import { PROFESSIONAL_MESSAGE_TIMEOUT_MS, useAutoDismiss } from '../../utils/useAutoDismiss';
 
 import ValidatedInput from './ValidatedInput';
 
@@ -26,6 +27,10 @@ export default function AccountEmailForm() {
   // Almacena los mensajes de error y confirmación.
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+
+  const isProfessional = user?.rol === 'PROFESIONAL';
+  useAutoDismiss(message, setMessage, PROFESSIONAL_MESSAGE_TIMEOUT_MS, isProfessional);
+  useAutoDismiss(error, setError, PROFESSIONAL_MESSAGE_TIMEOUT_MS, isProfessional);
 
   // Solicita o reenvía el código de verificación.
   const send = async () => {

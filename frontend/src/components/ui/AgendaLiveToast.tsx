@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useAgendaSocket } from '../../context/AgendaSocketContext';
 import type { EventoAgenda } from '../../types/socket.types';
+import { PROFESSIONAL_MESSAGE_TIMEOUT_MS } from '../../utils/useAutoDismiss';
 import '../../styles/agenda-socket.css';
 
 interface ToastItemProps {
@@ -9,11 +10,11 @@ interface ToastItemProps {
 }
 
 function ToastItem({ evento, onClose }: ToastItemProps) {
-  // Auto-cierre a los 12 segundos para no invadir la pantalla
+  // Auto-cierre a los 15 segundos para no invadir la pantalla
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose(evento.id);
-    }, 12000);
+    }, PROFESSIONAL_MESSAGE_TIMEOUT_MS);
     return () => clearTimeout(timer);
   }, [evento.id, onClose]);
 

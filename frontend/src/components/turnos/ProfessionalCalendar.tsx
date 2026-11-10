@@ -1,13 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { getTurnos } from '../../services/turnos.service';
 import { authError } from '../../utils/auth-errors';
+import { useAutoDismiss } from '../../utils/useAutoDismiss';
 
-const dateKey = (date: Date) => new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'America/Argentina/Buenos_Aires',
-}).format(date);
+const dateKey = (date: Date) =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+  }).format(date);
 
-export default function ProfessionalCalendar({ revision, selected, onSelect }: {
-  revision: number; selected: string; onSelect: (day: string) => void;
+export default function ProfessionalCalendar({
+  revision,
+  selected,
+  onSelect,
+}: {
+  revision: number;
+  selected: string;
+  onSelect: (day: string) => void;
 }) {
   const [month, setMonth] = useState(() => dateKey(new Date()).slice(0, 7));
   const [days, setDays] = useState<Record<string, Record<string, { name: string; count: number }>>>({});
@@ -16,30 +24,52 @@ export default function ProfessionalCalendar({ revision, selected, onSelect }: {
   const [year, number] = month.split('-').map(Number);
   const count = new Date(Date.UTC(year!, number!, 0)).getUTCDate();
   const offset = (new Date(`${month}-01T12:00:00Z`).getUTCDay() + 6) % 7;
+  const requestIdRef = useRef(0);
+
+  useAutoDismiss(error, setError);
 
   useEffect(() => {
-    let active = true;
+    const currentRequestId = ++requestIdRef.current;
     setLoading(true);
     setError('');
-    setDays({});
+
     void (async () => {
       const result: typeof days = {};
       for (let page = 1; ; page++) {
-        const response = await getTurnos({ fecha_desde: `${month}-01`,
-          fecha_hasta: `${month}-${count}`, page, limit: 100 });
-        if (!active) return;
+        const response = await getTurnos({
+          fecha_desde: `${month}-01`,
+          fecha_hasta: `${month}-${count}`,
+          page,
+          limit: 100,
+        });
+        if (currentRequestId !== requestIdRef.current) return;
+        if (!response?.data?.turnos?.length) break;
+
         for (const turno of response.data.turnos) {
           const key = dateKey(new Date(turno.fecha_hora_inicio));
-          const day = result[key] ??= {};
-          const status = day[turno.estado.codigo] ??= { name: turno.estado.nombre, count: 0 };
+          const day = (result[key] ??= {});
+          const status = (day[turno.estado.codigo] ??= {
+            name: turno.estado.nombre,
+            count: 0,
+          });
           status.count++;
         }
-        if (page >= response.data.pagination.totalPages) break;
+        if (page >= (response.data.pagination?.totalPages || 1)) break;
       }
-      if (active) setDays(result);
-    })().catch(cause => { if (active) setError(authError(cause)); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+      if (currentRequestId === requestIdRef.current) {
+        setDays(result);
+      }
+    })()
+      .catch((cause) => {
+        if (currentRequestId === requestIdRef.current) {
+          setError(authError(cause));
+        }
+      })
+      .finally(() => {
+        if (currentRequestId === requestIdRef.current) {
+          setLoading(false);
+        }
+      });
   }, [month, count, revision]);
 
   const move = (delta: number) => {
@@ -47,37 +77,81 @@ export default function ProfessionalCalendar({ revision, selected, onSelect }: {
     setMonth(date.toISOString().slice(0, 7));
   };
 
-  return <section className="professional-calendar my-3" aria-label="Calendario de actividad">
-    <div className="professional-calendar__header">
-      <h2 className="h6 mb-2">Días con actividad</h2>
-      <div className="professional-calendar__navigation">
-        <button type="button" className="btn btn-outline-secondary" onClick={() => move(-1)} aria-label="Mes anterior">‹</button>
-        <label><span className="visually-hidden">Mes de actividad</span>
-          <input type="month" className="form-control" value={month} onChange={event => {
-            if (/^\d{4}-\d{2}$/.test(event.target.value)) setMonth(event.target.value);
-          }} /></label>
-        <button type="button" className="btn btn-outline-secondary" onClick={() => move(1)} aria-label="Mes siguiente">›</button>
+  const monthDate = new Date(year!, number! - 1, 1);
+  const rawMonthName = new Intl.DateTimeFormat('es-AR', {
+    month: 'long',
+    year: 'numeric',
+  }).format(monthDate);
+  const capitalizedMonth = rawMonthName.charAt(0).toUpperCase() + rawMonthName.slice(1);
+
+  return (
+    <section className="professional-calendar" aria-label="Calendario de actividad">
+      {/* Navegación del mes estilo CORA */}
+      <div className="professional-calendar__navigation mb-3">
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center"
+          onClick={() => move(-1)}
+          aria-label="Mes anterior"
+          title="Mes anterior"
+          style={{ width: '32px', height: '32px', borderRadius: '8px' }}
+        >
+          <i className="bi bi-chevron-left" aria-hidden="true" />
+        </button>
+        <span className="fw-bold text-dark text-center flex-grow-1 user-select-none" style={{ fontSize: '0.95rem' }}>
+          {capitalizedMonth}
+        </span>
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center"
+          onClick={() => move(1)}
+          aria-label="Mes siguiente"
+          title="Mes siguiente"
+          style={{ width: '32px', height: '32px', borderRadius: '8px' }}
+        >
+          <i className="bi bi-chevron-right" aria-hidden="true" />
+        </button>
       </div>
-    </div>
-    <p className="small text-muted my-2">En verde: días con turnos.</p>
-    {loading && <p role="status">Cargando actividad del mes…</p>}
-    {error && <p className="alert alert-danger" role="alert">{error}</p>}
-    <div className="professional-calendar__grid" aria-busy={loading}>
-      {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(day => <strong key={day} className="text-center small">{day}</strong>)}
-      {Array.from({ length: offset }, (_, i) => <span key={`blank-${i}`} />)}
-      {Array.from({ length: count }, (_, i) => {
-        const key = `${month}-${String(i + 1).padStart(2, '0')}`;
-        const states = Object.entries(days[key] ?? {});
-        const summary = states.map(([, status]) => `${status.name}: ${status.count}`).join(', ');
-        return <button key={key} type="button" disabled={loading || !!error}
-          className={`professional-calendar__day${states.length ? ' has-activity' : ''}`}
-          aria-pressed={selected === key} aria-label={`${key}: ${summary || 'Sin turnos'}`}
-          title={`${key}: ${summary || 'Sin turnos'}`}
-          aria-current={key === dateKey(new Date()) ? 'date' : undefined}
-          onClick={() => onSelect(key)}>
-          <strong>{i + 1}</strong>
-        </button>;
-      })}
-    </div>
-  </section>;
+
+      {/* Grilla semanal: Lun, Mar, Mié, Jue, Vie, Sáb, Dom */}
+      <div className="professional-calendar__grid" aria-busy={loading}>
+        {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((day) => (
+          <strong key={day} className="text-center small">
+            {day}
+          </strong>
+        ))}
+        {Array.from({ length: offset }, (_, i) => (
+          <span key={`blank-${i}`} />
+        ))}
+        {Array.from({ length: count }, (_, i) => {
+          const key = `${month}-${String(i + 1).padStart(2, '0')}`;
+          const states = Object.entries(days[key] ?? {});
+          const summary = states.map(([, status]) => `${status.name}: ${status.count}`).join(', ');
+          const isSelected = selected === key;
+          const isToday = key === dateKey(new Date());
+
+          return (
+            <button
+              key={key}
+              type="button"
+              disabled={loading || !!error}
+              className={`professional-calendar__day${states.length ? ' has-activity' : ''}${
+                isSelected ? ' is-selected' : ''
+              }`}
+              aria-pressed={isSelected}
+              aria-label={`${key}: ${summary || 'Sin turnos'}`}
+              title={`${key}: ${summary || 'Sin turnos'}`}
+              aria-current={isToday ? 'date' : undefined}
+              onClick={() => onSelect(key)}
+            >
+              <strong>{i + 1}</strong>
+            </button>
+          );
+        })}
+      </div>
+
+      {loading && <p className="text-muted small text-center mt-2 mb-0" role="status">Cargando...</p>}
+      {error && <p className="alert alert-danger small p-2 mt-2 mb-0" role="alert">{error}</p>}
+    </section>
+  );
 }

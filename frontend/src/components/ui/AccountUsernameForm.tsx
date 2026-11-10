@@ -1,8 +1,9 @@
-﻿import { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { useAuth } from '../../context/AuthContext';
 import { changeUsername } from '../../services/auth.service';
 import { authError } from '../../utils/auth-errors';
+import { PROFESSIONAL_MESSAGE_TIMEOUT_MS, useAutoDismiss } from '../../utils/useAutoDismiss';
 
 import ValidatedInput from './ValidatedInput';
 import ConfirmationModal from './ConfirmationModal';
@@ -20,6 +21,10 @@ export default function AccountUsernameForm() {
   const pending = useRef(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const isProfessional = user?.rol === 'PROFESIONAL';
+  useAutoDismiss(success, setSuccess, PROFESSIONAL_MESSAGE_TIMEOUT_MS, isProfessional);
+  useAutoDismiss(error, setError, PROFESSIONAL_MESSAGE_TIMEOUT_MS, isProfessional);
 
   // Controla la apertura del modal de confirmación.
   const [confirmOpen, setConfirmOpen] = useState(false);

@@ -1,7 +1,8 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 
 import { useAuth } from '../../context/AuthContext';
 import { roleLabels } from '../../components/layout/sidebar-menu';
+import { PROFESSIONAL_MESSAGE_TIMEOUT_MS, useAutoDismiss } from '../../utils/useAutoDismiss';
 
 import PersonalProfileForm from '../../components/ui/PersonalProfileForm';
 import ProfileInfoCard from '../../components/ui/ProfileInfoCard';
@@ -19,6 +20,10 @@ export default function AdminProfilePage() {
   // Almacena los mensajes de error y confirmación.
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+
+  const isProfessional = user?.rol === 'PROFESIONAL';
+  useAutoDismiss(message, setMessage, PROFESSIONAL_MESSAGE_TIMEOUT_MS, isProfessional);
+  useAutoDismiss(error, setError, PROFESSIONAL_MESSAGE_TIMEOUT_MS, isProfessional);
 
   // Recarga los datos del perfil desde el servidor.
   const refresh = async () => {

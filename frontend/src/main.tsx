@@ -10,6 +10,7 @@ import "./App.css";
 import "./styles/turnos.css";
 import "./styles/layout.css";
 import "./styles/pacientes.css";
+import "./styles/professional-agenda.css";
 
 import App from "./App";
 import { AuthProvider } from "./context/AuthContext";

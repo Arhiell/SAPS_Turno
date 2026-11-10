@@ -17,11 +17,13 @@ export default function TurnoCard({
   patient = false,
   onChanged,
   detail = false,
+  onViewDetail,
 }: {
   turno: Turno;
   patient?: boolean;
   onChanged?: () => void;
   detail?: boolean;
+  onViewDetail?: (turno: Turno) => void;
 }) {
   // Define qué persona mostrar según
   // si la tarjeta pertenece al paciente.
@@ -138,6 +140,20 @@ export default function TurnoCard({
             />
           </div>
         </>
+      )}
+
+      {/* Acciones para el profesional o personal administrativo */}
+      {!patient && onViewDetail && (
+        <div className="d-flex flex-wrap gap-2 mt-3 pt-2 border-top">
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-success"
+            onClick={() => onViewDetail(turno)}
+          >
+            <i className="bi bi-person-lines-fill me-1" aria-hidden="true" />
+            Ver ficha del paciente
+          </button>
+        </div>
       )}
     </article>
   );

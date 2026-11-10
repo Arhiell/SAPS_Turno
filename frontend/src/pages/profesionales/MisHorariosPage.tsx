@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { getMisHorarios } from '../../services/profesionales.service';
 import type { MisHorariosData } from '../../services/profesionales.service';
 import { authError } from '../../utils/auth-errors';
+import { useAutoDismiss } from '../../utils/useAutoDismiss';
 import { useAgendaSocket } from '../../context/AgendaSocketContext';
-import { AgendaSocketStatusBadge } from '../../components/ui/AgendaLiveToast';
 import '../../styles/mis-horarios.css';
 
 export default function MisHorariosPage() {
@@ -18,38 +18,41 @@ export default function MisHorariosPage() {
   const [error, setError] = useState<string>('');
   const [revision, setRevision] = useState<number>(0);
   const { ultimoEvento } = useAgendaSocket();
+  const lastEventIdRef = useRef<string | null>(ultimoEvento?.id ?? null);
+  const requestIdRef = useRef(0);
+
+  useAutoDismiss(error, setError);
 
   useEffect(() => {
-    if (ultimoEvento) {
+    if (ultimoEvento && ultimoEvento.id !== lastEventIdRef.current) {
+      lastEventIdRef.current = ultimoEvento.id;
       setRevision((r) => r + 1);
     }
   }, [ultimoEvento]);
 
   useEffect(() => {
-    let active = true;
-    setLoading(true);
+    const currentRequestId = ++requestIdRef.current;
+    if (!data) {
+      setLoading(true);
+    }
     setError('');
 
     void getMisHorarios(fecha)
       .then((res) => {
-        if (active && res.success) {
+        if (currentRequestId === requestIdRef.current && res.success) {
           setData(res.data);
         }
       })
       .catch((err) => {
-        if (active) {
+        if (currentRequestId === requestIdRef.current) {
           setError(authError(err));
         }
       })
       .finally(() => {
-        if (active) {
+        if (currentRequestId === requestIdRef.current) {
           setLoading(false);
         }
       });
-
-    return () => {
-      active = false;
-    };
   }, [fecha, revision]);
 
   const handlePrevDay = () => {
@@ -105,7 +108,6 @@ export default function MisHorariosPage() {
         </div>
 
         <div className="horarios-header-actions">
-          <AgendaSocketStatusBadge />
           <span className="badge-readonly-pill">
             <i className="bi bi-shield-lock text-muted" aria-hidden="true" />
             Solo consulta
@@ -134,9 +136,17 @@ export default function MisHorariosPage() {
       </div>
 
       {error && (
-        <div className="alert alert-danger d-flex align-items-center gap-2" role="alert">
-          <i className="bi bi-exclamation-triangle-fill fs-5" aria-hidden="true" />
-          <div>{error}</div>
+        <div className="alert alert-danger d-flex align-items-center justify-content-between gap-2" role="alert">
+          <div className="d-flex align-items-center gap-2">
+            <i className="bi bi-exclamation-triangle-fill fs-5" aria-hidden="true" />
+            <div>{error}</div>
+          </div>
+          <button
+            type="button"
+            className="btn-close flex-shrink-0"
+            aria-label="Cerrar aviso"
+            onClick={() => setError('')}
+          />
         </div>
       )}
 

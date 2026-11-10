@@ -22,8 +22,11 @@ import {
 import {
   fechaNotificacion,
 } from '../../components/notificaciones/NotificacionesNav';
+import { useAuth } from '../../context/AuthContext';
+import { PROFESSIONAL_MESSAGE_TIMEOUT_MS, useAutoDismiss } from '../../utils/useAutoDismiss';
 
 export default function MisNotificacionesPage() {
+  const { user } = useAuth();
   const [
     data,
     setData,
@@ -61,6 +64,8 @@ export default function MisNotificacionesPage() {
 
   // Evita que una respuesta anterior sobrescriba una carga más reciente.
   const requestId = useRef(0);
+
+  useAutoDismiss(error, setError, PROFESSIONAL_MESSAGE_TIMEOUT_MS, user?.rol === 'PROFESIONAL');
 
   // Oculta automáticamente los mensajes de éxito después de 5 segundos.
   useEffect(() => {

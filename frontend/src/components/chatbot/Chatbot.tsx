@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { chatbotErrorMessage, observeChatbotLogout, sendChatbotMessage } from '../../services/chatbot.service';
 import { getAccessToken, getStoredUser } from '../../utils/auth-storage';
 import { ChatbotSession } from '../../utils/chatbot-session';
+import { PROFESSIONAL_MESSAGE_TIMEOUT_MS, useAutoDismiss } from '../../utils/useAutoDismiss';
 import type { ChatbotMessage } from '../../types/chatbot.types';
 import '../../styles/chatbot.css';
 import useChatbotLauncher from './useChatbotLauncher';
@@ -39,6 +40,8 @@ function ChatbotPanel({ identity, role, embedded }: { identity: string; role: st
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  useAutoDismiss(error, setError, PROFESSIONAL_MESSAGE_TIMEOUT_MS, role === 'PROFESIONAL');
   const [ended, setEnded] = useState(false);
   const [privacyExpanded, setPrivacyExpanded] = useState(false);
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 767.98px)').matches);

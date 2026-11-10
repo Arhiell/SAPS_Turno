@@ -10,6 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import { updateOwnProfile } from '../../services/auth.service';
 import { authError } from '../../utils/auth-errors';
 import { fieldError } from '../../utils/field-validation';
+import { PROFESSIONAL_MESSAGE_TIMEOUT_MS, useAutoDismiss } from '../../utils/useAutoDismiss';
 
 import PersonProfileFields from './PersonProfileFields';
 import ConfirmationModal from './ConfirmationModal';
@@ -35,7 +36,7 @@ export default function PersonalProfileForm({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const { updateProfile } = useAuth();
+  const { user, updateProfile } = useAuth();
 
   // Mantiene los cambios temporalmente hasta que se guarden.
   const [draft, setDraft] = useState<CompletePersonInput>({ ...person });
@@ -44,6 +45,8 @@ export default function PersonalProfileForm({
   const [busy, setBusy] = useState(false);
   const saving = useRef(false);
   const [error, setError] = useState('');
+
+  useAutoDismiss(error, setError, PROFESSIONAL_MESSAGE_TIMEOUT_MS, user?.rol === 'PROFESIONAL');
 
   // Controla la apertura del modal de confirmación.
   const [confirm, setConfirm] = useState(false);
