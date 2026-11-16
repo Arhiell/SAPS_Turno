@@ -11,6 +11,15 @@ import type {
   UpdateTurnoRequest,
 } from '../types/turno.types';
 
+const TURNOS_CACHE_TTL_MS = 10_000; // 10 segundos de retención para transiciones suaves
+const turnosCache = new Map<string, { data: TurnosResponse; timestamp: number }>();
+const turnosInflight = new Map<string, Promise<TurnosResponse>>();
+
+export const clearTurnosCache = () => {
+  turnosCache.clear();
+  turnosInflight.clear();
+};
+
 // Obtiene el historial de cambios de un turno.
 export const getTurnoHistory = async (
   id: string
@@ -27,28 +36,54 @@ export const createOwnTurno = async (
     CreateTurnoRequest,
     'id_paciente' | 'observaciones'
   >
-) =>
-  (
+) => {
+  clearTurnosCache();
+  return (
     await api.post<TurnoResponse>(
       '/turnos',
       data
     )
   ).data;
+};
 
-// Obtiene los turnos aplicando los filtros indicados.
+// Obtiene los turnos aplicando los filtros indicados con caché en memoria y deduplicación en vuelo.
 export const getTurnos = async (
-  filters: TurnosFilters = {}
+  filters: TurnosFilters = {},
+  forceRefresh = false
 ): Promise<TurnosResponse> => {
-  const response = await api.get<TurnosResponse>(
-    '/turnos',
-    {
+  const cacheKey = JSON.stringify(filters);
+  const now = Date.now();
+
+  if (!forceRefresh) {
+    const cached = turnosCache.get(cacheKey);
+    if (cached && now - cached.timestamp < TURNOS_CACHE_TTL_MS) {
+      return cached.data;
+    }
+
+    const inflight = turnosInflight.get(cacheKey);
+    if (inflight) {
+      return inflight;
+    }
+  }
+
+  const promise = api
+    .get<TurnosResponse>('/turnos', {
       params: {
         ...filters,
       },
-    }
-  );
+    })
+    .then((response) => {
+      turnosCache.set(cacheKey, { data: response.data, timestamp: Date.now() });
+      turnosInflight.delete(cacheKey);
+      return response.data;
+    })
+    .catch((error) => {
+      turnosInflight.delete(cacheKey);
+      throw error;
+    });
 
-  return response.data;
+  turnosInflight.set(cacheKey, promise);
+  return promise;
 };
 
 // Obtiene los datos de un turno por su identificador.
@@ -66,6 +101,7 @@ export const getTurnoById = async (
 export const createTurno = async (
   data: CreateTurnoRequest
 ): Promise<TurnoResponse> => {
+  clearTurnosCache();
   const response = await api.post<TurnoResponse>(
     '/turnos',
     data
@@ -79,6 +115,7 @@ export const updateTurno = async (
   id: string,
   data: UpdateTurnoRequest
 ): Promise<TurnoResponse> => {
+  clearTurnosCache();
   const response = await api.patch<TurnoResponse>(
     `/turnos/${id}`,
     data
@@ -92,6 +129,7 @@ export const changeTurnoStatus = async (
   id: string,
   data: ChangeTurnoStatusRequest
 ): Promise<TurnoResponse> => {
+  clearTurnosCache();
   const response = await api.patch<TurnoResponse>(
     `/turnos/${id}/status`,
     data

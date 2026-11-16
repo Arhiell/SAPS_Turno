@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useAgendaSocket } from '../../context/AgendaSocketContext';
 import type { EventoAgenda } from '../../types/socket.types';
 import { PROFESSIONAL_MESSAGE_TIMEOUT_MS } from '../../utils/useAutoDismiss';
@@ -10,13 +10,16 @@ interface ToastItemProps {
 }
 
 function ToastItem({ evento, onClose }: ToastItemProps) {
-  // Auto-cierre a los 15 segundos para no invadir la pantalla
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  // Auto-cierre estricto a los 15 segundos sin reinicios espurios por re-renders del padre
   useEffect(() => {
     const timer = setTimeout(() => {
-      onClose(evento.id);
+      onCloseRef.current(evento.id);
     }, PROFESSIONAL_MESSAGE_TIMEOUT_MS);
     return () => clearTimeout(timer);
-  }, [evento.id, onClose]);
+  }, [evento.id]);
 
   const getTipoInfo = (tipo: EventoAgenda['tipo']) => {
     switch (tipo) {
@@ -145,10 +148,12 @@ export function AgendaLiveToasts() {
 export function AgendaSocketStatusBadge() {
   const { estadoConexion } = useAgendaSocket();
 
+  if (estadoConexion === 'conectado') {
+    return null;
+  }
+
   const getLabel = () => {
     switch (estadoConexion) {
-      case 'conectado':
-        return 'En vivo';
       case 'reconectando':
         return 'Reconectando...';
       case 'desconectado':
@@ -160,11 +165,9 @@ export function AgendaSocketStatusBadge() {
     <span
       className={`socket-status-badge ${estadoConexion}`}
       title={
-        estadoConexion === 'conectado'
-          ? 'Conectado al servidor en tiempo real. La agenda se actualiza automáticamente.'
-          : estadoConexion === 'reconectando'
-            ? 'Reconectando con el servidor en tiempo real...'
-            : 'Sin conexión en tiempo real. Utilizá el botón Actualizar agenda.'
+        estadoConexion === 'reconectando'
+          ? 'Reconectando con el servidor en tiempo real...'
+          : 'Sin conexión en tiempo real. Utilizá el botón Actualizar agenda.'
       }
     >
       <span className="socket-pulse-dot" />

@@ -4,6 +4,7 @@ import { input, person, row, queue, drained, conflict } from "./patient-fixtures
 import { createPatientSchema } from "../src/validators/patient.validator.js";
 import { updatePatientSchema } from "../src/validators/patient-update.validator.js";
 import { createPersonSchema } from "../src/validators/person.validator.js";
+import { duplicateMessages } from "../src/utils/duplicate-error.js";
 const { registerPatient } = await import("../src/services/patient.service.js");
 const { editPatient, changePatientStatus } = await import("../src/services/patient-update.service.js");
 const { getPatients, getPatientById, getPatientByDni } = await import("../src/services/patient-read.service.js");
@@ -86,7 +87,7 @@ test("Paciente existente, incluso inactivo, devuelve 409", async () => {
   queue({ table: "personas", result: [person] },
     { table: "pacientes", result: [{ ...row, activo: false }] });
   await assert.rejects(registerPatient(input), (error) =>
-    conflict(error) && (error as Error).message === "Ya existe un paciente registrado para esta persona");
+    conflict(error) && (error as Error).message === duplicateMessages.dni);
 });
 
 test("Recupera persona creada concurrentemente y traduce duplicado de perfil", async () => {

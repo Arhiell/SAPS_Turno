@@ -4,6 +4,7 @@ import { findPatientById } from '../repositories/patient-read.repository.js';
 import { agendaDateTime } from '../utils/turno-time.js';
 import { AppError } from '../utils/app-error.js';
 import type { AuthenticatedUser } from '../types/auth.types.js';
+import { resolveManagedKinship } from '../utils/kinship.util.js';
 
 const currentRelations = async (user: AuthenticatedUser) => {
   if (user.rol !== 'PACIENTE') throw new AppError('Solo pacientes', 403);
@@ -43,15 +44,33 @@ export const resolveManagedPatient = async (user: AuthenticatedUser, patientId?:
 };
 
 export const getManagedPatients = async (user: AuthenticatedUser) => {
-  const { relations } = await currentRelations(user);
+  const { patient: titular, relations } = await currentRelations(user);
   const rows = await Promise.all(relations.map(async relation => {
     const patient = await findPatientById(relation.id_paciente);
     if (!patient?.activo) return null;
-    return { id_paciente: patient.id_paciente, id_barrio: patient.id_barrio,
-      id_salita_asignada: patient.id_salita_asignada, nombres: patient.nombres,
-      apellidos: patient.apellidos, dni: patient.dni,
-      fecha_nacimiento: patient.fecha_nacimiento, parentesco: relation.parentesco,
-      fecha_hasta: relation.fecha_hasta };
+
+    const parentescoRepresentado = resolveManagedKinship({
+      storedRelationship: relation.parentesco,
+      dependentSex: patient.sexo,
+      dependentBirthDate: patient.fecha_nacimiento,
+      userSex: titular?.sexo,
+      userBirthDate: titular?.fecha_nacimiento,
+    });
+
+    return {
+      id_paciente: patient.id_paciente,
+      id_barrio: patient.id_barrio,
+      id_salita_asignada: patient.id_salita_asignada,
+      nombres: patient.nombres,
+      apellidos: patient.apellidos,
+      dni: patient.dni,
+      fecha_nacimiento: patient.fecha_nacimiento,
+      sexo: patient.sexo,
+      parentesco: parentescoRepresentado,
+      parentesco_declarado: relation.parentesco,
+      parentesco_representado: parentescoRepresentado,
+      fecha_hasta: relation.fecha_hasta,
+    };
   }));
   return rows.filter(row => row !== null);
 };

@@ -19,13 +19,22 @@ import type {
 import TurnoCard from '../../components/ui/TurnoCard';
 import useManagedPatients from '../../context/useManagedPatients';
 import ManagedPatientSelector from '../../components/ui/ManagedPatientSelector';
+import { useAuth } from '../../context/AuthContext';
+import { formatManagedKinship } from '../../utils/kinship';
 
 import {
   getEstadoClass,
 } from '../../utils/turno-status';
 
 export default function PatientAppointmentsPage() {
+  const { patient: titularPatient } = useAuth();
   const selection = useManagedPatients();
+
+  const managedDependent = selection.items.find(
+    (m) => m.id_paciente === selection.selected?.id_paciente
+  );
+  const isViewingDependent = Boolean(selection.selected && managedDependent);
+  const kinText = managedDependent ? formatManagedKinship(managedDependent, titularPatient) : '';
   // FILTROS
 
   // Período seleccionado:
@@ -165,8 +174,9 @@ export default function PatientAppointmentsPage() {
           </h1>
 
           <p className="text-muted">
-            Consultá próximos turnos y tu historial
-            de atención.
+            {isViewingDependent
+              ? `Turnos e historial de atención de ${selection.selected?.nombres} ${selection.selected?.apellidos}${kinText ? ` (${kinText})` : ''}.`
+              : 'Consultá próximos turnos y tu historial de atención.'}
           </p>
         </div>
 

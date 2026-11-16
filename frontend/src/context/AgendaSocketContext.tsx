@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -9,37 +10,77 @@ import {
 import { io, type Socket } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 import { getAccessToken } from '../utils/auth-storage';
-import type { EventoAgenda, EstadoConexionSocket } from '../types/socket.types';
+import { clearSalitasCache } from '../services/salitas.service';
+import { clearProfessionalsCache } from '../services/profesionales.service';
+import { clearTurnosCache } from '../services/turnos.service';
+import type {
+  EventoAgenda,
+  EventoPaciente,
+  EventoProfesional,
+  EventoSalita,
+  EventoClinico,
+  EstadoConexionSocket,
+} from '../types/socket.types';
 
 interface AgendaSocketContextType {
   estadoConexion: EstadoConexionSocket;
   ultimoEvento: EventoAgenda | null;
+  ultimoEventoPaciente: EventoPaciente | null;
+  ultimoEventoProfesional: EventoProfesional | null;
+  ultimoEventoSalita: EventoSalita | null;
+  ultimoEventoClinico: EventoClinico | null;
+  resyncTick: number;
   notificaciones: EventoAgenda[];
   descartarNotificacion: (id: string) => void;
   limpiarNotificaciones: () => void;
+  reconnect: () => void;
 }
 
 const AgendaSocketContext = createContext<AgendaSocketContextType>({
   estadoConexion: 'desconectado',
   ultimoEvento: null,
+  ultimoEventoPaciente: null,
+  ultimoEventoProfesional: null,
+  ultimoEventoSalita: null,
+  ultimoEventoClinico: null,
+  resyncTick: 0,
   notificaciones: [],
   descartarNotificacion: () => {},
   limpiarNotificaciones: () => {},
+  reconnect: () => {},
 });
 
 export const useAgendaSocket = () => useContext(AgendaSocketContext);
+export const useRealtimeSocket = () => useContext(AgendaSocketContext);
 
 export function AgendaSocketProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const socketRef = useRef<Socket | null>(null);
   const [estadoConexion, setEstadoConexion] = useState<EstadoConexionSocket>('desconectado');
   const [ultimoEvento, setUltimoEvento] = useState<EventoAgenda | null>(null);
+  const [ultimoEventoPaciente, setUltimoEventoPaciente] = useState<EventoPaciente | null>(null);
+  const [ultimoEventoProfesional, setUltimoEventoProfesional] = useState<EventoProfesional | null>(null);
+  const [ultimoEventoSalita, setUltimoEventoSalita] = useState<EventoSalita | null>(null);
+  const [ultimoEventoClinico, setUltimoEventoClinico] = useState<EventoClinico | null>(null);
+  const [resyncTick, setResyncTick] = useState<number>(0);
   const [notificaciones, setNotificaciones] = useState<EventoAgenda[]>([]);
   const eventosProcesadosRef = useRef<Set<string>>(new Set());
 
+  const registerEventId = (id: string): boolean => {
+    if (!id || eventosProcesadosRef.current.has(id)) {
+      return false;
+    }
+    eventosProcesadosRef.current.add(id);
+    if (eventosProcesadosRef.current.size > 100) {
+      const arr = Array.from(eventosProcesadosRef.current);
+      eventosProcesadosRef.current = new Set(arr.slice(arr.length - 50));
+    }
+    return true;
+  };
+
   useEffect(() => {
-    // Solo conectamos WebSocket si el usuario está autenticado y tiene rol PROFESIONAL
-    if (!user || user.rol !== 'PROFESIONAL') {
+    // Conectamos WebSocket para profesionales, administradores de salita, recepción y super admin
+    if (!user || !['PROFESIONAL', 'ADMIN_SALITA', 'RECEPCION', 'SUPER_ADMIN'].includes(user.rol)) {
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
@@ -84,24 +125,62 @@ export function AgendaSocketProvider({ children }: { children: ReactNode }) {
 
     socket.io.on('reconnect', () => {
       setEstadoConexion('conectado');
+      // Al reconectar, invalidamos cachés y aumentamos el tick para que las pantallas activas resincronicen
+      clearSalitasCache();
+      clearProfessionalsCache();
+      clearTurnosCache();
+      setResyncTick((prev) => prev + 1);
     });
 
-    // Escucha de eventos de cambio de agenda
+    // 1. Escucha de eventos de cambio de agenda y turnos
     socket.on('agenda:cambio', (evento: EventoAgenda) => {
       if (!evento || !evento.id) return;
+      if (!registerEventId(evento.id)) return;
 
-      // Evita notificaciones duplicadas mediante Set de IDs procesados
-      if (eventosProcesadosRef.current.has(evento.id)) return;
-      eventosProcesadosRef.current.add(evento.id);
-
-      // Conserva hasta 50 IDs para evitar crecimiento ilimitado de memoria
-      if (eventosProcesadosRef.current.size > 50) {
-        const arr = Array.from(eventosProcesadosRef.current);
-        eventosProcesadosRef.current = new Set(arr.slice(arr.length - 25));
-      }
-
+      clearTurnosCache();
       setUltimoEvento(evento);
-      setNotificaciones((prev) => [evento, ...prev.slice(0, 4)]);
+
+      const esFirmaClinicaPropia = Boolean(
+        evento.mensaje && evento.mensaje.toLowerCase().includes('firmar la consulta')
+      );
+
+      if (!esFirmaClinicaPropia) {
+        setNotificaciones((prev) => [evento, ...prev.slice(0, 4)]);
+      }
+    });
+
+    // 2. Escucha de eventos de pacientes
+    socket.on('paciente:cambio', (evento: EventoPaciente) => {
+      if (!evento || !evento.id) return;
+      if (!registerEventId(evento.id)) return;
+
+      setUltimoEventoPaciente(evento);
+    });
+
+    // 3. Escucha de eventos de profesionales
+    socket.on('profesional:cambio', (evento: EventoProfesional) => {
+      if (!evento || !evento.id) return;
+      if (!registerEventId(evento.id)) return;
+
+      clearProfessionalsCache();
+      setUltimoEventoProfesional(evento);
+    });
+
+    // 4. Escucha de eventos de salitas
+    socket.on('salita:cambio', (evento: EventoSalita) => {
+      if (!evento || !evento.id) return;
+      if (!registerEventId(evento.id)) return;
+
+      clearSalitasCache();
+      setUltimoEventoSalita(evento);
+    });
+
+    // 5. Escucha de eventos clínicos mínimos
+    socket.on('clinica:cambio', (evento: EventoClinico) => {
+      if (!evento || !evento.id) return;
+      if (!registerEventId(evento.id)) return;
+
+      setUltimoEventoClinico(evento);
     });
 
     return () => {
@@ -111,22 +190,36 @@ export function AgendaSocketProvider({ children }: { children: ReactNode }) {
     };
   }, [user?.id_usuario, user?.rol]);
 
-  const descartarNotificacion = (id: string) => {
+  const descartarNotificacion = useCallback((id: string) => {
     setNotificaciones((prev) => prev.filter((n) => n.id !== id));
-  };
+  }, []);
 
-  const limpiarNotificaciones = () => {
+  const limpiarNotificaciones = useCallback(() => {
     setNotificaciones([]);
-  };
+  }, []);
+
+  const reconnect = useCallback(() => {
+    if (socketRef.current) {
+      if (!socketRef.current.connected) {
+        socketRef.current.connect();
+      }
+    }
+  }, []);
 
   return (
     <AgendaSocketContext.Provider
       value={{
         estadoConexion,
         ultimoEvento,
+        ultimoEventoPaciente,
+        ultimoEventoProfesional,
+        ultimoEventoSalita,
+        ultimoEventoClinico,
+        resyncTick,
         notificaciones,
         descartarNotificacion,
         limpiarNotificaciones,
+        reconnect,
       }}
     >
       {children}

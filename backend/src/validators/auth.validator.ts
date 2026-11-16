@@ -5,6 +5,35 @@ import {
   fieldMessages,
 } from './field-rules.js';
 
+// Política única de contraseñas de CORA:
+// - Longitud entre 8 y 20 caracteres.
+// - Al menos una mayúscula.
+// - Al menos una minúscula.
+// - Al menos un número.
+// - Símbolos especiales opcionales.
+export const passwordPolicySchema = z
+  .string()
+  .min(
+    8,
+    'La contraseña debe tener al menos 8 caracteres'
+  )
+  .max(
+    20,
+    'La contraseña no puede superar los 20 caracteres'
+  )
+  .regex(
+    /[A-Z]/,
+    'La contraseña debe contener al menos una mayúscula'
+  )
+  .regex(
+    /[a-z]/,
+    'La contraseña debe contener al menos una minúscula'
+  )
+  .regex(
+    /[0-9]/,
+    'La contraseña debe contener al menos un número'
+  );
+
 // Valida los datos necesarios para registrar una cuenta nueva.
 export const registerSchema = z.object({
   nombre_usuario: z
@@ -35,32 +64,7 @@ export const registerSchema = z.object({
       'El correo electrónico es demasiado largo'
     ),
 
-  password: z
-    .string()
-    .min(
-      8,
-      'La contraseña debe tener al menos 8 caracteres'
-    )
-    .max(
-      128,
-      'La contraseña es demasiado larga'
-    )
-    .regex(
-      /[A-Z]/,
-      'Debe contener al menos una letra mayúscula'
-    )
-    .regex(
-      /[a-z]/,
-      'Debe contener al menos una letra minúscula'
-    )
-    .regex(
-      /[0-9]/,
-      'Debe contener al menos un número'
-    )
-    .regex(
-      /[^A-Za-z0-9]/,
-      'Debe contener al menos un carácter especial'
-    ),
+  password: passwordPolicySchema,
 });
 
 // Obtiene el tipo a partir del esquema de registro.

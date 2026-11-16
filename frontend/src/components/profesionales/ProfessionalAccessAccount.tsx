@@ -2,15 +2,18 @@ import { useState, type FormEvent } from 'react';
 
 import { useAuth } from '../../context/AuthContext';
 
-import PasswordInput from '../../pages/auth/PasswordInput';
+import PasswordCreationFields from '../auth/PasswordCreationFields';
 import ValidatedInput from '../ui/ValidatedInput';
+import { FloatingFeedbackToast } from '../ui/FormFeedback';
+import { useAutoDismiss } from '../../utils/useAutoDismiss';
+import { validatePassword, validateConfirmation } from '../../utils/password-policy';
 
 import { createInternalAccount } from '../../services/auth.service';
 
 import type { Professional } from '../../types/profesional.types';
 import type { AccountDisplay } from '../../types/account-display.types';
 
-import { authError, passwordError } from '../../utils/auth-errors';
+import { authError } from '../../utils/auth-errors';
 
 interface Props {
   professional: Professional;
@@ -39,6 +42,10 @@ export default function ProfessionalAccessAccount({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showPasswordErrors, setShowPasswordErrors] = useState(false);
+
+  useAutoDismiss(error, () => setError(''), 15000);
+  useAutoDismiss(success, () => setSuccess(''), 15000);
 
   // Restringe el acceso a los administradores autorizados.
   if (
@@ -60,15 +67,29 @@ export default function ProfessionalAccessAccount({
       return;
     }
 
-    // Verifica que la contraseña cumpla los requisitos.
-    const validation = passwordError(
-      password,
-      confirmation
-    );
+    setError('');
 
-    setError(validation);
+    if (!username.trim()) {
+      document.getElementById('professional-username')?.focus();
+      return;
+    }
 
-    if (validation) {
+    if (!email.trim()) {
+      document.getElementById('professional-email')?.focus();
+      return;
+    }
+
+    setShowPasswordErrors(true);
+
+    const pwdErr = validatePassword(password);
+    if (pwdErr) {
+      document.getElementById('professional-password')?.focus();
+      return;
+    }
+
+    const confErr = validateConfirmation(password, confirmation);
+    if (confErr) {
+      document.getElementById('professional-confirmation')?.focus();
       return;
     }
 
@@ -119,12 +140,18 @@ export default function ProfessionalAccessAccount({
 
         {/* Mensaje de confirmación de la cuenta creada. */}
         {success && (
-          <p
-            className="alert alert-success"
-            role="status"
-          >
-            {success}
-          </p>
+          <FloatingFeedbackToast
+            variant="success"
+            message={success}
+            onDismiss={() => setSuccess('')}
+          />
+        )}
+        {error && (
+          <FloatingFeedbackToast
+            variant="error"
+            message={error}
+            onDismiss={() => setError('')}
+          />
         )}
 
         {professional.persona.cuenta ? (
@@ -161,6 +188,7 @@ export default function ProfessionalAccessAccount({
                 setError('');
                 setPassword('');
                 setConfirmation('');
+                setShowPasswordErrors(false);
               }}
             >
               {open
@@ -175,15 +203,6 @@ export default function ProfessionalAccessAccount({
                 className="mt-3"
                 onSubmit={submit}
               >
-                {error && (
-                  <p
-                    className="alert alert-danger"
-                    role="alert"
-                  >
-                    {error}
-                  </p>
-                )}
-
                 <fieldset disabled={busy}>
                   <div className="row g-3">
                     {/* Nombre de usuario. */}
@@ -229,51 +248,28 @@ export default function ProfessionalAccessAccount({
                       />
                     </div>
 
-                    {/* Contraseña de acceso. */}
-                    <div className="col-12 col-md-6">
-                      <PasswordInput
-                        id="professional-password"
-                        label="Contraseña *"
-                        required
-                        autoComplete="new-password"
-                        minLength={8}
-                        maxLength={128}
-                        value={password}
-                        aria-describedby="professional-password-help"
-                        onChange={(event) =>
-                          setPassword(event.target.value)
-                        }
-                      />
-                    </div>
-
-                    {/* Confirmación de contraseña. */}
-                    <div className="col-12 col-md-6">
-                      <PasswordInput
-                        id="professional-confirmation"
-                        label="Confirmar contraseña *"
-                        required
-                        autoComplete="new-password"
-                        minLength={8}
-                        maxLength={128}
-                        value={confirmation}
-                        aria-describedby="professional-password-help"
-                        onChange={(event) =>
-                          setConfirmation(event.target.value)
-                        }
+                    {/* Contraseña y confirmación unificados. */}
+                    <div className="col-12">
+                      <PasswordCreationFields
+                        password={password}
+                        confirmation={confirmation}
+                        onPasswordChange={(v) => {
+                          setPassword(v);
+                          setError('');
+                        }}
+                        onConfirmationChange={(v) => {
+                          setConfirmation(v);
+                          setError('');
+                        }}
+                        passwordId="professional-password"
+                        confirmationId="professional-confirmation"
+                        disabled={busy}
+                        showErrors={showPasswordErrors}
                       />
                     </div>
                   </div>
 
-                  {/* Requisitos de seguridad de la contraseña. */}
-                  <p
-                    id="professional-password-help"
-                    className="small text-muted"
-                  >
-                    Entre 8 y 128 caracteres, con mayúscula,
-                    minúscula, número y símbolo.
-                  </p>
-
-                  <p className="small">
+                  <p className="small text-muted mt-2">
                     El profesional recibirá un código para
                     verificar su correo. Comunicale el usuario
                     y la contraseña asignada para ingresar.

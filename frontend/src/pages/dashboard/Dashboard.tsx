@@ -20,6 +20,8 @@ import {
 } from '../../services/turnos.service';
 
 import SuperAdminOverview from './SuperAdminOverview';
+import AdminSalitaOverview from './AdminSalitaOverview';
+import RecepcionOverview from './RecepcionOverview';
 
 import type {
   Turno,
@@ -54,6 +56,12 @@ export default function Dashboard() {
 
   const global =
     user?.rol === 'SUPER_ADMIN';
+
+  const adminSalita =
+    user?.rol === 'ADMIN_SALITA';
+
+  const recepcion =
+    user?.rol === 'RECEPCION';
 
   // ========================================
   // ESTADO DEL DASHBOARD
@@ -105,6 +113,13 @@ export default function Dashboard() {
 
   useEffect(() => {
     let active = true;
+
+    // Los roles ADMIN_SALITA, RECEPCION y SUPER_ADMIN tienen vistas dedicadas que gestionan
+    // sus propias consultas con alcance de salita, evitando peticiones duplicadas e innecesarias.
+    if (adminSalita || recepcion || global) {
+      setLoading(false);
+      return;
+    }
 
     if (turnos.length === 0) {
       setLoading(true);
@@ -530,6 +545,14 @@ export default function Dashboard() {
         />
       </div>
     );
+  }
+
+  if (adminSalita) {
+    return <AdminSalitaOverview revision={revision} onRefresh={() => setRevision((v) => v + 1)} />;
+  }
+
+  if (recepcion) {
+    return <RecepcionOverview revision={revision} onRefresh={() => setRevision((v) => v + 1)} />;
   }
 
   return (

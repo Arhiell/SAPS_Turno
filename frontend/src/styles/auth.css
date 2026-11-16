@@ -230,6 +230,7 @@
 
 .auth-password {
   position: relative;
+  display: block;
 }
 
 .auth-password .form-control {
@@ -238,22 +239,67 @@
 
 .auth-password-toggle {
   position: absolute;
-  inset-block: 1px;
+  top: 1px;
+  bottom: 1px;
   right: 1px;
-  width: 46px;
+  width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 0;
-  border-radius: var(--saps-radio-pequeno);
+  border-radius: var(--saps-radio-pequeno, 6px);
   background: transparent;
-  color: var(--saps-texto-secundario);
+  color: var(--saps-texto-secundario, #64748b);
+  z-index: 2;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
 }
 
 .auth-password-toggle:hover {
-  color: var(--saps-verde);
-  background: var(--saps-verde-claro);
+  color: var(--saps-verde, #15803d);
+  background: var(--saps-verde-claro, #dcfce7);
 }
 
 .auth-password-toggle:disabled {
   opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Ocultar el icono nativo de mostrar contraseña en Microsoft Edge y navegadores Chromium */
+.auth-password input::-ms-reveal,
+.auth-password input::-ms-clear,
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+/* Suprimir el icono de exclamación SVG de Bootstrap que se superpone con el botón del ojo */
+.auth-password .form-control.is-invalid,
+.auth-password .form-control.is-valid {
+  background-image: none !important;
+}
+
+.password-requirements {
+  border-radius: 8px !important;
+  background-color: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  font-size: 0.8125rem;
+}
+
+.password-requirements-title {
+  font-size: 0.775rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.password-requirements-optional {
+  font-size: 0.75rem;
+  opacity: 0.85;
 }
 
 .auth-recovery-link {

@@ -7,20 +7,69 @@ import type {
   UpdateSalitaRequest,
 } from '../types/salita.types';
 
-export const getSalitas = async (): Promise<SalitasResponse> => {
-  const response = await api.get<SalitasResponse>(
-    '/salitas',
-  );
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
 
-  return response.data;
+let adminSalitasCache: { data: SalitasResponse; timestamp: number } | null = null;
+let adminSalitasInflight: Promise<SalitasResponse> | null = null;
+
+let salitasCache: { data: SalitasResponse; timestamp: number } | null = null;
+let salitasInflight: Promise<SalitasResponse> | null = null;
+
+export const clearSalitasCache = () => {
+  adminSalitasCache = null;
+  adminSalitasInflight = null;
+  salitasCache = null;
+  salitasInflight = null;
 };
 
-export const getAdminSalitas = async (): Promise<SalitasResponse> => {
-  const response = await api.get<SalitasResponse>(
-    '/salitas/admin',
-  );
+export const getSalitas = async (forceRefresh = false): Promise<SalitasResponse> => {
+  const now = Date.now();
+  if (!forceRefresh && salitasCache && now - salitasCache.timestamp < CACHE_TTL_MS) {
+    return salitasCache.data;
+  }
 
-  return response.data;
+  if (!forceRefresh && salitasInflight) {
+    return salitasInflight;
+  }
+
+  salitasInflight = api
+    .get<SalitasResponse>('/salitas')
+    .then((response) => {
+      salitasCache = { data: response.data, timestamp: Date.now() };
+      salitasInflight = null;
+      return response.data;
+    })
+    .catch((error) => {
+      salitasInflight = null;
+      throw error;
+    });
+
+  return salitasInflight;
+};
+
+export const getAdminSalitas = async (forceRefresh = false): Promise<SalitasResponse> => {
+  const now = Date.now();
+  if (!forceRefresh && adminSalitasCache && now - adminSalitasCache.timestamp < CACHE_TTL_MS) {
+    return adminSalitasCache.data;
+  }
+
+  if (!forceRefresh && adminSalitasInflight) {
+    return adminSalitasInflight;
+  }
+
+  adminSalitasInflight = api
+    .get<SalitasResponse>('/salitas/admin')
+    .then((response) => {
+      adminSalitasCache = { data: response.data, timestamp: Date.now() };
+      adminSalitasInflight = null;
+      return response.data;
+    })
+    .catch((error) => {
+      adminSalitasInflight = null;
+      throw error;
+    });
+
+  return adminSalitasInflight;
 };
 
 export const getSalitaById = async (
@@ -41,6 +90,7 @@ export const createSalita = async (
     data,
   );
 
+  clearSalitasCache();
   return response.data;
 };
 
@@ -53,6 +103,7 @@ export const updateSalita = async (
     data,
   );
 
+  clearSalitasCache();
   return response.data;
 };
 
@@ -63,5 +114,6 @@ export const deleteSalita = async (
     `/salitas/${id}`,
   );
 
+  clearSalitasCache();
   return response.data;
 };

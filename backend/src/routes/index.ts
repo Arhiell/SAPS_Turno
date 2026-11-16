@@ -43,6 +43,7 @@ import sancionRoutes from './sancion.routes.js';
 import notificacionRoutes from './notificacion.routes.js';
 import accessManagementRoutes from './access-management.routes.js';
 import auditoriaRoutes from './auditoria.routes.js';
+import historiaClinicaRoutes from './historia-clinica.routes.js';
 import reporteRoutes from './reporte.routes.js';
 
 // Inicializa el enrutador principal de la API.
@@ -108,6 +109,7 @@ router.use('/notificaciones', notificacionRoutes);
 
 // Auditoría de las operaciones del sistema.
 router.use('/auditoria', auditoriaRoutes);
+router.use('/historia-clinica', historiaClinicaRoutes);
 
 // Reportes y estadísticas.
 router.use('/reportes', reporteRoutes);

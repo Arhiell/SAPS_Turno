@@ -1,5 +1,6 @@
 import { useAuth } from '../../context/AuthContext';
 import type useManagedPatients from '../../context/useManagedPatients';
+import { formatManagedKinship } from '../../utils/kinship';
 
 export default function ManagedPatientSelector({ selection, disabled = false }: {
   selection: ReturnType<typeof useManagedPatients>; disabled?: boolean;
@@ -11,7 +12,7 @@ export default function ManagedPatientSelector({ selection, disabled = false }: 
         onChange={event => selection.select(event.target.value)}>
         {patient && <option value={patient.id_paciente}>Para mí — {patient.apellidos}, {patient.nombres}</option>}
         {selection.items.map(row => <option key={row.id_paciente} value={row.id_paciente}>
-          {row.apellidos}, {row.nombres} — DNI {row.dni} ({row.parentesco})
+          {row.apellidos}, {row.nombres} — DNI {row.dni} ({formatManagedKinship(row, patient)})
         </option>)}
         {!selection.selected && selection.id && <option value={selection.id}>Persona no disponible</option>}
       </select>

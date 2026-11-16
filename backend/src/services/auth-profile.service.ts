@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js';
 
 import { findUserById } from '../repositories/user.repository.js';
+import { getRolePermissions } from './permission.service.js';
 
 import {
   findPersonByDni,
@@ -50,6 +51,16 @@ export const getOwnProfile = async (
     ? await findPatientByPersonId(account.id_persona)
     : null;
 
+  // Resuelve los permisos activos asignados al rol del usuario desde PostgreSQL.
+  const rolePermissions = await getRolePermissions({
+    codigo: user.rol,
+    ...(user.id_rol ? { idRol: user.id_rol } : {}),
+  });
+
+  const permisos = rolePermissions?.activo
+    ? Array.from(rolePermissions.permissions).sort()
+    : [];
+
   // Devuelve los datos de cuenta, rol, persona y paciente.
   return {
     user: {
@@ -58,6 +69,7 @@ export const getOwnProfile = async (
       activo: account.activo,
       email_verificado: account.email_verificado,
       perfil_completo: Boolean(account.id_persona),
+      permisos,
     },
     roleInfo: await getProfileRoleInfo(
       user.rol,

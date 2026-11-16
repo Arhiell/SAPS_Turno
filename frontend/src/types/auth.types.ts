@@ -15,6 +15,7 @@ export interface AuthUser {
   id_persona?: string | null;
   email_verificado?: boolean;
   perfil_completo?: boolean;
+  permisos?: string[];
   activo?: boolean;
 }
 

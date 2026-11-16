@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react';
-import PasswordInput from './PasswordInput';
+import PasswordCreationFields from '../../components/auth/PasswordCreationFields';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
 import AccessManagementPanel from '../../components/ui/AccessManagementPanel';
 import ValidatedInput from '../../components/ui/ValidatedInput';
+import { FloatingFeedbackToast } from '../../components/ui/FormFeedback';
+import { useAutoDismiss } from '../../utils/useAutoDismiss';
 import { useAuth } from '../../context/AuthContext';
 import { createInternalAccount } from '../../services/auth.service';
 import { getAdminSalitas } from '../../services/salitas.service';
 import type { Salita } from '../../types/salita.types';
-import { authError, passwordError } from '../../utils/auth-errors';
+import { authError } from '../../utils/auth-errors';
+import { validatePassword, validateConfirmation } from '../../utils/password-policy';
 
 type AccountKind = 'ADMIN_SALITA' | 'SUPER_ADMIN';
 
@@ -26,7 +29,11 @@ export default function AccountManagementPage() {
   const [success, setSuccess] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
+  const [showPasswordErrors, setShowPasswordErrors] = useState(false);
   const [accountsRevision, setAccountsRevision] = useState(0);
+
+  useAutoDismiss(error, () => setError(''), 15000);
+  useAutoDismiss(success, () => setSuccess(''), 15000);
 
   useEffect(() => {
     let active = true;
@@ -36,18 +43,42 @@ export default function AccountManagementPage() {
     return () => { active = false; };
   }, []);
 
+  const validateAdminForm = () => {
+    if (!username.trim()) {
+      document.getElementById('account-username')?.focus();
+      return false;
+    }
+    if (!email.trim()) {
+      document.getElementById('account-email')?.focus();
+      return false;
+    }
+    setShowPasswordErrors(true);
+    const pwdErr = validatePassword(password);
+    if (pwdErr) {
+      document.getElementById('account-password')?.focus();
+      return false;
+    }
+    const confErr = validateConfirmation(password, confirmation);
+    if (confErr) {
+      document.getElementById('account-confirmation')?.focus();
+      return false;
+    }
+    return true;
+  };
+
   const submit = async () => {
     if (busy || user?.rol !== 'SUPER_ADMIN') return;
-    const validation = passwordError(password, confirmation);
-    setError(validation); setSuccess('');
-    if (validation) return;
+    if (!validateAdminForm()) return;
     setBusy(true);
+    setError('');
+    setSuccess('');
     try {
       await createInternalAccount('admins', {
         nombre_usuario: username, email, password, rol: kind,
         ...(kind === 'ADMIN_SALITA' ? { id_salita: target } : {}),
       });
       setPassword(''); setConfirmation(''); setUsername(''); setEmail(''); setTarget('');
+      setShowPasswordErrors(false);
       setFormOpen(false); setAccountsRevision((value) => value + 1);
       setSuccess('Cuenta administrativa creada. Debe verificar su correo y completar sus datos personales al ingresar.');
     } catch (cause) { setError(authError(cause)); }
@@ -62,18 +93,31 @@ export default function AccountManagementPage() {
           {user?.rol === 'SUPER_ADMIN' && (
             <button type="button" className="btn btn-success" disabled={busy}
               aria-expanded={formOpen} aria-controls="alta-administrador"
-              onClick={() => setFormOpen((value) => !value)}>
+              onClick={() => {
+                setFormOpen((value) => !value);
+                setShowPasswordErrors(false);
+                setError('');
+                setPassword('');
+                setConfirmation('');
+              }}>
               {formOpen ? 'Cerrar formulario' : 'Agregar persona'}
             </button>
           )}
         </div>
-        {error && <p className="alert alert-danger" role="alert">{error}</p>}
-        {success && <p className="alert alert-success" role="status">{success}</p>}
+        <FloatingFeedbackToast
+          message={error || success}
+          variant={error ? 'error' : 'success'}
+          onDismiss={() => {
+            setError('');
+            setSuccess('');
+          }}
+        />
         {user?.rol === 'SUPER_ADMIN' && formOpen && (
           <form id="alta-administrador" className="border rounded p-3 mb-4" onSubmit={(event) => {
             event.preventDefault();
-            const validation = passwordError(password, confirmation);
-            setError(validation); if (!validation) setConfirmOpen(true);
+            if (validateAdminForm()) {
+              setConfirmOpen(true);
+            }
           }}>
             <h2 className="h5">Agregar persona · Cuenta administrativa</h2>
             <p className="text-muted">La persona completará sus datos personales al ingresar.</p>
@@ -103,6 +147,7 @@ export default function AccountManagementPage() {
               Usuario
 
               <ValidatedInput
+                id="account-username"
                 field="nombre_usuario"
                 className="form-control"
                 required
@@ -117,6 +162,7 @@ export default function AccountManagementPage() {
               Correo electrónico
 
               <ValidatedInput
+                id="account-email"
                 className="form-control"
                 required
                 type="email"
@@ -125,43 +171,27 @@ export default function AccountManagementPage() {
               />
             </label>
 
-            {/* Solicita la contraseña de la nueva cuenta. */}
-            <PasswordInput
-              id="account-password"
-              label="Contraseña"
-              required
-              autoComplete="new-password"
-              minLength={8}
-              maxLength={128}
-              value={password}
-              aria-describedby="account-password-help"
-              onChange={event => setPassword(event.target.value)}
+            {/* Componente unificado de contraseña con requisitos en vivo y errores contextuales */}
+            <PasswordCreationFields
+              password={password}
+              confirmation={confirmation}
+              onPasswordChange={(val) => {
+                setPassword(val);
+                setError('');
+              }}
+              onConfirmationChange={(val) => {
+                setConfirmation(val);
+                setError('');
+              }}
+              passwordId="account-password"
+              confirmationId="account-confirmation"
+              disabled={busy}
+              showErrors={showPasswordErrors}
             />
-
-            {/* Solicita la confirmación de la contraseña. */}
-            <PasswordInput
-              id="account-confirmation"
-              label="Confirmar contraseña"
-              required
-              autoComplete="new-password"
-              minLength={8}
-              maxLength={128}
-              value={confirmation}
-              aria-describedby="account-password-help"
-              onChange={event => setConfirmation(event.target.value)}
-            />
-
-            <p
-              id="account-password-help"
-              className="small text-muted"
-            >
-              Entre 8 y 128 caracteres, con mayúscula, minúscula,
-              número y símbolo.
-            </p>
 
             {/* Permite iniciar la creación de la cuenta. */}
             <button
-              className="btn btn-primary"
+              className="btn btn-primary mt-3"
               type="submit"
             >
               {busy ? 'Creando…' : 'Crear cuenta'}

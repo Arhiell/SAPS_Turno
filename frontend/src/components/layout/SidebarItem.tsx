@@ -1,45 +1,36 @@
-import { NavLink } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
-import type {
-  SidebarMenuItem,
+import {
+  isMenuItemActive,
+  type SidebarMenuItem,
 } from './sidebar-menu';
 
 // Propiedades del elemento individual del menú lateral.
 interface SidebarItemProps {
   item: SidebarMenuItem;
+  visibleItems: SidebarMenuItem[];
 }
 
 // Renderiza un enlace de navegación dentro del sidebar.
 const SidebarItem = ({
   item,
+  visibleItems,
 }: SidebarItemProps) => {
+  const { pathname } = useLocation();
+  const active = isMenuItemActive(pathname, item.path, visibleItems);
+
   return (
-    <NavLink
+    <Link
       to={item.path}
-      end={
-        item.path ===
-        '/panel'
-      }
       title={item.label}
-      className={({
-        isActive,
-      }) =>
-        `sidebar-item ${
-          isActive
-            ? 'active'
-            : ''
-        }`
-      }
+      aria-current={active ? 'page' : undefined}
+      className={`sidebar-item ${active ? 'active' : ''}`}
     >
       {/* Ícono asociado a la opción del menú. */}
-      <i
-        className={`bi ${item.icon}`}
-      />
+      <i className={`bi ${item.icon}`} />
 
-      <span>
-        {item.label}
-      </span>
-    </NavLink>
+      <span>{item.label}</span>
+    </Link>
   );
 };
 

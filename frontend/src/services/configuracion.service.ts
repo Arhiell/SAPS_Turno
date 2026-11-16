@@ -37,19 +37,55 @@ export const getZonas = async () =>
 // CATÁLOGOS
 // ========================================
 
-// Obtiene zonas, barrios o especialidades según el tipo indicado.
-export const getCatalogo = async (
-  tipo: CatalogoTipo
-): Promise<CatalogoRegistro[]> => {
-  const response = await api.get<{
-    data: (CatalogoInput & Record<string, unknown>)[];
-  }>(`/${tipo}`);
+const catalogoCache = new Map<CatalogoTipo, { data: CatalogoRegistro[]; timestamp: number }>();
+const catalogoInflight = new Map<CatalogoTipo, Promise<CatalogoRegistro[]>>();
 
-  // Normaliza el ID para que todos los catálogos utilicen "id".
-  return response.data.data.map((row) => ({
-    ...row,
-    id: String(row[ids[tipo]]),
-  }));
+export const clearCatalogoCache = (tipo?: CatalogoTipo) => {
+  if (tipo) {
+    catalogoCache.delete(tipo);
+    catalogoInflight.delete(tipo);
+  } else {
+    catalogoCache.clear();
+    catalogoInflight.clear();
+  }
+};
+
+// Obtiene zonas, barrios o especialidades según el tipo indicado con caché en memoria.
+export const getCatalogo = async (
+  tipo: CatalogoTipo,
+  forceRefresh = false
+): Promise<CatalogoRegistro[]> => {
+  const now = Date.now();
+  const cached = catalogoCache.get(tipo);
+  if (!forceRefresh && cached && now - cached.timestamp < 10 * 60 * 1000) {
+    return cached.data;
+  }
+
+  const inflight = catalogoInflight.get(tipo);
+  if (!forceRefresh && inflight) {
+    return inflight;
+  }
+
+  const promise = api
+    .get<{
+      data: (CatalogoInput & Record<string, unknown>)[];
+    }>(`/${tipo}`)
+    .then((response) => {
+      const result = response.data.data.map((row) => ({
+        ...row,
+        id: String(row[ids[tipo]]),
+      }));
+      catalogoCache.set(tipo, { data: result, timestamp: Date.now() });
+      catalogoInflight.delete(tipo);
+      return result;
+    })
+    .catch((err) => {
+      catalogoInflight.delete(tipo);
+      throw err;
+    });
+
+  catalogoInflight.set(tipo, promise);
+  return promise;
 };
 
 // Crea o actualiza un registro de catálogo.
@@ -58,6 +94,7 @@ export const guardarCatalogo = async (
   input: CatalogoInput,
   id?: string
 ) => {
+  clearCatalogoCache(tipo);
   if (id) {
     const response = await api.put<{ data: CatalogoInput & Record<string, unknown> }>(
       `/${tipo}/${id}`,

@@ -44,6 +44,10 @@ import {
   rethrowPatientError,
 } from '../utils/profile-error.js';
 
+import {
+  emitirCambioPaciente,
+} from './socket.service.js';
+
 // ========================================
 // AUTOGESTIÓN DEL PACIENTE
 // ========================================
@@ -174,9 +178,27 @@ export const editPatient = async (
     }
 
     // Devuelve el paciente con sus datos actualizados.
-    return await findPatientById(
+    const updated = await findPatientById(
       idPatient
     );
+
+    if (updated) {
+      try {
+        emitirCambioPaciente({
+          tipo: 'PACIENTE_ACTUALIZADO',
+          mensaje: `Paciente actualizado: ${updated.apellidos || ''}, ${updated.nombres || ''}`,
+          id_paciente: updated.id_paciente,
+          id_salita: updated.id_salita_asignada ?? undefined,
+          activo: updated.activo,
+          nombre_paciente: `${updated.nombres || ''} ${updated.apellidos || ''}`.trim(),
+          dni_paciente: updated.dni ?? undefined,
+        });
+      } catch {
+        // Notificación en tiempo real es complementaria
+      }
+    }
+
+    return updated;
   } catch (error) {
     // Convierte errores de base de datos
     // en errores propios del dominio.
@@ -218,8 +240,24 @@ export const changePatientStatus = async (
   }
 
   // Actualiza el estado del paciente.
-  return updatePatientStatus(
+  const result = await updatePatientStatus(
     idPatient,
     active
   );
+
+  try {
+    emitirCambioPaciente({
+      tipo: 'PACIENTE_ESTADO_CAMBIADO',
+      mensaje: `Paciente ${active ? 'activado' : 'desactivado'}`,
+      id_paciente: idPatient,
+      id_salita: patient.id_salita_asignada ?? undefined,
+      activo: active,
+      nombre_paciente: `${patient.nombres || ''} ${patient.apellidos || ''}`.trim(),
+      dni_paciente: patient.dni ?? undefined,
+    });
+  } catch {
+    // Notificación en tiempo real es complementaria
+  }
+
+  return result;
 };

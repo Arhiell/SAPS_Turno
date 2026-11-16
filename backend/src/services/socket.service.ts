@@ -4,12 +4,17 @@ import { randomUUID } from 'node:crypto';
 import { verifyAccessToken } from './jwt.service.js';
 import { findUserById, findRoleById } from '../repositories/user.repository.js';
 import { getOwnEntity } from './auth-profile.service.js';
+import {
+  findTurnoSalitasForUser,
+  findTurnoSalitasForProfesional,
+} from '../repositories/turno-access.repository.js';
 import type { AuthenticatedUser } from '../types/auth.types.js';
 
 export interface EventoAgenda {
   id: string;
   tipo:
     | 'TURNO_CREADO'
+    | 'TURNO_CONFIRMADO'
     | 'TURNO_REPROGRAMADO'
     | 'TURNO_CANCELADO'
     | 'TURNO_ACTUALIZADO'
@@ -19,8 +24,9 @@ export interface EventoAgenda {
   id_turno?: string | undefined;
   id_horario?: string | undefined;
   dia_semana?: number | undefined;
-  id_profesional: string;
+  id_profesional?: string | undefined;
   id_salita?: string | undefined;
+  estado?: string | undefined;
   paciente?: string | undefined;
   fecha_anterior?: string | undefined;
   horario_anterior?: string | undefined;
@@ -30,7 +36,75 @@ export interface EventoAgenda {
   timestamp: string;
 }
 
+export interface EventoPaciente {
+  id: string;
+  tipo:
+    | 'PACIENTE_CREADO'
+    | 'PACIENTE_ACTUALIZADO'
+    | 'PACIENTE_ESTADO_CAMBIADO'
+    | 'TUTOR_VINCULACION_ACTUALIZADA';
+  mensaje: string;
+  id_paciente: string;
+  id_salita?: string | undefined;
+  activo?: boolean | undefined;
+  nombre_paciente?: string | undefined;
+  dni_paciente?: string | undefined;
+  timestamp: string;
+}
+
+export interface EventoProfesional {
+  id: string;
+  tipo:
+    | 'PROFESIONAL_CREADO'
+    | 'PROFESIONAL_ACTUALIZADO'
+    | 'HORARIO_ATENCION_ACTUALIZADO'
+    | 'BLOQUEO_AGENDA';
+  mensaje: string;
+  id_profesional: string;
+  id_salita?: string | undefined;
+  matricula?: string | undefined;
+  activo?: boolean | undefined;
+  timestamp: string;
+}
+
+export interface EventoSalita {
+  id: string;
+  tipo:
+    | 'SALITA_CONFIGURACION_ACTUALIZADA'
+    | 'HORARIO_SALITA_ACTUALIZADO'
+    | 'DISPONIBILIDAD_ACTUALIZADA'
+    | 'BLOQUEO_SALITA';
+  mensaje: string;
+  id_salita: string;
+  timestamp: string;
+}
+
+export interface EventoClinico {
+  id: string;
+  tipo:
+    | 'CONSULTA_FIRMADA'
+    | 'EVOLUCION_REGISTRADA'
+    | 'ESTUDIO_INFORMADO'
+    | 'DERIVACION_ACTUALIZADA';
+  mensaje: string;
+  id_paciente: string;
+  id_salita: string;
+  id_profesional?: string | undefined;
+  id_consulta?: string | undefined;
+  id_derivacion?: string | undefined;
+  timestamp: string;
+}
+
 let io: SocketIOServer | null = null;
+
+export const getSocketIO = () => io;
+
+export const closeSocketServer = async () => {
+  if (io) {
+    await io.close();
+    io = null;
+  }
+};
 
 export const initSocketServer = (server: HttpServer) => {
   io = new SocketIOServer(server, {
@@ -81,7 +155,7 @@ export const initSocketServer = (server: HttpServer) => {
 
       socket.data.user = authUser;
 
-      // Si es profesional, resolvemos su ID de profesional para suscribirlo a su sala
+      // Si es profesional, resolvemos su ID de profesional
       if (authUser.rol === 'PROFESIONAL') {
         const own = await getOwnEntity(authUser);
         if (own.key === 'id_profesional') {
@@ -95,13 +169,45 @@ export const initSocketServer = (server: HttpServer) => {
     }
   });
 
-  io.on('connection', (socket) => {
+  io.on('connection', async (socket) => {
     const user: AuthenticatedUser | undefined = socket.data.user;
     const idProf: string | undefined = socket.data.idProfesional;
 
-    if (user?.rol === 'PROFESIONAL' && idProf) {
-      // El profesional se une única y automáticamente a su sala privada
+    if (!user) return;
+
+    // Canal privado de usuario
+    socket.join(`user:${user.id_usuario}`);
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Si es profesional, se une a su sala privada y a las salitas donde presta servicios
+    if (user.rol === 'PROFESIONAL' && idProf) {
       socket.join(`profesional:${idProf}`);
+      try {
+        const salitasProf = await findTurnoSalitasForProfesional(idProf, today);
+        for (const salitaId of salitasProf) {
+          socket.join(`salita:${salitaId}`);
+        }
+      } catch {
+        // Conexión continúa si no se pudieron cargar salitas del profesional
+      }
+    }
+
+    // Si es administración o recepción, se une a sus salitas asignadas
+    if (['ADMIN_SALITA', 'RECEPCION'].includes(user.rol)) {
+      try {
+        const salitas = await findTurnoSalitasForUser(user.id_usuario, today);
+        for (const salitaId of salitas) {
+          socket.join(`salita:${salitaId}`);
+        }
+      } catch {
+        // Conexión continúa
+      }
+    }
+
+    // Super admin se une al canal global de supervisión
+    if (user.rol === 'SUPER_ADMIN') {
+      socket.join('super_admin');
     }
 
     socket.on('disconnect', () => {
@@ -115,7 +221,7 @@ export const initSocketServer = (server: HttpServer) => {
 export const getSocketServer = (): SocketIOServer | null => io;
 
 /**
- * Emite una notificación de cambio de agenda a la sala privada del profesional afectado.
+ * Emite una notificación de cambio de agenda a la sala del profesional y de la salita.
  */
 export const emitirCambioAgenda = (
   evento: Omit<EventoAgenda, 'id' | 'timestamp'>
@@ -128,18 +234,19 @@ export const emitirCambioAgenda = (
     timestamp: new Date().toISOString(),
   };
 
-  // Emisión segura a la sala del profesional
-  io.to(`profesional:${evento.id_profesional}`).emit('agenda:cambio', payload);
-
-  // Si se incluye id_salita, también notificamos a la sala de la salita
-  if (evento.id_salita) {
-    io.to(`salita:${evento.id_salita}`).emit('agenda:cambio', payload);
+  const rooms: string[] = ['super_admin'];
+  if (evento.id_profesional) {
+    rooms.push(`profesional:${evento.id_profesional}`);
   }
+  if (evento.id_salita) {
+    rooms.push(`salita:${evento.id_salita}`);
+  }
+
+  io.to(rooms).emit('agenda:cambio', payload);
 };
 
 /**
- * Emite una notificación de actualización de horario de atención laboral
- * EXCLUSIVAMENTE a la sala privada del profesional correspondiente.
+ * Emite una notificación de horario de atención actualizado.
  */
 export const emitirHorarioAtencionActualizado = (
   evento: Omit<EventoAgenda, 'id' | 'timestamp' | 'tipo'> & {
@@ -155,6 +262,108 @@ export const emitirHorarioAtencionActualizado = (
     timestamp: new Date().toISOString(),
   };
 
-  // Enviar el evento ÚNICAMENTE a la sala privada del profesional correspondiente
-  io.to(`profesional:${evento.id_profesional}`).emit('agenda:cambio', payload);
+  const rooms: string[] = ['super_admin'];
+  if (evento.id_profesional) {
+    rooms.push(`profesional:${evento.id_profesional}`);
+  }
+  if (evento.id_salita) {
+    rooms.push(`salita:${evento.id_salita}`);
+  }
+
+  io.to(rooms).emit('agenda:cambio', payload);
+};
+
+/**
+ * Emite evento de cambios en pacientes (alta, edición administrativa, cambio de estado, tutor).
+ */
+export const emitirCambioPaciente = (
+  evento: Omit<EventoPaciente, 'id' | 'timestamp'>
+) => {
+  if (!io) return;
+
+  const payload: EventoPaciente = {
+    ...evento,
+    id: randomUUID(),
+    timestamp: new Date().toISOString(),
+  };
+
+  const rooms: string[] = ['super_admin'];
+  if (evento.id_salita) {
+    rooms.push(`salita:${evento.id_salita}`);
+  }
+
+  io.to(rooms).emit('paciente:cambio', payload);
+};
+
+/**
+ * Emite evento de cambios en profesionales (alta, modificación, especialidad).
+ */
+export const emitirCambioProfesional = (
+  evento: Omit<EventoProfesional, 'id' | 'timestamp'>
+) => {
+  if (!io) return;
+
+  const payload: EventoProfesional = {
+    ...evento,
+    id: randomUUID(),
+    timestamp: new Date().toISOString(),
+  };
+
+  const rooms: string[] = ['super_admin'];
+  if (evento.id_profesional) {
+    rooms.push(`profesional:${evento.id_profesional}`);
+  }
+  if (evento.id_salita) {
+    rooms.push(`salita:${evento.id_salita}`);
+  }
+
+  io.to(rooms).emit('profesional:cambio', payload);
+};
+
+/**
+ * Emite evento de cambios en salita (configuración, disponibilidad, bloqueos).
+ */
+export const emitirCambioSalita = (
+  evento: Omit<EventoSalita, 'id' | 'timestamp'>
+) => {
+  if (!io) return;
+
+  const payload: EventoSalita = {
+    ...evento,
+    id: randomUUID(),
+    timestamp: new Date().toISOString(),
+  };
+
+  const rooms: string[] = ['super_admin'];
+  if (evento.id_salita) {
+    rooms.push(`salita:${evento.id_salita}`);
+  }
+
+  io.to(rooms).emit('salita:cambio', payload);
+};
+
+/**
+ * Emite evento de eventos clínicos mínimos (firma de consulta, evolución, estudio, derivación).
+ * IMPORTANTE: No transmite datos clínicos sensibles, únicamente identificadores para invalidación.
+ */
+export const emitirCambioClinico = (
+  evento: Omit<EventoClinico, 'id' | 'timestamp'>
+) => {
+  if (!io) return;
+
+  const payload: EventoClinico = {
+    ...evento,
+    id: randomUUID(),
+    timestamp: new Date().toISOString(),
+  };
+
+  const rooms: string[] = ['super_admin'];
+  if (evento.id_salita) {
+    rooms.push(`salita:${evento.id_salita}`);
+  }
+  if (evento.id_profesional) {
+    rooms.push(`profesional:${evento.id_profesional}`);
+  }
+
+  io.to(rooms).emit('clinica:cambio', payload);
 };

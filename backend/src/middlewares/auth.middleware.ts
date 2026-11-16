@@ -59,6 +59,7 @@ const authenticateRequest = (allowIncompleteProfile: boolean) => async (
       email: user.email,
       nombre_usuario: user.nombre_usuario,
       rol: role.codigo,
+      id_rol: role.id_rol,
       id_persona: user.id_persona,
       email_verificado: user.email_verificado,
       perfil_completo: Boolean(user.id_persona),

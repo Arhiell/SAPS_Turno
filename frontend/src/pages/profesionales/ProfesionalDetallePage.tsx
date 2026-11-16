@@ -1,6 +1,13 @@
 import AccountSummary from '../../components/ui/AccountSummary';
 import ProfessionalAccessAccount from '../../components/profesionales/ProfessionalAccessAccount';
 import { useEffect, useState } from 'react';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
+import { FloatingFeedbackToast } from '../../components/ui/FormFeedback';
+import {
+  RECOVERABLE_ERROR_TIMEOUT_MS,
+  SUCCESS_MESSAGE_TIMEOUT_MS,
+  useAutoDismiss,
+} from '../../utils/useAutoDismiss';
 
 import AsignacionVigencia from '../../components/profesionales/AsignacionVigencia';
 
@@ -203,19 +210,8 @@ const ProfesionalDetallePage = () => {
     location.state,
   ]);
 
-  useEffect(() => {
-    if (!message) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setMessage('');
-    }, 3500);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [message]);
+  useAutoDismiss(message, () => setMessage(''), SUCCESS_MESSAGE_TIMEOUT_MS, Boolean(message));
+  useAutoDismiss(error, () => setError(''), RECOVERABLE_ERROR_TIMEOUT_MS, Boolean(error));
 
   const handleAddSpecialty = async () => {
     if (!id || !selectedSpecialty) {
@@ -520,249 +516,50 @@ const ProfesionalDetallePage = () => {
       />
 
       {message && (
-        <div
-          className="position-fixed top-0 end-0 p-3"
-          style={{
-            zIndex: 1080,
-            width: 'min(420px, 100vw)',
-          }}
-          aria-live="polite"
-          aria-atomic="true"
-        >
-          <div
-            className="alert alert-success shadow-sm border-0 mb-0 position-relative"
-            role="status"
-            style={{
-              padding:
-                '14px 48px 14px 48px',
-              borderRadius: '12px',
-              minHeight: '72px',
-            }}
-          >
-            <i
-              className="bi bi-check-circle-fill position-absolute text-success"
-              aria-hidden="true"
-              style={{
-                left: '16px',
-                top: '16px',
-                fontSize: '1.15rem',
-              }}
-            />
-
-            <div>
-              <div className="fw-semibold mb-1">
-                {messageTitle}
-              </div>
-
-              <div className="small">
-                {message}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              className="btn-close position-absolute"
-              aria-label="Cerrar mensaje"
-              onClick={() =>
-                setMessage('')
-              }
-              style={{
-                top: '12px',
-                right: '12px',
-              }}
-            />
-          </div>
-        </div>
+        <FloatingFeedbackToast
+          variant="success"
+          title={messageTitle}
+          message={message}
+          onDismiss={() => setMessage('')}
+        />
       )}
 
       {error && (
-        <div
-          className="alert alert-danger"
-          role="alert"
-        >
-          <i className="bi bi-exclamation-triangle me-2" />
-          {error}
-        </div>
+        <FloatingFeedbackToast
+          variant="error"
+          title="Error"
+          message={error}
+          onDismiss={() => setError('')}
+        />
       )}
 
-      {removalTarget && (
-        <>
-          <div
-            className="modal-backdrop fade show"
-            style={{
-              zIndex: 1050,
-            }}
-          />
-
-          <div
-            className="modal d-block fade show"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="remove-assignment-title"
-            style={{
-              zIndex: 1055,
-            }}
-            onMouseDown={(event) => {
-              if (
-                event.target ===
-                  event.currentTarget &&
-                !removing
-              ) {
-                setRemovalTarget(null);
-              }
-            }}
-          >
-            <div
-              className="modal-dialog modal-dialog-centered"
-              role="document"
-              style={{
-                width: '100%',
-                maxWidth: '520px',
-                margin: '1rem auto',
-              }}
-            >
-              <div className="modal-content border-0 shadow-lg">
-
-                <div
-                  className="modal-header border-0 pb-2 position-relative"
-                  style={{
-                    padding:
-                      '20px 56px 10px 20px',
-                  }}
-                >
-                  <div className="d-flex align-items-center gap-3">
-
-                    <div
-                      className="rounded-circle d-flex align-items-center justify-content-center bg-warning-subtle text-warning"
-                      style={{
-                        width: '48px',
-                        height: '48px',
-                        flexShrink: 0,
-                      }}
-                    >
-                      <i className="bi bi-exclamation-triangle-fill fs-5" />
-                    </div>
-
-                    <div>
-                      <h5
-                        className="modal-title fw-bold mb-1"
-                        id="remove-assignment-title"
-                      >
-                        Quitar asignación
-                      </h5>
-
-                      <p className="text-muted mb-0 small">
-                        Esta acción requiere
-                        confirmación.
-                      </p>
-                    </div>
-
-                  </div>
-
-                  <button
-                    type="button"
-                    className="btn-close position-absolute"
-                    aria-label="Cerrar"
-                    disabled={removing}
-                    onClick={() =>
-                      setRemovalTarget(null)
-                    }
-                    style={{
-                      top: '18px',
-                      right: '18px',
-                    }}
-                  />
-                </div>
-
-                <div
-                  className="modal-body pt-2"
-                  style={{
-                    paddingLeft: '20px',
-                    paddingRight: '20px',
-                  }}
-                >
-                  <p className="mb-2">
-                    ¿Querés quitar la{' '}
-                    <strong>
-                      {removalTarget.tipo ===
-                      'salita'
-                        ? 'asignación a la salita'
-                        : 'especialidad'}
-                    </strong>{' '}
-                    de este profesional?
-                  </p>
-
-                  <div className="bg-light border rounded p-3">
-                    <div className="fw-semibold">
-                      {removalTarget.nombre}
-                    </div>
-
-                    <div className="text-muted small mt-1">
-                      {removalTarget.tipo ===
-                      'salita'
-                        ? 'La salita seguirá existiendo en el sistema. Solo se quitará su asignación a este profesional.'
-                        : 'La especialidad seguirá existiendo en el sistema. Solo se quitará su asignación a este profesional.'}
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  className="modal-footer border-0 pt-0"
-                  style={{
-                    padding:
-                      '8px 20px 20px',
-                    gap: '8px',
-                  }}
-                >
-                  <button
-                    type="button"
-                    className="btn btn-outline-secondary"
-                    disabled={removing}
-                    style={{
-                      minWidth: '96px',
-                    }}
-                    onClick={() =>
-                      setRemovalTarget(null)
-                    }
-                  >
-                    Cancelar
-                  </button>
-
-                  <button
-                    type="button"
-                    className="btn btn-danger"
-                    disabled={removing}
-                    style={{
-                      minWidth: '150px',
-                    }}
-                    onClick={() =>
-                      void confirmRemoval()
-                    }
-                  >
-                    {removing ? (
-                      <>
-                        <span
-                          className="spinner-border spinner-border-sm me-2"
-                          role="status"
-                          aria-hidden="true"
-                        />
-
-                        Quitando...
-                      </>
-                    ) : (
-                      <>
-                        <i className="bi bi-trash me-2" />
-                        Quitar asignación
-                      </>
-                    )}
-                  </button>
-                </div>
-
+      <ConfirmationModal
+        open={Boolean(removalTarget)}
+        title={removalTarget?.tipo === 'salita' ? 'Quitar asignación de salita' : 'Quitar especialidad'}
+        subtitle="Esta acción requiere confirmación."
+        message={`¿Confirmás que querés quitar la ${
+          removalTarget?.tipo === 'salita' ? 'asignación a la salita' : 'especialidad'
+        } de este profesional?`}
+        confirmText={removalTarget?.tipo === 'salita' ? 'Quitar salita' : 'Quitar especialidad'}
+        cancelText="Cancelar"
+        variant="danger"
+        icon="bi-trash3"
+        loading={removing}
+        detail={
+          removalTarget ? (
+            <div className="bg-light border rounded p-3 mt-2">
+              <div className="fw-semibold">{removalTarget.nombre}</div>
+              <div className="text-muted small mt-1">
+                {removalTarget.tipo === 'salita'
+                  ? 'La salita seguirá existiendo en el sistema. Solo se quitará su asignación a este profesional.'
+                  : 'La especialidad seguirá existiendo en el sistema. Solo se quitará su asignación a este profesional.'}
               </div>
             </div>
-          </div>
-        </>
-      )}
+          ) : undefined
+        }
+        onClose={() => setRemovalTarget(null)}
+        onConfirm={() => void confirmRemoval()}
+      />
 
       <div className="row g-4">
 

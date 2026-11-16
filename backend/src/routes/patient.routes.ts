@@ -7,6 +7,7 @@ import {
   createTutorRequestController,
   listOwnTutorRequestsController,
 } from '../controllers/tutor-request.controller.js';
+import { getMiHistoriaClinicaController } from '../controllers/patient-clinical.controller.js';
 import { getPatientTutors } from '../services/patient-tutor.service.js';
 import { getOwnPatient } from '../services/patient-coverage.service.js';
 import {
@@ -56,6 +57,7 @@ router.get('/mis-responsables', requireRole('PACIENTE'), async (req, res, next) 
     res.json({ success: true, data: { tutors: await getPatientTutors(patient.id_paciente) } });
   } catch (error) { next(error); }
 });
+router.get('/mi-historia-clinica', requireRole('PACIENTE'), getMiHistoriaClinicaController);
 
 /**
  * Listar pacientes.

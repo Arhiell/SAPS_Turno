@@ -12,6 +12,8 @@ import {
 } from 'react-router-dom';
 
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
+import { ActionInlineFeedback, FloatingFeedbackToast } from '../../components/ui/FormFeedback';
+import { focusFieldById, focusFirstInvalidControl } from '../../utils/form-feedback';
 
 import {
   getPatients,
@@ -306,6 +308,8 @@ const NuevoTurnoPage = () => {
       )
     ) {
       setSelectedSalita('');
+    } else if (!selectedSalita && professionalClinics.length === 1) {
+      setSelectedSalita(professionalClinics[0].id_salita);
     }
   }, [
     fecha,
@@ -537,17 +541,11 @@ const NuevoTurnoPage = () => {
       </div>
 
       {message && (
-        <div className="alert alert-success">
-          <i className="bi bi-check-circle me-2" />
-          {message}
-        </div>
-      )}
-
-      {error && (
-        <div className="alert alert-danger">
-          <i className="bi bi-exclamation-triangle me-2" />
-          {error}
-        </div>
+        <FloatingFeedbackToast
+          variant="success"
+          message={message}
+          onDismiss={() => setMessage('')}
+        />
       )}
 
       {loadingInitial && (
@@ -558,10 +556,25 @@ const NuevoTurnoPage = () => {
       )}
 
       <form
+        noValidate
         onSubmit={(event) => {
           event.preventDefault();
+          setError('');
           if (!selectedPatient) {
-            setError('Seleccione un paciente de los resultados de búsqueda.');
+            setError('Seleccioná un paciente de los resultados de búsqueda.');
+            focusFieldById('turno-paciente-search', 30);
+            return;
+          }
+          if (!event.currentTarget.checkValidity()) {
+            const invalidEl = focusFirstInvalidControl(event.currentTarget);
+            const fallbackMsg =
+              (invalidEl instanceof HTMLInputElement ||
+                invalidEl instanceof HTMLSelectElement ||
+                invalidEl instanceof HTMLTextAreaElement) &&
+              invalidEl.validationMessage
+                ? invalidEl.validationMessage
+                : 'Completá los campos obligatorios resaltados.';
+            setError(fallbackMsg);
             return;
           }
           setConfirmOpen(true);
@@ -997,7 +1010,14 @@ const NuevoTurnoPage = () => {
                 )}
               </div>
 
-              <div className="card-footer bg-white border-0">
+              <div className="card-footer bg-white border-0 d-flex flex-column gap-2">
+                {error && (
+                  <ActionInlineFeedback
+                    variant="error"
+                    message={error}
+                    onDismiss={() => setError('')}
+                  />
+                )}
                 <button
                   type="submit"
                   className="btn btn-saps w-100"

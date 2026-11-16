@@ -1,4 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { CLINICAL_PERMISSIONS } from '../../types/historia-clinica.types';
+import type { ClinicalNavState } from '../../utils/historia-clinica-navigation';
 import type { Turno } from '../../types/turno.types';
 import { getEstadoClass } from '../../utils/turno-status';
 import { changeTurnoStatus } from '../../services/turnos.service';
@@ -10,14 +14,19 @@ interface PatientTurnoDetailModalProps {
   turno: Turno | null;
   onClose: () => void;
   onStatusChanged?: () => void;
+  clinicalOriginState?: ClinicalNavState;
 }
 
 export default function PatientTurnoDetailModal({
   turno,
   onClose,
   onStatusChanged,
+  clinicalOriginState,
 }: PatientTurnoDetailModalProps) {
   const [busy, setBusy] = useState(false);
+  const { hasPermission } = useAuth();
+  const canViewHC = hasPermission(CLINICAL_PERMISSIONS.VER_HISTORIA_CLINICA);
+  const canCreateConsulta = hasPermission(CLINICAL_PERMISSIONS.CREAR_CONSULTA_CLINICA);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [revision, setRevision] = useState(0);
@@ -91,7 +100,8 @@ export default function PatientTurnoDetailModal({
         <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
           {/* Header del Modal */}
           <div className="modal-header bg-light border-bottom px-4 py-3 align-items-center">
-            <div className="d-flex align-items-center gap-2">
+            <div className="d-flex align-items-center flex-wrap gap-2">
+
               <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
                 Ficha del Turno y Paciente
               </span>
@@ -112,7 +122,8 @@ export default function PatientTurnoDetailModal({
           <div className="modal-body p-4">
             {error && (
               <div className="alert alert-danger d-flex align-items-center justify-content-between gap-2 mb-3" role="alert">
-                <div className="d-flex align-items-center gap-2">
+                <div className="d-flex align-items-center flex-wrap gap-2">
+
                   <i className="bi bi-exclamation-triangle-fill" aria-hidden="true" />
                   <div>{error}</div>
                 </div>
@@ -127,7 +138,8 @@ export default function PatientTurnoDetailModal({
 
             {success && (
               <div className="alert alert-success d-flex align-items-center justify-content-between gap-2 mb-3" role="status">
-                <div className="d-flex align-items-center gap-2">
+                <div className="d-flex align-items-center flex-wrap gap-2">
+
                   <i className="bi bi-check-circle-fill" aria-hidden="true" />
                   <div>{success}</div>
                 </div>
@@ -242,6 +254,31 @@ export default function PatientTurnoDetailModal({
 
           {/* Footer con Acciones de Atención */}
           <div className="modal-footer bg-light border-top px-4 py-3 justify-content-between flex-wrap gap-2">
+            <div className="d-flex flex-wrap gap-2">
+              {canViewHC && turno.paciente?.id_paciente && (
+                <Link
+                  to={`/historia-clinica/pacientes/${turno.paciente.id_paciente}${turno.salita?.id_salita ? `?salita=${encodeURIComponent(turno.salita.id_salita)}` : ''}`}
+                  state={clinicalOriginState}
+                  className="btn btn-outline-primary btn-sm px-3"
+                >
+                  <i className="bi bi-journal-medical me-1" aria-hidden="true" />
+                  Historia Clínica
+                </Link>
+              )}
+              {canCreateConsulta && turno.paciente?.id_paciente && (
+                <Link
+                  to={`/historia-clinica/pacientes/${turno.paciente.id_paciente}/nueva-consulta?${new URLSearchParams({
+                    ...(turno.salita?.id_salita ? { salita: turno.salita.id_salita } : {}),
+                    turno: turno.id_turno,
+                  }).toString()}`}
+                  state={clinicalOriginState}
+                  className="btn btn-primary btn-sm px-3"
+                >
+                  <i className="bi bi-file-earmark-plus me-1" aria-hidden="true" />
+                  Nueva consulta
+                </Link>
+              )}
+            </div>
             <div>
               {!turno.estado.es_estado_final && (
                 <span className="small text-muted">
@@ -251,7 +288,8 @@ export default function PatientTurnoDetailModal({
               )}
             </div>
 
-            <div className="d-flex align-items-center gap-2">
+            <div className="d-flex align-items-center flex-wrap gap-2">
+
               {!turno.estado.es_estado_final && (
                 <>
                   <button

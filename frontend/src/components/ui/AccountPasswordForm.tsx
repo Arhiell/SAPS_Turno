@@ -3,15 +3,18 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../../context/AuthContext';
 import { changePassword } from '../../services/auth.service';
-import { authError, passwordError } from '../../utils/auth-errors';
-import { PROFESSIONAL_MESSAGE_TIMEOUT_MS, useAutoDismiss } from '../../utils/useAutoDismiss';
+import { authError } from '../../utils/auth-errors';
+import { validatePassword, validateConfirmation } from '../../utils/password-policy';
+import { useAutoDismiss } from '../../utils/useAutoDismiss';
+import { FloatingFeedbackToast } from './FormFeedback';
 
 import PasswordInput from '../../pages/auth/PasswordInput';
+import PasswordCreationFields from '../auth/PasswordCreationFields';
 import ConfirmationModal from './ConfirmationModal';
 
 // Gestiona el cambio de contraseña del usuario autenticado.
 export default function AccountPasswordForm() {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const navigate = useNavigate();
 
   // Controla el formulario y los datos de la contraseña.
@@ -24,8 +27,10 @@ export default function AccountPasswordForm() {
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
   const [error, setError] = useState('');
+  const [currentError, setCurrentError] = useState('');
+  const [showPasswordErrors, setShowPasswordErrors] = useState(false);
 
-  useAutoDismiss(error, setError, PROFESSIONAL_MESSAGE_TIMEOUT_MS, user?.rol === 'PROFESIONAL');
+  useAutoDismiss(error, () => setError(''), 15000);
 
   // Controla la apertura del modal de confirmación.
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -36,14 +41,42 @@ export default function AccountPasswordForm() {
     setPassword('');
     setConfirmation('');
     setError('');
+    setCurrentError('');
+    setShowPasswordErrors(false);
   };
 
-  // Valida la nueva contraseña y su confirmación.
-  const validate = () =>
-    passwordError(password, confirmation) ||
-    (current === password
-      ? 'La nueva contraseña debe ser diferente de la actual.'
-      : '');
+  // Valida el formulario antes de solicitar confirmación.
+  const validateForm = () => {
+    let hasError = false;
+
+    if (!current) {
+      setCurrentError('Ingresá tu contraseña actual.');
+      document.getElementById('account-current-password')?.focus();
+      hasError = true;
+    } else {
+      setCurrentError('');
+    }
+
+    setShowPasswordErrors(true);
+
+    const pwdErr = validatePassword(password);
+    if (!hasError && pwdErr) {
+      document.getElementById('account-new-password')?.focus();
+      hasError = true;
+    } else if (!hasError && current === password) {
+      setError('La nueva contraseña debe ser diferente de la actual.');
+      document.getElementById('account-new-password')?.focus();
+      hasError = true;
+    }
+
+    const confErr = validateConfirmation(password, confirmation);
+    if (!hasError && confErr) {
+      document.getElementById('account-confirm-password')?.focus();
+      hasError = true;
+    }
+
+    return !hasError;
+  };
 
   // Actualiza la contraseña y cierra la sesión.
   const save = async () => {
@@ -51,10 +84,7 @@ export default function AccountPasswordForm() {
       return;
     }
 
-    const validation = validate();
-
-    if (validation) {
-      setError(validation);
+    if (!validateForm()) {
       setConfirmOpen(false);
       return;
     }
@@ -134,14 +164,10 @@ export default function AccountPasswordForm() {
         </button>
       ) : (
         <form
+          noValidate
           onSubmit={event => {
             event.preventDefault();
-
-            const validation = validate();
-
-            setError(validation);
-
-            if (!validation) {
+            if (validateForm()) {
               setConfirmOpen(true);
             }
           }}
@@ -155,40 +181,45 @@ export default function AccountPasswordForm() {
               required
               maxLength={128}
               value={current}
-              onChange={event => setCurrent(event.target.value)}
+              error={currentError}
+              onChange={event => {
+                setCurrent(event.target.value);
+                if (currentError) setCurrentError('');
+              }}
             />
 
-            {/* Solicita la nueva contraseña. */}
-            <PasswordInput
-              id="account-new-password"
-              label="Nueva contraseña"
-              autoComplete="new-password"
-              required
-              minLength={8}
-              maxLength={128}
-              value={password}
-              onChange={event => setPassword(event.target.value)}
+            {/* Nueva contraseña y confirmación con requisitos unificados */}
+            <PasswordCreationFields
+              password={password}
+              confirmation={confirmation}
+              onPasswordChange={(v) => {
+                setPassword(v);
+                setError('');
+              }}
+              onConfirmationChange={(v) => {
+                setConfirmation(v);
+                setError('');
+              }}
+              passwordId="account-new-password"
+              confirmationId="account-confirm-password"
+              passwordLabel="Nueva contraseña"
+              confirmationLabel="Repetir nueva contraseña"
+              disabled={busy}
+              showErrors={showPasswordErrors}
             />
 
-            {/* Solicita la confirmación de la nueva contraseña. */}
-            <PasswordInput
-              id="account-confirm-password"
-              label="Repetir nueva contraseña"
-              autoComplete="new-password"
-              required
-              maxLength={128}
-              value={confirmation}
-              onChange={event => setConfirmation(event.target.value)}
-            />
-
-            <p className="small text-muted">
-              Usá entre 8 y 12 caracteres, con mayúscula, minúscula,
-              número y símbolo. Después del cambio vas a ingresar nuevamente.
-            </p>
+            {/* Notificación flotante para errores del servidor */}
+            {error && (
+              <FloatingFeedbackToast
+                variant="error"
+                message={error}
+                onDismiss={() => setError('')}
+              />
+            )}
 
             {/* Permite guardar o cancelar el cambio. */}
-            <div className="d-flex flex-wrap gap-2">
-              <button className="btn btn-saps">
+            <div className="d-flex flex-wrap gap-2 mt-3">
+              <button className="btn btn-saps" type="submit">
                 {busy ? 'Actualizando…' : 'Guardar contraseña'}
               </button>
 

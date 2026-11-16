@@ -36,6 +36,10 @@ import {
   findOrCreatePerson,
 } from './person.service.js';
 
+import {
+  emitirCambioPaciente,
+} from './socket.service.js';
+
 // Genera el error utilizado cuando el paciente ya existe.
 const duplicatePatient = () =>
   new AppError(
@@ -76,13 +80,29 @@ export const registerPatient = async (
 
   try {
     // Valida y crea el perfil del paciente.
-    return await createPatient({
+    const created = await createPatient({
       ...patientProfileSchema.parse(
         parts.patient
       ),
       id_persona:
         person.id_persona,
     });
+
+    try {
+      emitirCambioPaciente({
+        tipo: 'PACIENTE_CREADO',
+        mensaje: `Nuevo paciente registrado: ${person.apellidos}, ${person.nombres}`,
+        id_paciente: created.id_paciente,
+        id_salita: created.id_salita_asignada,
+        activo: created.activo,
+        nombre_paciente: `${person.nombres} ${person.apellidos}`,
+        dni_paciente: person.dni,
+      });
+    } catch {
+      // Notificación en tiempo real es complementaria
+    }
+
+    return created;
   } catch (error) {
     // Comprueba nuevamente el duplicado ante una restricción única.
     if (

@@ -27,6 +27,10 @@ import {
   findOrCreatePerson,
 } from './person.service.js';
 
+import {
+  emitirCambioProfesional,
+} from './socket.service.js';
+
 // Verifica que la matrícula no pertenezca a otro profesional.
 const ensureMatriculaAvailable = async (
   matricula: string,
@@ -106,11 +110,25 @@ export const crearProfesional = async (
   }
 
   // Crea el perfil profesional asociado a la persona.
-  return await createProfesional({
+  const created = await createProfesional({
     id_persona:
       persona.id_persona,
     matricula,
   });
+
+  try {
+    emitirCambioProfesional({
+      tipo: 'PROFESIONAL_CREADO',
+      mensaje: `Nuevo profesional registrado: ${personData.apellidos || ''}, ${personData.nombres || ''}`,
+      id_profesional: created.id_profesional,
+      matricula: created.matricula,
+      activo: created.activo,
+    });
+  } catch {
+    // Notificación en tiempo real es complementaria
+  }
+
+  return created;
 };
 
 // Valida y actualiza los datos de un profesional.
@@ -204,21 +222,38 @@ export const actualizarProfesional = async (
   }
 
   // Actualiza los datos profesionales si existen cambios.
+  let updated = null;
   if (
     Object.keys(
       profesionalData
     ).length > 0
   ) {
-    return await updateProfesional(
+    updated = await updateProfesional(
       id,
       profesionalData
     );
+  } else {
+    // Devuelve el profesional actualizado cuando solo cambió la persona.
+    updated = await getProfesionalById(
+      id
+    );
   }
 
-  // Devuelve el profesional actualizado cuando solo cambió la persona.
-  return await getProfesionalById(
-    id
-  );
+  if (updated) {
+    try {
+      emitirCambioProfesional({
+        tipo: 'PROFESIONAL_ACTUALIZADO',
+        mensaje: `Profesional actualizado`,
+        id_profesional: id,
+        matricula: updated.matricula,
+        activo: updated.activo,
+      });
+    } catch {
+      // Notificación en tiempo real es complementaria
+    }
+  }
+
+  return updated;
 };
 
 // Elimina un profesional por su identificador.

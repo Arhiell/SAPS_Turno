@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { authError } from '../../utils/auth-errors';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
+import { FloatingFeedbackToast } from '../../components/ui/FormFeedback';
+import { useAutoDismiss } from '../../utils/useAutoDismiss';
 import {
   getAdminTutorRequests,
   resolveTutorRequest,
@@ -33,18 +36,11 @@ export default function SolicitudesVinculacionPage() {
     authorization: boolean;
   } | null>(null);
   const [revision, setRevision] = useState(0);
+  const [rejectionTarget, setRejectionTarget] = useState<TutorRequest | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
 
-  useEffect(() => {
-    if (!success) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setSuccess('');
-    }, 5000);
-
-    return () => window.clearTimeout(timer);
-  }, [success]);
+  useAutoDismiss(success, () => setSuccess(''), 15000);
+  useAutoDismiss(error, () => setError(''), 15000);
 
   useEffect(() => {
     let active = true;
@@ -60,8 +56,8 @@ export default function SolicitudesVinculacionPage() {
     return () => { active = false; };
   }, [revision]);
 
-  const resolve = async (request: TutorRequest, approve: boolean) => {
-    const reason = approve ? '' : window.prompt('Indicá el motivo del rechazo:')?.trim() ?? '';
+  const resolve = async (request: TutorRequest, approve: boolean, providedReason?: string) => {
+    const reason = approve ? '' : (providedReason ?? '').trim();
     if (!approve && reason.length < 3) {
       setError('Para rechazar, ingresá un motivo de al menos 3 caracteres.');
       return;
@@ -98,8 +94,20 @@ export default function SolicitudesVinculacionPage() {
         setRevision(value => value + 1);
       }}>Actualizar lista</button>
     </div>
-    {error && <div className="alert alert-danger" role="alert">{error}</div>}
-    {success && <div className="alert alert-success" role="status">{success}</div>}
+    {error && !success && (
+      <FloatingFeedbackToast
+        variant="error"
+        message={error}
+        onDismiss={() => setError('')}
+      />
+    )}
+    {success && (
+      <FloatingFeedbackToast
+        variant="success"
+        message={success}
+        onDismiss={() => setSuccess('')}
+      />
+    )}
     {loading ? <p role="status">Cargando solicitudes…</p> : requests.length === 0
       ? <p>No hay solicitudes para las salitas que administrás.</p>
       : <div className="table-responsive">
@@ -142,10 +150,60 @@ export default function SolicitudesVinculacionPage() {
               </> : <button className="btn btn-sm btn-success" disabled={!!busy} onClick={() => setVerification({
                 requestId: request.id_solicitud, identity: false, documents: false, authorization: false,
               })}>Aprobar</button>}
-              <button className="btn btn-sm btn-outline-danger" disabled={!!busy} onClick={() => void resolve(request, false)}>Rechazar</button>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-danger"
+                disabled={!!busy}
+                onClick={() => {
+                  setRejectionTarget(request);
+                  setRejectionReason('');
+                }}
+              >
+                Rechazar
+              </button>
             </div> : request.fecha_resolucion ? new Date(request.fecha_resolucion).toLocaleString('es-AR') : '—'}</td>
           </tr>)}</tbody>
         </table>
       </div>}
+
+    <ConfirmationModal
+      open={Boolean(rejectionTarget)}
+      title="Rechazar solicitud de vinculación"
+      subtitle="Esta acción rechaza la solicitud de gestión de turnos."
+      message="Indicá el motivo del rechazo para informar la causa al paciente o solicitante."
+      confirmText="Rechazar solicitud"
+      cancelText="Cancelar"
+      variant="danger"
+      icon="bi-x-circle"
+      loading={Boolean(busy)}
+      detail={
+        <div className="mt-2">
+          <label className="form-label small fw-semibold" htmlFor="motivo-rechazo-text">
+            Motivo del rechazo (mínimo 3 caracteres) *
+          </label>
+          <textarea
+            id="motivo-rechazo-text"
+            className="form-control form-control-sm"
+            rows={3}
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+            placeholder="Ej: Documentación incompleta o no coincide con los datos del paciente..."
+          />
+        </div>
+      }
+      onClose={() => setRejectionTarget(null)}
+      onConfirm={() => {
+        if (rejectionTarget) {
+          const target = rejectionTarget;
+          const reason = rejectionReason.trim();
+          if (reason.length < 3) {
+            setError('Para rechazar, ingresá un motivo de al menos 3 caracteres.');
+            return;
+          }
+          setRejectionTarget(null);
+          void resolve(target, false, reason);
+        }
+      }}
+    />
   </section>;
 }

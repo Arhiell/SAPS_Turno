@@ -39,6 +39,7 @@ const PacientesPage = lazy(() => import('../pages/pacientes/PacientesPage'));
 const PacienteDetallePage = lazy(() => import('../pages/pacientes/PacienteDetallePage'));
 const NuevoPacientePage = lazy(() => import('../pages/pacientes/NuevoPacientePage'));
 const MiPerfilPage = lazy(() => import('../pages/pacientes/MiPerfilPage'));
+const MiHistoriaClinicaPage = lazy(() => import('../pages/pacientes/MiHistoriaClinicaPage'));
 
 const SalitasPage = lazy(() => import('../pages/salitas/SalitasPage'));
 const NuevaSalitaPage = lazy(() => import('../pages/salitas/NuevaSalitaPage'));
@@ -71,6 +72,13 @@ const CierresPage = lazy(() => import('../pages/configuracion/CierresPage'));
 
 const ReportesPage = lazy(() => import('../pages/reportes/ReportesPage'));
 
+const HistoriaClinicaBuscadorPage = lazy(() => import('../pages/historia-clinica/HistoriaClinicaBuscadorPage'));
+const HistoriaClinicaPacientePage = lazy(() => import('../pages/historia-clinica/HistoriaClinicaPacientePage'));
+const ConsultaDetallePage = lazy(() => import('../pages/historia-clinica/ConsultaDetallePage'));
+const NuevaConsultaPage = lazy(() => import('../pages/historia-clinica/NuevaConsultaPage'));
+const DerivacionesClinicasPage = lazy(() => import('../pages/historia-clinica/DerivacionesClinicasPage'));
+const AuditoriaClinicaPage = lazy(() => import('../pages/historia-clinica/AuditoriaClinicaPage'));
+
 const MisNotificacionesPage = lazy(() => import('../pages/notificaciones/MisNotificacionesPage'));
 const NuevaNotificacionPage = lazy(() => import('../pages/notificaciones/NuevaNotificacionPage'));
 const HistorialNotificacionesPage = lazy(() => import('../pages/notificaciones/HistorialNotificacionesPage'));
@@ -89,6 +97,7 @@ const RoleHome = () => {
   return [
     'SUPER_ADMIN',
     'ADMIN_SALITA',
+    'RECEPCION',
     'PROFESIONAL',
     'PACIENTE',
   ].includes(user?.rol ?? '') ? (
@@ -210,6 +219,7 @@ const AppRoutes = () => {
                     roles={[
                       'SUPER_ADMIN',
                       'ADMIN_SALITA',
+                      'RECEPCION',
                       'PACIENTE',
                       'PROFESIONAL',
                     ]}
@@ -247,6 +257,15 @@ const AppRoutes = () => {
                   path="/mis-turnos/:id"
                   element={<PatientAppointmentDetailPage />}
                 />
+
+                <Route
+                  path="/mi-historia"
+                  element={<MiHistoriaClinicaPage />}
+                />
+                <Route
+                  path="/mi-historia-clinica"
+                  element={<MiHistoriaClinicaPage />}
+                />
               </Route>
 
               {/* Rutas exclusivas para profesionales. */}
@@ -273,6 +292,73 @@ const AppRoutes = () => {
 
               <Route element={<ProtectedRoute roles={['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION']} />}>
                 <Route path="/configuracion/bloqueos" element={<BloqueosPage />} />
+              </Route>
+
+              {/* Rutas de Historia Clínica protegidas por rol y permiso real en BD. */}
+              <Route
+                element={
+                  <ProtectedRoute
+                    roles={['PROFESIONAL', 'ADMIN_SALITA', 'RECEPCION']}
+                    requiredPermission="VER_HISTORIA_CLINICA"
+                  />
+                }
+              >
+                <Route path="/historia-clinica" element={<HistoriaClinicaBuscadorPage />} />
+                <Route
+                  path="/historia-clinica/pacientes/:idPaciente"
+                  element={<HistoriaClinicaPacientePage />}
+                />
+                <Route
+                  path="/historia-clinica/consultas/:idConsulta"
+                  element={<ConsultaDetallePage />}
+                />
+              </Route>
+
+              <Route
+                element={
+                  <ProtectedRoute
+                    roles={['PROFESIONAL']}
+                    requiredPermission="CREAR_CONSULTA_CLINICA"
+                  />
+                }
+              >
+                <Route
+                  path="/historia-clinica/nueva-consulta"
+                  element={<NuevaConsultaPage />}
+                />
+                <Route
+                  path="/historia-clinica/pacientes/:idPaciente/nueva-consulta"
+                  element={<NuevaConsultaPage />}
+                />
+                <Route
+                  path="/historia-clinica/consultas/:idConsulta/editar"
+                  element={<NuevaConsultaPage />}
+                />
+              </Route>
+
+              <Route
+                element={
+                  <ProtectedRoute
+                    roles={['PROFESIONAL', 'ADMIN_SALITA']}
+                    requiredPermission="GESTIONAR_DERIVACIONES_CLINICAS"
+                  />
+                }
+              >
+                <Route
+                  path="/historia-clinica/derivaciones"
+                  element={<DerivacionesClinicasPage />}
+                />
+              </Route>
+
+              <Route
+                element={
+                  <ProtectedRoute
+                    roles={['SUPER_ADMIN']}
+                    requiredPermission="VER_AUDITORIA_CLINICA"
+                  />
+                }
+              >
+                <Route path="/auditoria-clinica" element={<AuditoriaClinicaPage />} />
               </Route>
 
               {/* Rutas para administradores de salitas y superadministradores. */}
@@ -368,26 +454,6 @@ const AppRoutes = () => {
                   element={<AccountManagementPage />}
                 />
 
-                {/* Gestión de pacientes. */}
-                <Route
-                  path="/pacientes"
-                  element={<PacientesPage />}
-                />
-                <Route
-                  path="/solicitudes-vinculacion"
-                  element={<SolicitudesVinculacionPage />}
-                />
-
-                <Route
-                  path="/pacientes/nuevo"
-                  element={<NuevoPacientePage />}
-                />
-
-                <Route
-                  path="/pacientes/:id"
-                  element={<PacienteDetallePage />}
-                />
-
                 {/* Gestión de profesionales. */}
                 <Route
                   path="/profesionales"
@@ -407,6 +473,51 @@ const AppRoutes = () => {
                 <Route
                   path="/profesionales/:id/editar"
                   element={<EditarProfesionalPage />}
+                />
+
+                {/* Reportes del sistema. */}
+                <Route
+                  path="/reportes"
+                  element={<ReportesPage />}
+                />
+
+                <Route
+                  path="/configuracion/especialidades"
+                  element={
+                    <CatalogoPage
+                      key="especialidades"
+                      tipo="especialidades"
+                    />
+                  }
+                />
+              </Route>
+
+              {/* Rutas para pacientes y turnos accesibles a administración y recepción. */}
+              <Route
+                element={
+                  <ProtectedRoute
+                    roles={['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION']}
+                  />
+                }
+              >
+                {/* Gestión de pacientes. */}
+                <Route
+                  path="/pacientes"
+                  element={<PacientesPage />}
+                />
+                <Route
+                  path="/solicitudes-vinculacion"
+                  element={<SolicitudesVinculacionPage />}
+                />
+
+                <Route
+                  path="/pacientes/nuevo"
+                  element={<NuevoPacientePage />}
+                />
+
+                <Route
+                  path="/pacientes/:id"
+                  element={<PacienteDetallePage />}
                 />
 
                 {/* Gestión de turnos. */}
@@ -429,22 +540,7 @@ const AppRoutes = () => {
                   path="/turnos/:id"
                   element={<TurnoDetallePage />}
                 />
-
-                {/* Reportes del sistema. */}
-                <Route
-                  path="/reportes"
-                  element={<ReportesPage />}
-                />
-
-                <Route
-                  path="/configuracion/especialidades"
-                  element={
-                    <CatalogoPage
-                      key="especialidades"
-                      tipo="especialidades"
-                    />
-                  }
-                />
+              </Route>
 
                 {/* Rutas exclusivas para el superadministrador. */}
                 <Route
@@ -508,7 +604,6 @@ const AppRoutes = () => {
                 </Route>
               </Route>
             </Route>
-          </Route>
 
           {/* Redirige las rutas inexistentes a la página principal. */}
           <Route

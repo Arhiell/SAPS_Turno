@@ -4,9 +4,20 @@ import {
 } from 'react';
 
 import {
+  Link,
   useNavigate,
   useParams,
 } from 'react-router-dom';
+
+import { useAuth } from '../../context/AuthContext';
+import { useAgendaSocket } from '../../context/AgendaSocketContext';
+import ConnectionStatusBadge from '../../components/ui/ConnectionStatusBadge';
+import { FloatingFeedbackToast } from '../../components/ui/FormFeedback';
+import { useAutoDismiss } from '../../utils/useAutoDismiss';
+import { getBarrios } from '../../services/barrios.service';
+import { getSalitas } from '../../services/salitas.service';
+import type { Barrio } from '../../types/barrio.types';
+import type { Salita } from '../../types/salita.types';
 
 import PatientAccountPanel from '../../components/ui/PatientAccountPanel';
 import PatientTutorsPanel from '../../components/ui/PatientTutorsPanel';
@@ -40,9 +51,15 @@ const PacienteDetallePage = () => {
   const navigate =
     useNavigate();
 
+  const { permissions } = useAuth();
+  const { ultimoEventoPaciente, resyncTick } = useAgendaSocket();
+
   // Datos del paciente.
   const [patient, setPatient] =
     useState<Patient | null>(null);
+
+  const [barrios, setBarrios] = useState<Barrio[]>([]);
+  const [salitas, setSalitas] = useState<Salita[]>([]);
 
   const [form, setForm] =
     useState<UpdatePatientRequest>({});
@@ -54,6 +71,7 @@ const PacienteDetallePage = () => {
   // Estados de carga y guardado.
   const [loading, setLoading] =
     useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [saving, setSaving] =
     useState(false);
@@ -83,27 +101,20 @@ const PacienteDetallePage = () => {
     setSaveConfirmOpen,
   ] = useState(false);
 
-  // Oculta automáticamente el mensaje de éxito.
+  // Feedback unificado de 15 segundos.
+  useAutoDismiss(success, setSuccess, 15_000, Boolean(success));
+  useAutoDismiss(error, setError, 15_000, Boolean(error));
+
   useEffect(() => {
-    if (!success) {
-      return;
-    }
-
-    const timer =
-      window.setTimeout(() => {
-        setSuccess('');
-      }, 3000);
-
-    return () => {
-      window.clearTimeout(
-        timer
-      );
-    };
-  }, [success]);
+    void Promise.all([
+      getBarrios().then((r) => setBarrios(r.data.barrios)).catch(() => undefined),
+      getSalitas().then((r) => setSalitas(r.data)).catch(() => undefined),
+    ]);
+  }, []);
 
   // Carga los datos del paciente.
   const loadPatient =
-    async () => {
+    async (silent = false) => {
       if (!id) {
         setError(
           'Paciente inválido.'
@@ -114,7 +125,11 @@ const PacienteDetallePage = () => {
       }
 
       try {
-        setLoading(true);
+        if (!silent) {
+          setLoading(true);
+        } else {
+          setRefreshing(true);
+        }
         setError('');
 
         const response =
@@ -122,75 +137,41 @@ const PacienteDetallePage = () => {
             id
           );
 
-        setPatient(
-          response.data.patient
-        );
+        const pat = response.data.patient;
+        setPatient((current) => ({
+          ...pat,
+          cuenta: pat.cuenta ?? current?.cuenta,
+        }));
 
-        setForm({
-          nombres:
-            response.data.patient
-              .nombres,
-
-          apellidos:
-            response.data.patient
-              .apellidos,
-
-          fecha_nacimiento:
-            response.data.patient
-              .fecha_nacimiento,
-
-          sexo:
-            response.data.patient
-              .sexo,
-
-          telefono:
-            response.data.patient
-              .telefono,
-
-          email:
-            response.data.patient
-              .email,
-
-          direccion:
-            response.data.patient
-              .direccion,
-
-          localidad:
-            response.data.patient
-              .localidad ?? '',
-
-          provincia:
-            response.data.patient
-              .provincia ?? '',
-
-          codigo_postal:
-            response.data.patient
-              .codigo_postal,
-
-          obra_social:
-            response.data.patient
-              .obra_social,
-
-          numero_afiliado:
-            response.data.patient
-              .numero_afiliado,
-
-          contacto_emergencia_nombre:
-            response.data.patient
-              .contacto_emergencia_nombre,
-
-          contacto_emergencia_telefono:
-            response.data.patient
-              .contacto_emergencia_telefono,
-        });
+        if (!editing) {
+          setForm({
+            nombres: pat.nombres,
+            apellidos: pat.apellidos,
+            fecha_nacimiento: pat.fecha_nacimiento,
+            sexo: pat.sexo,
+            telefono: pat.telefono,
+            email: pat.email,
+            direccion: pat.direccion,
+            localidad: pat.localidad ?? '',
+            provincia: pat.provincia ?? '',
+            codigo_postal: pat.codigo_postal,
+            obra_social: pat.obra_social,
+            numero_afiliado: pat.numero_afiliado,
+            contacto_emergencia_nombre: pat.contacto_emergencia_nombre,
+            contacto_emergencia_telefono: pat.contacto_emergencia_telefono,
+          });
+        }
       } catch (error) {
         console.error(error);
 
-        setError(
-          'No se pudo cargar el paciente.'
-        );
+        if (!silent) {
+          setError(
+            'No se pudo cargar el paciente.'
+          );
+        }
       } finally {
-        setLoading(false);
+        if (!silent) setLoading(false);
+        setRefreshing(false);
       }
     };
 
@@ -198,6 +179,29 @@ const PacienteDetallePage = () => {
   useEffect(() => {
     void loadPatient();
   }, [id]);
+
+  // Actualización reactiva en tiempo real ante eventos del paciente
+  useEffect(() => {
+    if (!ultimoEventoPaciente) return;
+    if (ultimoEventoPaciente.id_paciente !== id) return;
+
+    if (ultimoEventoPaciente.tipo === 'PACIENTE_ESTADO_CAMBIADO') {
+      setPatient((curr) =>
+        curr ? { ...curr, activo: Boolean(ultimoEventoPaciente.activo) } : curr
+      );
+    }
+
+    if (!editing) {
+      void loadPatient(true);
+    }
+  }, [ultimoEventoPaciente]);
+
+  // Resincronización al reconectar el socket
+  useEffect(() => {
+    if (resyncTick > 0 && !editing) {
+      void loadPatient(true);
+    }
+  }, [resyncTick]);
 
   // Actualiza un campo del formulario.
   const handleChange = (
@@ -395,7 +399,7 @@ const PacienteDetallePage = () => {
     };
 
   // Muestra un indicador mientras se carga el paciente.
-  if (loading) {
+  if (loading && !patient) {
     return (
       <div className="text-center py-5">
         <div
@@ -537,7 +541,7 @@ const PacienteDetallePage = () => {
         />
       )}
 
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
         <div>
           <button
             type="button"
@@ -552,17 +556,49 @@ const PacienteDetallePage = () => {
             Volver a pacientes
           </button>
 
-          <h2 className="fw-bold mb-1">
-            {patient.apellidos},{' '}
-            {patient.nombres}
-          </h2>
+          <div className="d-flex align-items-center gap-3">
+            <h2 className="fw-bold mb-1">
+              {patient.apellidos},{' '}
+              {patient.nombres}
+            </h2>
+            <ConnectionStatusBadge />
+            {refreshing && (
+              <span
+                className="spinner-border spinner-border-sm text-secondary"
+                role="status"
+                title="Actualizando datos en segundo plano..."
+              />
+            )}
+          </div>
 
           <p className="text-muted mb-0">
             DNI: {patient.dni}
           </p>
         </div>
 
-        <div className="d-flex gap-2">
+        <div className="d-flex flex-wrap gap-2">
+          {/* TURNOS DEL PACIENTE */}
+          <Link
+            to={`/turnos?search=${patient.dni}`}
+            className="btn btn-outline-secondary"
+            title="Ver agenda y turnos del paciente"
+          >
+            <i className="bi bi-calendar3 me-2" />
+            Turnos
+          </Link>
+
+          {/* HISTORIA CLÍNICA SI TIENE PERMISO */}
+          {permissions.includes('VER_HISTORIA_CLINICA') && (
+            <Link
+              to={`/historia-clinica/pacientes/${patient.id_paciente}?salita=${encodeURIComponent(patient.id_salita_asignada)}`}
+              className="btn btn-outline-success"
+              title="Consultar historia clínica del paciente"
+            >
+              <i className="bi bi-journal-medical me-2" />
+              Historia clínica
+            </Link>
+          )}
+
           <button
             type="button"
             className="btn btn-outline-primary"
@@ -604,22 +640,53 @@ const PacienteDetallePage = () => {
       </div>
 
       {error && (
-        <div
-          className="alert alert-danger"
-          role="alert"
-        >
-          {error}
-        </div>
+        <FloatingFeedbackToast
+          variant="error"
+          message={error}
+          onDismiss={() => setError('')}
+        />
       )}
 
       {success && (
-        <div
-          className="alert alert-success"
-          role="alert"
-        >
-          {success}
-        </div>
+        <FloatingFeedbackToast
+          variant="success"
+          message={success}
+          onDismiss={() => setSuccess('')}
+        />
       )}
+
+      {/* COBERTURA Y SALITA ASIGNADA */}
+      <div className="card border-0 shadow-sm mb-4">
+        <div className="card-header bg-white py-3">
+          <h5 className="mb-0 fw-bold">
+            <i className="bi bi-geo-alt me-2 text-success" />
+            Cobertura territorial y salita asignada
+          </h5>
+        </div>
+        <div className="card-body">
+          <div className="row g-3">
+            <div className="col-md-6">
+              <label className="form-label text-muted small mb-1">Salita asignada de cabecera</label>
+              <div className="p-2 px-3 bg-light rounded border fw-semibold text-dark">
+                <i className="bi bi-hospital me-2 text-success" />
+                {salitas.find((s) => s.id_salita === patient.id_salita_asignada)?.nombre || 'Salita asignada'}
+                {salitas.find((s) => s.id_salita === patient.id_salita_asignada)?.direccion && (
+                  <span className="text-muted fw-normal small d-block mt-1">
+                    Dirección: {salitas.find((s) => s.id_salita === patient.id_salita_asignada)?.direccion}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="col-md-6">
+              <label className="form-label text-muted small mb-1">Barrio declarado</label>
+              <div className="p-2 px-3 bg-light rounded border fw-semibold text-dark">
+                <i className="bi bi-pin-map me-2 text-primary" />
+                {barrios.find((b) => b.id_barrio === patient.id_barrio)?.nombre || 'Barrio declarado'}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <PatientAccountPanel key={patient.id_paciente} patient={patient} onLinked={() => void loadPatient()} />
 

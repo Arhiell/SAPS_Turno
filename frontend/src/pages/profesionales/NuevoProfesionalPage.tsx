@@ -81,18 +81,10 @@ const NuevoProfesionalPage = () => {
         </p>
       </div>
 
-      {error && (
-        <div
-          className="alert alert-danger"
-          role="alert"
-        >
-          <i className="bi bi-exclamation-triangle me-2" />
-          {error}
-        </div>
-      )}
-
       <ProfesionalForm
         loading={saving}
+        error={error}
+        onDismissError={() => setError('')}
         onSubmit={handleSubmit}
         onCancel={() =>
           navigate('/profesionales')

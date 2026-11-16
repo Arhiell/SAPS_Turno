@@ -1,4 +1,5 @@
 import {
+  Link,
   Navigate,
   Outlet,
   useLocation,
@@ -14,16 +15,19 @@ import {
 
 interface ProtectedRouteProps {
   roles?: UserRole[];
+  requiredPermission?: string;
 }
 
 const ProtectedRoute = ({
   roles,
+  requiredPermission,
 }: ProtectedRouteProps) => {
   const {
     isAuthenticated,
     isLoading,
     user,
     patient,
+    hasPermission,
   } = useAuth();
 
   const location =
@@ -105,6 +109,27 @@ const ProtectedRoute = ({
   }
 
   // Renderiza la ruta protegida cuando se cumplen las validaciones.
+  if (requiredPermission && !hasPermission(requiredPermission)) {
+    return (
+      <div className="container py-4">
+        <div className="alert alert-danger border-0 shadow-sm p-4" role="alert">
+          <div className="d-flex align-items-start gap-3">
+            <i className="bi bi-shield-lock fs-3" />
+            <div>
+              <h4 className="alert-heading mb-1">Acceso restringido</h4>
+              <p className="mb-3">
+                Tu usuario no posee el permiso requerido (<code>{requiredPermission}</code>) para acceder a esta sección.
+              </p>
+              <Link to="/panel" className="btn btn-outline-danger btn-sm">
+                Volver al panel principal
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return <Outlet />;
 };
 

@@ -1,10 +1,9 @@
 import { Router } from "express";
 
-import { authenticate } from
-  "../middlewares/auth.middleware.js";
-
-import { requireRole } from
-  "../middlewares/role.middleware.js";
+import { authenticate } from "../middlewares/auth.middleware.js";
+import { requireRole } from "../middlewares/role.middleware.js";
+import { requirePermission } from "../middlewares/permission.middleware.js";
+import { GENERAL_PERMISSIONS } from "../types/permission.types.js";
 
 import {
   getAuditoriasController,
@@ -21,6 +20,7 @@ router.get(
     "SUPER_ADMIN",
     "ADMIN_SALITA",
   ),
+  requirePermission(GENERAL_PERMISSIONS.VER_AUDITORIA),
   getAuditoriasController,
 );
 
@@ -31,6 +31,7 @@ router.get(
     "SUPER_ADMIN",
     "ADMIN_SALITA",
   ),
+  requirePermission(GENERAL_PERMISSIONS.VER_AUDITORIA),
   getAuditoriaByIdController,
 );
 

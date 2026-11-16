@@ -6,16 +6,38 @@ export interface SidebarMenuItem {
   path: string;
   icon: string;
   roles: UserRole[];
+  permission?: string;
 }
 
 // Define las opciones de navegación según los roles permitidos.
 export const sidebarMenu: SidebarMenuItem[] = [
   { label: 'Personas a cargo', path: '/personas-a-cargo', icon: 'bi-people', roles: ['PACIENTE'] },
   {
+    label: 'Historia clínica',
+    path: '/historia-clinica',
+    icon: 'bi-journal-medical',
+    roles: ['PROFESIONAL', 'ADMIN_SALITA', 'RECEPCION'],
+    permission: 'VER_HISTORIA_CLINICA',
+  },
+  {
+    label: 'Derivaciones clínicas',
+    path: '/historia-clinica/derivaciones',
+    icon: 'bi-arrow-left-right',
+    roles: ['PROFESIONAL', 'ADMIN_SALITA'],
+    permission: 'GESTIONAR_DERIVACIONES_CLINICAS',
+  },
+  {
+    label: 'Auditoría clínica',
+    path: '/auditoria-clinica',
+    icon: 'bi-shield-check',
+    roles: ['SUPER_ADMIN'],
+    permission: 'VER_AUDITORIA_CLINICA',
+  },
+  {
     label: 'Asistente CORA',
     path: '/asistente',
     icon: 'bi-robot',
-    roles: ['SUPER_ADMIN', 'ADMIN_SALITA', 'PROFESIONAL', 'PACIENTE'],
+    roles: ['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION', 'PROFESIONAL', 'PACIENTE'],
   },
   {
     label: 'Contenido público',
@@ -27,7 +49,7 @@ export const sidebarMenu: SidebarMenuItem[] = [
     label: 'Mis notificaciones',
     path: '/mis-notificaciones',
     icon: 'bi-bell',
-    roles: ['SUPER_ADMIN', 'ADMIN_SALITA', 'PACIENTE', 'PROFESIONAL'],
+    roles: ['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION', 'PACIENTE', 'PROFESIONAL'],
   },
   {
     label: 'Administrar notificaciones',
@@ -66,6 +88,12 @@ export const sidebarMenu: SidebarMenuItem[] = [
     roles: ['PACIENTE'],
   },
   {
+    label: 'Mi historia clínica',
+    path: '/mi-historia',
+    icon: 'bi-journal-medical',
+    roles: ['PACIENTE'],
+  },
+  {
     label: 'Solicitar turno',
     path: '/solicitar-turno',
     icon: 'bi-calendar-plus',
@@ -75,7 +103,7 @@ export const sidebarMenu: SidebarMenuItem[] = [
     label: 'Mi perfil',
     path: '/mi-perfil',
     icon: 'bi-person',
-    roles: ['PACIENTE', 'PROFESIONAL', 'SUPER_ADMIN', 'ADMIN_SALITA'],
+    roles: ['PACIENTE', 'PROFESIONAL', 'SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION'],
   },
   {
     label: 'Inicio',
@@ -84,6 +112,7 @@ export const sidebarMenu: SidebarMenuItem[] = [
     roles: [
       'SUPER_ADMIN',
       'ADMIN_SALITA',
+      'RECEPCION',
       'PACIENTE',
       'PROFESIONAL',
     ],
@@ -92,19 +121,19 @@ export const sidebarMenu: SidebarMenuItem[] = [
     label: 'Turnos',
     path: '/turnos',
     icon: 'bi-calendar-check',
-    roles: ['SUPER_ADMIN', 'ADMIN_SALITA'],
+    roles: ['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION'],
   },
   {
     label: 'Pacientes',
     path: '/pacientes',
     icon: 'bi-people',
-    roles: ['SUPER_ADMIN', 'ADMIN_SALITA'],
+    roles: ['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION'],
   },
   {
     label: 'Solicitudes de vinculación',
     path: '/solicitudes-vinculacion',
     icon: 'bi-person-check',
-    roles: ['SUPER_ADMIN', 'ADMIN_SALITA'],
+    roles: ['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION'],
   },
   {
     label: 'Profesionales',
@@ -139,10 +168,11 @@ export const sidebarMenu: SidebarMenuItem[] = [
 ];
 
 // Filtra las opciones del menú y prioriza la página de inicio.
-export const getMenuForRole = (role?: string) =>
+export const getMenuForRole = (role?: string, permissions: string[] = []) =>
   sidebarMenu
     .filter((item) =>
-      item.roles.some((allowed) => allowed === role)
+      item.roles.some((allowed) => allowed === role) &&
+      (!item.permission || permissions.includes(item.permission))
     )
     .sort((a, b) =>
       a.path === '/panel'
@@ -151,6 +181,33 @@ export const getMenuForRole = (role?: string) =>
           ? 1
           : 0
     );
+
+// Determina si una opción del menú debe mostrarse activa evitando doble marcado en rutas hermanas/hijas.
+export const isMenuItemActive = (
+  pathname: string,
+  itemPath: string,
+  visibleItems: SidebarMenuItem[]
+): boolean => {
+  if (itemPath === '/panel') {
+    return pathname === '/panel';
+  }
+
+  const matchesItem =
+    pathname === itemPath || pathname.startsWith(`${itemPath}/`);
+
+  if (!matchesItem) {
+    return false;
+  }
+
+  const hasMoreSpecificMatch = visibleItems.some(
+    (other) =>
+      other.path !== itemPath &&
+      other.path.startsWith(`${itemPath}/`) &&
+      (pathname === other.path || pathname.startsWith(`${other.path}/`))
+  );
+
+  return !hasMoreSpecificMatch;
+};
 
 // Define los nombres visibles de cada rol.
 export const roleLabels: Record<string, string> = {

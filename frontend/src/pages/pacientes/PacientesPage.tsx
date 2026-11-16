@@ -1,7 +1,12 @@
 
 import AccountSummary from '../../components/ui/AccountSummary';
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { useAgendaSocket } from '../../context/AgendaSocketContext';
+import ConnectionStatusBadge from '../../components/ui/ConnectionStatusBadge';
+import { FloatingFeedbackToast } from '../../components/ui/FormFeedback';
+import { useAutoDismiss } from '../../utils/useAutoDismiss';
 
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
 
@@ -19,6 +24,7 @@ import type {
 
 const PacientesPage = () => {
   const navigate = useNavigate();
+  const { permissions } = useAuth();
 
   // Recupera el mensaje guardado al registrar un paciente nuevo.
   const [success, setSuccess] = useState(() => {
@@ -45,30 +51,29 @@ const PacientesPage = () => {
   >([]);
   const [selectedSalita, setSelectedSalita] = useState('');
   const requestId = useRef(0);
+  const initialLoadedRef = useRef(false);
 
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [confirmTarget, setConfirmTarget] = useState<Patient | null>(null);
   const [confirming, setConfirming] = useState(false);
 
-  // Oculta el mensaje automáticamente después de cinco segundos.
-  useEffect(() => {
-    if (!success) {
-      return;
-    }
+  const { ultimoEventoPaciente, resyncTick } = useAgendaSocket();
 
-    const timer = window.setTimeout(() => {
-      setSuccess('');
-    }, 5000);
+  // Feedback estándar unificado de 15 segundos.
+  useAutoDismiss(success, setSuccess, 15_000, Boolean(success));
+  useAutoDismiss(error, setError, 15_000, Boolean(error));
 
-    return () => window.clearTimeout(timer);
-  }, [success]);
-
-  const loadPatients = async () => {
+  const loadPatients = async (isBackground = false) => {
     const currentRequest = ++requestId.current;
 
     try {
-      setLoading(true);
+      if (!isBackground && patients.length === 0) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
       setError('');
 
       const response = await getPatients(
@@ -93,25 +98,66 @@ const PacientesPage = () => {
         'No se pudieron cargar los pacientes.',
       );
     } finally {
-      if (currentRequest === requestId.current) setLoading(false);
+      if (currentRequest === requestId.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   };
 
-  // Carga las salitas disponibles para el usuario autenticado.
+  // Carga inicial coordinada de salitas y primera consulta de pacientes sin duplicados
   useEffect(() => {
-    const loadSalitas = async () => {
+    let active = true;
+
+    const init = async () => {
       try {
         const response = await getAdminSalitas();
-        setSalitas(response.data.filter((salita) => salita.activo));
+        if (!active) return;
+        const activeSalitas = response.data.filter((salita) => salita.activo);
+        setSalitas(activeSalitas);
+
+        let initialSalita = selectedSalita;
+        if (activeSalitas.length === 1 && !selectedSalita) {
+          initialSalita = activeSalitas[0].id_salita;
+          setSelectedSalita(initialSalita);
+        }
+
+        initialLoadedRef.current = true;
+
+        const currentRequest = ++requestId.current;
+        const patientsRes = await getPatients(
+          1,
+          10,
+          appliedSearch,
+          statusFilter,
+          initialSalita || undefined,
+        );
+
+        if (!active || currentRequest !== requestId.current) return;
+
+        setPatients(patientsRes.data.patients);
+        setPagination(patientsRes.data.pagination);
       } catch (error) {
-        console.error('No se pudieron cargar las salitas.', error);
+        if (active) {
+          console.error('No se pudieron cargar las salitas.', error);
+          setError('No se pudieron cargar los pacientes.');
+        }
+      } finally {
+        if (active) setLoading(false);
       }
     };
 
-    void loadSalitas();
+    void init();
+
+    return () => {
+      active = false;
+      requestId.current++;
+    };
   }, []);
 
+  // Consultas subsecuentes por cambio de filtros de usuario
   useEffect(() => {
+    if (!initialLoadedRef.current) return;
     void loadPatients();
 
     return () => {
@@ -127,6 +173,31 @@ const PacientesPage = () => {
 
     return () => window.clearTimeout(timer);
   }, [search]);
+
+  // Actualización reactiva en tiempo real ante eventos de pacientes
+  useEffect(() => {
+    if (!initialLoadedRef.current || !ultimoEventoPaciente) return;
+
+    if (ultimoEventoPaciente.tipo === 'PACIENTE_ESTADO_CAMBIADO') {
+      setPatients((prev) =>
+        prev.map((p) =>
+          p.id_paciente === ultimoEventoPaciente.id_paciente
+            ? { ...p, activo: Boolean(ultimoEventoPaciente.activo) }
+            : p
+        )
+      );
+    }
+
+    // Revalidación silenciosa en segundo plano
+    void loadPatients(true);
+  }, [ultimoEventoPaciente]);
+
+  // Resincronización al reconectar el socket
+  useEffect(() => {
+    if (resyncTick > 0 && initialLoadedRef.current) {
+      void loadPatients(true);
+    }
+  }, [resyncTick]);
 
   const handleStatusChange = async (
     patient: Patient,
@@ -195,11 +266,21 @@ const PacientesPage = () => {
       )}
 
       {/* ENCABEZADO */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
         <div>
-          <h2 className="fw-bold mb-1">
-            Pacientes
-          </h2>
+          <div className="d-flex align-items-center gap-3">
+            <h2 className="fw-bold mb-1">
+              Pacientes
+            </h2>
+            <ConnectionStatusBadge />
+            {refreshing && (
+              <span
+                className="spinner-border spinner-border-sm text-secondary"
+                role="status"
+                title="Actualizando datos en segundo plano..."
+              />
+            )}
+          </div>
 
           <p className="text-muted mb-0">
             Administración de pacientes registrados.
@@ -218,23 +299,20 @@ const PacientesPage = () => {
         </button>
       </div>
 
-      {/* MENSAJE DE ÉXITO */}
+      {/* MENSAJES FLOTANTES CENTRALIZADOS */}
       {success && (
-        <div
-          className="alert alert-success alert-dismissible fade show"
-          role="status"
-          aria-live="polite"
-        >
-          <i className="bi bi-check-circle me-2" />
-          {success}
-
-          <button
-            type="button"
-            className="btn-close"
-            aria-label="Cerrar mensaje"
-            onClick={() => setSuccess('')}
-          />
-        </div>
+        <FloatingFeedbackToast
+          variant="success"
+          message={success}
+          onDismiss={() => setSuccess('')}
+        />
+      )}
+      {error && (
+        <FloatingFeedbackToast
+          variant="error"
+          message={error}
+          onDismiss={() => setError('')}
+        />
       )}
 
       {/* BUSCADOR */}
@@ -316,21 +394,11 @@ const PacientesPage = () => {
         </div>
       </div>
 
-      {/* ERROR */}
-      {error && (
-        <div
-          className="alert alert-danger"
-          role="alert"
-        >
-          {error}
-        </div>
-      )}
-
       {/* TABLA */}
       <div className="card border-0 shadow-sm">
         <div className="card-body p-0">
 
-          {loading ? (
+          {loading && patients.length === 0 ? (
             <div className="text-center py-5">
               <div
                 className="spinner-border text-success"
@@ -403,11 +471,11 @@ const PacientesPage = () => {
                       <td data-label="Acciones" className="text-end">
                         <div className="d-flex justify-content-end gap-2">
 
-                          {/* VER */}
+                          {/* VER FICHA */}
                           <button
                             type="button"
                             className="btn btn-sm btn-outline-primary"
-                            title="Ver paciente"
+                            title="Ver ficha del paciente"
                             onClick={() =>
                               handleViewPatient(
                                 patient.id_paciente,
@@ -416,6 +484,26 @@ const PacientesPage = () => {
                           >
                             <i className="bi bi-eye" />
                           </button>
+
+                          {/* TURNOS */}
+                          <Link
+                            to={`/turnos?search=${patient.dni}`}
+                            className="btn btn-sm btn-outline-secondary"
+                            title="Ver turnos del paciente"
+                          >
+                            <i className="bi bi-calendar3" />
+                          </Link>
+
+                          {/* HISTORIA CLÍNICA (SI ESTÁ AUTORIZADO) */}
+                          {permissions.includes('VER_HISTORIA_CLINICA') && (
+                            <Link
+                              to={`/historia-clinica/pacientes/${patient.id_paciente}?salita=${encodeURIComponent(patient.id_salita_asignada)}`}
+                              className="btn btn-sm btn-outline-success"
+                              title="Ver historia clínica"
+                            >
+                              <i className="bi bi-journal-medical" />
+                            </Link>
+                          )}
 
                           {/* ACTIVAR / DESACTIVAR */}
                           <button

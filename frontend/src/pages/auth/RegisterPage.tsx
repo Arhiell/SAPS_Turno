@@ -9,6 +9,10 @@ import {
 } from 'react-router-dom';
 
 import ValidatedInput from '../../components/ui/ValidatedInput';
+import PasswordCreationFields from '../../components/auth/PasswordCreationFields';
+import { FloatingFeedbackToast } from '../../components/ui/FormFeedback';
+import { useAutoDismiss } from '../../utils/useAutoDismiss';
+import { validatePassword, validateConfirmation } from '../../utils/password-policy';
 
 import {
   registerPatient,
@@ -16,12 +20,10 @@ import {
 
 import {
   authError,
-  passwordError,
 } from '../../utils/auth-errors';
 
 import AuthForm from './AuthForm';
 import GoogleButton from './GoogleButton';
-import PasswordInput from './PasswordInput';
 
 export default function RegisterPage() {
   const navigate =
@@ -47,9 +49,11 @@ export default function RegisterPage() {
     useState('');
 
   const [
-    validation,
-    setValidation,
-  ] = useState('');
+    showPasswordErrors,
+    setShowPasswordErrors,
+  ] = useState(false);
+
+  useAutoDismiss(error, () => setError(''), 15000);
 
   // Valida los datos y registra la cuenta del paciente.
   const submit = async (
@@ -61,16 +65,26 @@ export default function RegisterPage() {
       return;
     }
 
-    const message =
-      passwordError(
-        password,
-        confirmation
-      );
-
-    setValidation(message);
     setError('');
 
-    if (message) {
+    // Validación de email
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      document.getElementById('register-email')?.focus();
+      return;
+    }
+
+    setShowPasswordErrors(true);
+
+    const pwdErr = validatePassword(password);
+    if (pwdErr) {
+      document.getElementById('register-password')?.focus();
+      return;
+    }
+
+    const confErr = validateConfirmation(password, confirmation);
+    if (confErr) {
+      document.getElementById('register-confirmation')?.focus();
       return;
     }
 
@@ -79,7 +93,7 @@ export default function RegisterPage() {
     try {
       const result =
         await registerPatient({
-          email,
+          email: trimmedEmail,
           password,
         });
 
@@ -89,7 +103,7 @@ export default function RegisterPage() {
         {
           replace: true,
           state: {
-            email: email.trim(),
+            email: trimmedEmail,
             verificationExpiresAt:
               result.verificationExpiresAt,
           },
@@ -151,61 +165,29 @@ export default function RegisterPage() {
               />
             </div>
 
-            <PasswordInput
-              id="register-password"
-              label="Contraseña"
-              required
-              autoComplete="new-password"
-              maxLength={128}
-              aria-describedby="password-help"
-              value={password}
-              onChange={(event) => {
-                setPassword(
-                  event.target.value
-                );
-
-                setValidation('');
+            <PasswordCreationFields
+              password={password}
+              confirmation={confirmation}
+              onPasswordChange={(v) => {
+                setPassword(v);
+                setError('');
               }}
-            />
-
-            <p
-              id="password-help"
-              className="small text-muted"
-            >
-              Usá entre 8 y 128 caracteres,
-              con mayúscula, minúscula,
-              número y símbolo.
-            </p>
-
-            <PasswordInput
-              id="register-confirmation"
-              label="Confirmar contraseña"
-              required
-              autoComplete="new-password"
-              maxLength={128}
-              value={confirmation}
-              error={validation}
-              onChange={(event) => {
-                setConfirmation(
-                  event.target.value
-                );
-
-                setValidation('');
+              onConfirmationChange={(v) => {
+                setConfirmation(v);
+                setError('');
               }}
+              passwordId="register-password"
+              confirmationId="register-confirmation"
+              disabled={busy}
+              showErrors={showPasswordErrors}
             />
 
             {error && (
-              <div
-                className="alert alert-danger"
-                role="alert"
-              >
-                <i
-                  className="bi bi-exclamation-circle me-2"
-                  aria-hidden="true"
-                />
-
-                {error}
-              </div>
+              <FloatingFeedbackToast
+                variant="error"
+                message={error}
+                onDismiss={() => setError('')}
+              />
             )}
 
             <button

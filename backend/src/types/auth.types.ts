@@ -5,6 +5,7 @@ export interface AuthenticatedUser {
     email: string;
     nombre_usuario: string;
     rol: string;
+    id_rol?: string;
     id_persona?: string | null;
     email_verificado?: boolean;
     perfil_completo?: boolean;

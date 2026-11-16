@@ -2,6 +2,13 @@ import AccountSummary from '../../components/ui/AccountSummary';
 import { agendaToday } from '../../utils/agenda-display';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import ConfirmationModal from '../../components/ui/ConfirmationModal';
+import { FloatingFeedbackToast } from '../../components/ui/FormFeedback';
+import {
+  RECOVERABLE_ERROR_TIMEOUT_MS,
+  SUCCESS_MESSAGE_TIMEOUT_MS,
+  useAutoDismiss,
+} from '../../utils/useAutoDismiss';
 
 import {
   deleteProfessional,
@@ -120,19 +127,8 @@ const ProfesionalesPage = () => {
     }
   }, [navigationState?.message, navigationState?.messageTitle]);
 
-  useEffect(() => {
-    if (!message) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setMessage('');
-    }, 3500);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [message]);
+  useAutoDismiss(message, () => setMessage(''), SUCCESS_MESSAGE_TIMEOUT_MS, Boolean(message));
+  useAutoDismiss(error, () => setError(''), RECOVERABLE_ERROR_TIMEOUT_MS, Boolean(error));
 
   const filteredProfessionals =
     useMemo(() => {
@@ -292,375 +288,76 @@ const ProfesionalesPage = () => {
 
   return (
     <>
-      {activationTarget && (
-        <>
-          <div
-            className="modal-backdrop fade show"
-            style={{
-              zIndex: 1050,
-            }}
-          />
-
-          <div
-            className="modal d-block fade show"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="activate-professional-title"
-            style={{
-              zIndex: 1055,
-            }}
-            onMouseDown={(event) => {
-              if (
-                event.target ===
-                  event.currentTarget &&
-                !activating
-              ) {
-                setActivationTarget(null);
-              }
-            }}
-          >
-            <div
-              className="modal-dialog modal-dialog-centered"
-              role="document"
-              style={{
-                width: '100%',
-                maxWidth: '520px',
-                margin: '1rem auto',
-              }}
-            >
-              <div className="modal-content border-0 shadow-lg">
-                <div
-                  className="modal-header border-0 pb-2 position-relative"
-                  style={{
-                    padding:
-                      '20px 56px 10px 20px',
-                  }}
-                >
-                  <div className="d-flex align-items-center gap-3">
-                    <div
-                      className="rounded-circle d-flex align-items-center justify-content-center bg-success-subtle text-success"
-                      style={{
-                        width: '48px',
-                        height: '48px',
-                        flexShrink: 0,
-                      }}
-                    >
-                      <i className="bi bi-person-check fs-5" />
-                    </div>
-
-                    <div>
-                      <h5
-                        className="modal-title fw-bold mb-1"
-                        id="activate-professional-title"
-                      >
-                        Activar profesional
-                      </h5>
-
-                      <p className="text-muted mb-0 small">
-                        Esta acción requiere confirmación.
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    className="btn-close position-absolute"
-                    aria-label="Cerrar"
-                    disabled={activating}
-                    onClick={() =>
-                      setActivationTarget(null)
-                    }
-                    style={{
-                      top: '18px',
-                      right: '18px',
-                    }}
-                  />
-                </div>
-
-                <div
-                  className="modal-body pt-2"
-                  style={{
-                    paddingLeft: '20px',
-                    paddingRight: '20px',
-                  }}
-                >
-                  <p className="mb-2">
-                    ¿Querés volver a activar al profesional?
-                  </p>
-
-                  <div className="bg-light border rounded p-3">
-                    <div className="fw-semibold">
-                      {
-                        activationTarget.persona
-                          .apellidos
-                      }
-                      ,{' '}
-                      {
-                        activationTarget.persona
-                          .nombres
-                      }
-                    </div>
-
-                    <div className="text-muted small mt-1">
-                      Matrícula:{' '}
-                      {
-                        activationTarget.matricula
-                      }
-                    </div>
-                  </div>
-
-                  <div className="alert alert-success d-flex align-items-start gap-2 mt-3 mb-0 py-2">
-                    <i className="bi bi-info-circle-fill mt-1" />
-
-                    <small>
-                      El profesional volverá a figurar como
-                      activo y podrá ser utilizado en las
-                      operaciones correspondientes del sistema.
-                    </small>
-                  </div>
-                </div>
-
-                <div
-                  className="modal-footer border-0 pt-0"
-                  style={{
-                    padding:
-                      '8px 20px 20px',
-                    gap: '8px',
-                  }}
-                >
-                  <button
-                    type="button"
-                    className="btn btn-outline-secondary"
-                    disabled={activating}
-                    style={{
-                      minWidth: '96px',
-                    }}
-                    onClick={() =>
-                      setActivationTarget(null)
-                    }
-                  >
-                    Cancelar
-                  </button>
-
-                  <button
-                    type="button"
-                    className="btn btn-success"
-                    disabled={activating}
-                    style={{
-                      minWidth: '170px',
-                    }}
-                    onClick={() =>
-                      void confirmActivation()
-                    }
-                  >
-                    {activating ? (
-                      <>
-                        <span
-                          className="spinner-border spinner-border-sm me-2"
-                          role="status"
-                          aria-hidden="true"
-                        />
-                        Activando...
-                      </>
-                    ) : (
-                      <>
-                        <i className="bi bi-person-check me-2" />
-                        Activar profesional
-                      </>
-                    )}
-                  </button>
-                </div>
+      <ConfirmationModal
+        open={Boolean(activationTarget)}
+        title="Activar profesional"
+        subtitle="Esta acción reactiva la disponibilidad del profesional en la salita."
+        message="¿Querés volver a activar al profesional?"
+        confirmText="Activar profesional"
+        cancelText="Cancelar"
+        variant="success"
+        icon="bi-person-check"
+        loading={activating}
+        detail={
+          activationTarget ? (
+            <div className="bg-light border rounded p-3 mt-2">
+              <div className="fw-semibold">
+                {activationTarget.persona.apellidos}, {activationTarget.persona.nombres}
+              </div>
+              <div className="text-muted small mt-1">
+                Matrícula: {activationTarget.matricula}
               </div>
             </div>
-          </div>
-        </>
+          ) : undefined
+        }
+        notice="El profesional volverá a figurar como activo y podrá recibir nuevos turnos."
+        onClose={() => setActivationTarget(null)}
+        onConfirm={() => void confirmActivation()}
+      />
+
+      <ConfirmationModal
+        open={Boolean(deactivationTarget)}
+        title="Desactivar profesional"
+        subtitle="El profesional dejará de figurar disponible en la agenda."
+        message="¿Confirmás la desactivación de este profesional?"
+        confirmText="Desactivar profesional"
+        cancelText="Cancelar"
+        variant="danger"
+        icon="bi-person-x"
+        loading={deactivating}
+        detail={
+          deactivationTarget ? (
+            <div className="bg-light border rounded p-3 mt-2">
+              <div className="fw-semibold">
+                {deactivationTarget.persona.apellidos}, {deactivationTarget.persona.nombres}
+              </div>
+              <div className="text-muted small mt-1">
+                Matrícula: {deactivationTarget.matricula}
+              </div>
+            </div>
+          ) : undefined
+        }
+        notice="Los turnos previamente agendados conservarán su registro histórico."
+        onClose={() => setDeactivationTarget(null)}
+        onConfirm={() => void confirmDeactivation()}
+      />
+
+      {message && (
+        <FloatingFeedbackToast
+          variant="success"
+          title={messageTitle}
+          message={message}
+          onDismiss={() => setMessage('')}
+        />
       )}
 
-      {deactivationTarget && (
-        <>
-          <div
-            className="modal-backdrop fade show"
-            style={{
-              zIndex: 1050,
-            }}
-          />
-
-          <div
-            className="modal d-block fade show"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="deactivate-professional-title"
-            style={{
-              zIndex: 1055,
-            }}
-            onMouseDown={(event) => {
-              if (
-                event.target ===
-                  event.currentTarget &&
-                !deactivating
-              ) {
-                setDeactivationTarget(null);
-              }
-            }}
-          >
-            <div
-              className="modal-dialog modal-dialog-centered"
-              role="document"
-              style={{
-                width: '100%',
-                maxWidth: '520px',
-                margin: '1rem auto',
-              }}
-            >
-              <div className="modal-content border-0 shadow-lg">
-
-                <div
-                  className="modal-header border-0 pb-2 position-relative"
-                  style={{
-                    padding:
-                      '20px 56px 10px 20px',
-                  }}
-                >
-                  <div className="d-flex align-items-center gap-3">
-
-                    <div
-                      className="rounded-circle d-flex align-items-center justify-content-center bg-warning-subtle text-warning"
-                      style={{
-                        width: '48px',
-                        height: '48px',
-                        flexShrink: 0,
-                      }}
-                    >
-                      <i className="bi bi-person-dash fs-5" />
-                    </div>
-
-                    <div>
-                      <h5
-                        className="modal-title fw-bold mb-1"
-                        id="deactivate-professional-title"
-                      >
-                        Desactivar profesional
-                      </h5>
-
-                      <p className="text-muted mb-0 small">
-                        Esta acción requiere confirmación.
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    className="btn-close position-absolute"
-                    aria-label="Cerrar"
-                    disabled={deactivating}
-                    onClick={() =>
-                      setDeactivationTarget(null)
-                    }
-                    style={{
-                      top: '18px',
-                      right: '18px',
-                    }}
-                  />
-                </div>
-
-                <div
-                  className="modal-body pt-2"
-                  style={{
-                    paddingLeft: '20px',
-                    paddingRight: '20px',
-                  }}
-                >
-                  <p className="mb-2">
-                    ¿Querés desactivar al profesional?
-                  </p>
-
-                  <div className="bg-light border rounded p-3">
-                    <div className="fw-semibold">
-                      {
-                        deactivationTarget.persona
-                          .apellidos
-                      }
-                      ,{' '}
-                      {
-                        deactivationTarget.persona
-                          .nombres
-                      }
-                    </div>
-
-                    <div className="text-muted small mt-1">
-                      Matrícula:{' '}
-                      {
-                        deactivationTarget.matricula
-                      }
-                    </div>
-                  </div>
-
-                  <div className="alert alert-warning d-flex align-items-start gap-2 mt-3 mb-0 py-2">
-                    <i className="bi bi-info-circle-fill mt-1" />
-
-                    <small>
-                      El profesional quedará inactivo,
-                      pero sus datos e historial se
-                      conservarán en el sistema.
-                    </small>
-                  </div>
-                </div>
-
-                <div
-                  className="modal-footer border-0 pt-0"
-                  style={{
-                    padding:
-                      '8px 20px 20px',
-                    gap: '8px',
-                  }}
-                >
-                  <button
-                    type="button"
-                    className="btn btn-outline-secondary"
-                    disabled={deactivating}
-                    style={{
-                      minWidth: '96px',
-                    }}
-                    onClick={() =>
-                      setDeactivationTarget(null)
-                    }
-                  >
-                    Cancelar
-                  </button>
-
-                  <button
-                    type="button"
-                    className="btn btn-danger"
-                    disabled={deactivating}
-                    style={{
-                      minWidth: '180px',
-                    }}
-                    onClick={() =>
-                      void confirmDeactivation()
-                    }
-                  >
-                    {deactivating ? (
-                      <>
-                        <span
-                          className="spinner-border spinner-border-sm me-2"
-                          role="status"
-                          aria-hidden="true"
-                        />
-                        Desactivando...
-                      </>
-                    ) : (
-                      <>
-                        <i className="bi bi-person-dash me-2" />
-                        Desactivar profesional
-                      </>
-                    )}
-                  </button>
-                </div>
-
-              </div>
-            </div>
-          </div>
-        </>
+      {error && (
+        <FloatingFeedbackToast
+          variant="error"
+          title="Error"
+          message={error}
+          onDismiss={() => setError('')}
+        />
       )}
 
       <div className="profesionales-page">
@@ -689,42 +386,6 @@ const ProfesionalesPage = () => {
           Nuevo profesional
         </button>
       </div>
-
-      {message && (
-        <div
-          className="alert alert-success d-flex align-items-start gap-3"
-          role="alert"
-        >
-          <i className="bi bi-check-circle-fill mt-1" />
-
-          <div className="flex-grow-1">
-            <div className="fw-semibold mb-1">
-              {messageTitle}
-            </div>
-
-            <div>
-              {message}
-            </div>
-          </div>
-
-          <button
-            type="button"
-            className="btn-close"
-            aria-label="Cerrar mensaje"
-            onClick={() => setMessage('')}
-          />
-        </div>
-      )}
-
-      {error && (
-        <div
-          className="alert alert-danger"
-          role="alert"
-        >
-          <i className="bi bi-exclamation-triangle me-2" />
-          {error}
-        </div>
-      )}
 
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-body">

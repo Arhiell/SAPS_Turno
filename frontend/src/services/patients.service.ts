@@ -11,6 +11,20 @@ import type {
   PatientsResponse,
   UpdatePatientRequest,
 } from '../types/patient.types';
+import type { PatientHistoriaClinicaData } from '../types/historia-clinica.types';
+
+// Obtiene la historia clínica del paciente autenticado o tutelado autorizado.
+export const getOwnHistoriaClinica = async (
+  idPaciente?: string
+): Promise<{ success: boolean; data: PatientHistoriaClinicaData }> => {
+  const response = await api.get<{ success: boolean; data: PatientHistoriaClinicaData }>(
+    '/patients/mi-historia-clinica',
+    {
+      params: idPaciente ? { id_paciente: idPaciente } : undefined,
+    }
+  );
+  return response.data;
+};
 
 // Actualiza los datos personales del paciente autenticado.
 export const updateOwnPatient = async (

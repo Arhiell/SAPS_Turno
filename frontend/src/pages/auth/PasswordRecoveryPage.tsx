@@ -14,12 +14,15 @@ import {
   verifyEmail,
 } from '../../services/auth.service';
 
-import { authError, passwordError } from '../../utils/auth-errors';
+import { authError } from '../../utils/auth-errors';
+import { validatePassword, validateConfirmation } from '../../utils/password-policy';
+import { FloatingFeedbackToast } from '../../components/ui/FormFeedback';
+import { useAutoDismiss } from '../../utils/useAutoDismiss';
 
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
 import ValidatedInput from '../../components/ui/ValidatedInput';
+import PasswordCreationFields from '../../components/auth/PasswordCreationFields';
 
-import PasswordInput from './PasswordInput';
 import AuthForm from './AuthForm';
 import FourDigitCodeInput from './FourDigitCodeInput';
 
@@ -53,6 +56,10 @@ export default function PasswordRecoveryPage({
 
   // Controla la apertura del modal de confirmación.
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [showPasswordErrors, setShowPasswordErrors] = useState(false);
+
+  useAutoDismiss(error, () => setError(''), 15000);
+  useAutoDismiss(success, () => setSuccess(''), 15000);
 
   // Obtiene el token de verificación o recuperación desde la URL.
   const token = params.get('token') ?? '';
@@ -92,27 +99,39 @@ export default function PasswordRecoveryPage({
         return;
       }
 
-      const validation = passwordError(password, confirmation);
+      setShowPasswordErrors(true);
+      const pwdErr = validatePassword(password);
+      if (pwdErr) {
+        document.getElementById('recovery-password')?.focus();
+        return;
+      }
 
-      if (validation) {
-        setError(validation);
+      const confErr = validateConfirmation(password, confirmation);
+      if (confErr) {
+        document.getElementById('recovery-confirmation')?.focus();
         return;
       }
     }
 
     // Valida la contraseña y el token de recuperación por enlace.
     if (mode === 'reset') {
-      const validation = passwordError(password, confirmation);
-
-      if (validation) {
-        setError(validation);
-        return;
-      }
-
       if (token.length < 64) {
         setError(
           'El enlace no contiene un token válido. Solicitá otro enlace.'
         );
+        return;
+      }
+
+      setShowPasswordErrors(true);
+      const pwdErr = validatePassword(password);
+      if (pwdErr) {
+        document.getElementById('recovery-password')?.focus();
+        return;
+      }
+
+      const confErr = validateConfirmation(password, confirmation);
+      if (confErr) {
+        document.getElementById('recovery-confirmation')?.focus();
         return;
       }
     }
@@ -281,50 +300,43 @@ export default function PasswordRecoveryPage({
             </>
           )}
 
-          {/* Solicita la nueva contraseña y su confirmación. */}
+          {/* Solicita la nueva contraseña y su confirmación con requisitos unificados. */}
           {((mode === 'forgot' && requested) || mode === 'reset') && (
-            <>
-              <div>
-                <PasswordInput
-                  id="recovery-password"
-                  label="Nueva contraseña"
-                  autoComplete="new-password"
-                  required
-                  maxLength={128}
-                  value={password}
-                  onChange={event => setPassword(event.target.value)}
-                />
-              </div>
-
-              <div>
-                <PasswordInput
-                  id="recovery-confirmation"
-                  label="Confirmar contraseña"
-                  autoComplete="new-password"
-                  required
-                  value={confirmation}
-                  onChange={event => setConfirmation(event.target.value)}
-                />
-              </div>
-
-              <p className="small text-muted">
-                Entre 8 y 128 caracteres, con mayúscula, minúscula,
-                número y símbolo.
-              </p>
-            </>
+            <PasswordCreationFields
+              password={password}
+              confirmation={confirmation}
+              onPasswordChange={(v) => {
+                setPassword(v);
+                setError('');
+              }}
+              onConfirmationChange={(v) => {
+                setConfirmation(v);
+                setError('');
+              }}
+              passwordId="recovery-password"
+              confirmationId="recovery-confirmation"
+              passwordLabel="Nueva contraseña"
+              confirmationLabel="Confirmar contraseña"
+              disabled={busy || completed}
+              showErrors={showPasswordErrors}
+            />
           )}
 
-          {/* Muestra los mensajes de error o confirmación. */}
+          {/* Muestra los mensajes de error o confirmación generales del servidor. */}
           {error && (
-            <div className="alert alert-danger" role="alert">
-              {error}
-            </div>
+            <FloatingFeedbackToast
+              variant="error"
+              message={error}
+              onDismiss={() => setError('')}
+            />
           )}
 
           {success && (
-            <div className="alert alert-success" role="status">
-              {success}
-            </div>
+            <FloatingFeedbackToast
+              variant="success"
+              message={success}
+              onDismiss={() => setSuccess('')}
+            />
           )}
 
           {/* Ejecuta la acción correspondiente al modo actual. */}

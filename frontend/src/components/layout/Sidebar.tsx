@@ -4,11 +4,11 @@ import SidebarItem from './SidebarItem';
 import { getMenuForRole } from './sidebar-menu';
 
 const Sidebar = () => {
-  const { user } = useAuth();
+  const { user, permissions } = useAuth();
 
   const role = user?.rol;
 
-  const menuItems = getMenuForRole(role);
+  const menuItems = getMenuForRole(role, permissions);
 
   return (
     <aside className="sidebar">
@@ -25,6 +25,7 @@ const Sidebar = () => {
           <SidebarItem
             key={item.path}
             item={item}
+            visibleItems={menuItems}
           />
         ))}
       </nav>

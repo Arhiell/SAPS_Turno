@@ -1,5 +1,11 @@
 import { getEstadoClass } from '../../utils/turno-status';
 import { useEffect, useState, useRef } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import {
+  buildAgendaReturnUrl,
+  type ClinicalNavState,
+} from '../../utils/historia-clinica-navigation';
+import { CLINICAL_PERMISSIONS } from '../../types/historia-clinica.types';
 import { useAuth } from '../../context/AuthContext';
 import {
   getTurnos,
@@ -14,28 +20,56 @@ import type { Turno } from '../../types/turno.types';
 import type { ReporteFormato } from '../../types/reporte.types';
 import ProfessionalCalendar from '../../components/turnos/ProfessionalCalendar';
 import PatientTurnoDetailModal from '../../components/turnos/PatientTurnoDetailModal';
+import { FloatingFeedbackToast } from '../../components/ui/FormFeedback';
 import { useAgendaSocket } from '../../context/AgendaSocketContext';
 import { PROFESSIONAL_MESSAGE_TIMEOUT_MS, useAutoDismiss } from '../../utils/useAutoDismiss';
 import '../../styles/professional-agenda.css';
 
 export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' | 'today' }) {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const validEstados = ['TODOS', 'PENDIENTES', 'CONFIRMADOS', 'ATENDIDOS', 'AUSENTES', 'CANCELADOS'] as const;
+  const paramFecha = searchParams.get('fecha');
+  const paramHasta = searchParams.get('hasta');
+  const paramRango = searchParams.get('rango');
+  const paramEstado = searchParams.get('estado');
+  const paramPage = Number(searchParams.get('page') || '1');
+  const hasValidParamFecha = !!paramFecha && /^\d{4}-\d{2}-\d{2}$/.test(paramFecha);
+  const hasValidParamHasta = !!paramHasta && /^\d{4}-\d{2}-\d{2}$/.test(paramHasta);
+  const canViewHC = hasPermission(CLINICAL_PERMISSIONS.VER_HISTORIA_CLINICA);
+  const canCreateConsulta = hasPermission(CLINICAL_PERMISSIONS.CREAR_CONSULTA_CLINICA);
   const professional = user?.rol === 'PROFESIONAL';
 
   const [fecha, setFecha] = useState(() =>
-    new Intl.DateTimeFormat('en-CA', {
+    professional && mode === 'history' && hasValidParamFecha ? paramFecha : new Intl.DateTimeFormat('en-CA', {
       timeZone: 'America/Argentina/Buenos_Aires',
     }).format(new Date())
   );
 
-  const [fechaHasta, setFechaHasta] = useState(fecha);
-  const [filterRange, setFilterRange] = useState(false);
-  const [today, setToday] = useState(fecha);
+  const [fechaHasta, setFechaHasta] = useState(() => {
+    if (professional && mode === 'history') {
+      if (hasValidParamHasta && (!hasValidParamFecha || paramHasta >= paramFecha)) {
+        return paramHasta;
+      }
+      if (hasValidParamFecha) return paramFecha;
+    }
+    return fecha;
+  });
+  const [filterRange, setFilterRange] = useState(() =>
+    professional && mode === 'history' && (paramRango === '1' || hasValidParamFecha || hasValidParamHasta)
+  );
+  const [today, setToday] = useState(() =>
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Argentina/Buenos_Aires',
+    }).format(new Date())
+  );
   const daily = professional && mode === 'today';
   const validRange = !!fecha && !!fechaHasta && fecha <= fechaHasta;
 
   const [turnos, setTurnos] = useState<Turno[]>([]);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() =>
+    professional && Number.isFinite(paramPage) && paramPage >= 1 ? Math.floor(paramPage) : 1
+  );
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -45,8 +79,62 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
   const { ultimoEvento } = useAgendaSocket();
 
   type EstadoFilter = 'TODOS' | 'PENDIENTES' | 'CONFIRMADOS' | 'ATENDIDOS' | 'AUSENTES' | 'CANCELADOS';
-  const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>('TODOS');
+  const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>(() =>
+    professional && paramEstado && validEstados.includes(paramEstado as EstadoFilter)
+      ? (paramEstado as EstadoFilter)
+      : 'TODOS'
+  );
   const [selectedTurnoModal, setSelectedTurnoModal] = useState<Turno | null>(null);
+  const [openMenuTurnoId, setOpenMenuTurnoId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!openMenuTurnoId) return;
+    const closeMenu = () => setOpenMenuTurnoId(null);
+    document.addEventListener('click', closeMenu);
+    return () => {
+      document.removeEventListener('click', closeMenu);
+    };
+  }, [openMenuTurnoId]);
+
+  const buildTurnoClinicalState = (turnoItem: Turno): ClinicalNavState => ({
+    origin: daily ? 'mis-pacientes' : 'mi-agenda',
+    returnTo: buildAgendaReturnUrl({
+      mode,
+      fecha,
+      fechaHasta,
+      filterRange,
+      estadoFilter,
+      page,
+    }),
+    returnLabel: daily ? 'Volver a Pacientes del día' : 'Volver a Mi agenda',
+    turnoId: turnoItem.id_turno,
+    ...(turnoItem.paciente?.persona
+      ? {
+          patientSummary: {
+            id_paciente: turnoItem.paciente.id_paciente,
+            dni: turnoItem.paciente.persona.dni,
+            nombres: turnoItem.paciente.persona.nombres,
+            apellidos: turnoItem.paciente.persona.apellidos,
+          },
+        }
+      : {}),
+  });
+
+  useEffect(() => {
+    if (!professional) return;
+    const nextUrl = buildAgendaReturnUrl({
+      mode,
+      fecha,
+      fechaHasta,
+      filterRange,
+      estadoFilter,
+      page,
+    });
+    const nextQuery = nextUrl.includes('?') ? nextUrl.split('?')[1] : '';
+    if (nextQuery !== searchParams.toString()) {
+      setSearchParams(new URLSearchParams(nextQuery), { replace: true });
+    }
+  }, [professional, mode, fecha, fechaHasta, filterRange, estadoFilter, page, searchParams, setSearchParams]);
 
   const turnosPendientes = turnos.filter((t) => !t.estado.es_estado_final).length;
   const turnosAtendidos = turnos.filter((t) => t.estado.codigo === 'ATENDIDO').length;
@@ -333,7 +421,7 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
 
   const renderFeedbackAlerts = () => (
     <>
-      {error && (
+      {error && turnos.length === 0 && (
         <div className="alert alert-danger d-flex align-items-center justify-content-between gap-2 mb-0" role="alert">
           <div>
             <i className="bi bi-exclamation-triangle-fill me-2" aria-hidden="true" />
@@ -348,21 +436,139 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
         </div>
       )}
 
+      {error && turnos.length > 0 && (
+        <FloatingFeedbackToast
+          variant="error"
+          message={error}
+          onDismiss={() => setError('')}
+        />
+      )}
+
       {success && (
-        <div className="alert alert-success d-flex align-items-center justify-content-between gap-2 mb-0" role="status">
-          <div>
-            <i className="bi bi-check-circle-fill me-2" aria-hidden="true" />
-            {success}
-          </div>
-          <button
-            type="button"
-            className="btn-close flex-shrink-0"
-            aria-label="Cerrar aviso"
-            onClick={() => setSuccess('')}
-          />
-        </div>
+        <FloatingFeedbackToast
+          variant="success"
+          message={success}
+          onDismiss={() => setSuccess('')}
+        />
       )}
     </>
+  );
+
+  const renderMobileCards = () => (
+    <div className="prof-mobile-agenda-cards d-md-none">
+      {!filteredTurnos.length ? (
+        <div className="text-center py-4 text-muted small">
+          <i className="bi bi-funnel fs-4 d-block mb-2" aria-hidden="true" />
+          No hay turnos para mostrar con el filtro seleccionado (<strong>{estadoFilter.toLowerCase()}</strong>).
+        </div>
+      ) : (
+        filteredTurnos.map((t) => (
+          <article key={t.id_turno} className="prof-mobile-agenda-card">
+            <div className="d-flex justify-content-between align-items-center gap-2">
+              <div className="fw-bold text-dark">
+                {!daily && (
+                  <span className="text-muted fw-normal me-2">
+                    {new Date(t.fecha_hora_inicio).toLocaleDateString('es-AR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      timeZone: 'America/Argentina/Buenos_Aires',
+                    })}
+                  </span>
+                )}
+                {new Date(t.fecha_hora_inicio).toLocaleTimeString('es-AR', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false,
+                  timeZone: 'America/Argentina/Buenos_Aires',
+                })}{' '}
+                hs
+              </div>
+              <span className={getEstadoClass(t.estado.codigo)}>{t.estado.nombre}</span>
+            </div>
+
+            <div>
+              <button
+                type="button"
+                className="prof-table-patient-link text-start"
+                onClick={() => setSelectedTurnoModal(t)}
+              >
+                <i className="bi bi-person text-secondary me-1" aria-hidden="true" />
+                <span className="fw-bold text-dark">
+                  {t.paciente?.persona?.apellidos} {t.paciente?.persona?.nombres}
+                </span>
+              </button>
+              <div className="text-muted small">DNI: {t.paciente?.persona?.dni || '—'}</div>
+            </div>
+
+            <div className="small">
+              <div className="fw-medium text-dark">{t.especialidad?.nombre || 'General'}</div>
+              <div className="text-muted">
+                <i className="bi bi-geo-alt me-1" />
+                {t.salita?.nombre}
+              </div>
+            </div>
+
+            <div className="d-flex flex-wrap gap-2 pt-1">
+              <button
+                type="button"
+                className="prof-btn-view-card"
+                onClick={() => setSelectedTurnoModal(t)}
+              >
+                <i className="bi bi-eye" aria-hidden="true" />
+                <span>Ver ficha</span>
+              </button>
+              {canViewHC && t.paciente?.id_paciente && (
+                <Link
+                  to={`/historia-clinica/pacientes/${t.paciente.id_paciente}${t.salita?.id_salita ? `?salita=${encodeURIComponent(t.salita.id_salita)}` : ''}`}
+                  state={buildTurnoClinicalState(t)}
+                  className="prof-btn-action-secondary text-decoration-none"
+                >
+                  <i className="bi bi-journal-medical" aria-hidden="true" />
+                  <span>HC</span>
+                </Link>
+              )}
+              {canCreateConsulta && t.paciente?.id_paciente && (
+                <Link
+                  to={`/historia-clinica/pacientes/${t.paciente.id_paciente}/nueva-consulta?${new URLSearchParams({
+                    ...(t.salita?.id_salita ? { salita: t.salita.id_salita } : {}),
+                    turno: t.id_turno,
+                  }).toString()}`}
+                  state={buildTurnoClinicalState(t)}
+                  className="prof-btn-action-secondary text-decoration-none"
+                >
+                  <i className="bi bi-file-earmark-plus" aria-hidden="true" />
+                  <span>Consulta</span>
+                </Link>
+              )}
+              {!t.estado.es_estado_final && (
+                <>
+                  <button
+                    type="button"
+                    className="prof-btn-action-icon btn-attended"
+                    disabled={busy}
+                    onClick={() => void mark(t, 'ATENDIDO')}
+                    title="Marcar como atendido"
+                    aria-label="Marcar como atendido"
+                  >
+                    <i className="bi bi-check2" aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className="prof-btn-action-icon btn-absent"
+                    disabled={busy}
+                    onClick={() => void mark(t, 'NO_ASISTIO')}
+                    title="Marcar como no asistió"
+                    aria-label="Marcar como no asistió"
+                  >
+                    <i className="bi bi-person-x" aria-hidden="true" />
+                  </button>
+                </>
+              )}
+            </div>
+          </article>
+        ))
+      )}
+    </div>
   );
 
   const renderTurnosTable = () => {
@@ -398,163 +604,222 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
     }
 
     return (
-      <div className="table-responsive" style={{ opacity: loading ? 0.6 : 1, transition: 'opacity 0.2s ease-in-out' }}>
-        <table className={`table saps-responsive-table table-hover align-middle${professional ? ' professional-agenda-table' : ''}`}>
-          <thead>
-            <tr>
-              <th scope="col" style={{ width: '90px' }}>Hora</th>
-              {professional ? (
-                <>
-                  <th scope="col" style={{ minWidth: '180px' }}>Paciente</th>
-                  <th scope="col" style={{ minWidth: '150px' }}>Especialidad</th>
-                  <th scope="col" style={{ width: '130px' }}>Estado</th>
-                  <th scope="col" style={{ width: '190px', minWidth: '185px' }}>Acciones</th>
-                </>
-              ) : (
-                <>
-                  <th scope="col">Profesional</th>
-                  <th scope="col">Salita</th>
-                  <th scope="col">Especialidad</th>
-                  <th scope="col">Estado</th>
-                  <th scope="col">Motivo</th>
-                </>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {!filteredTurnos.length ? (
+      <div style={{ opacity: loading ? 0.6 : 1, transition: 'opacity 0.2s ease-in-out' }}>
+        {professional && renderMobileCards()}
+        <div className={professional ? 'd-none d-md-block' : 'table-responsive'}>
+          <table className={`table saps-responsive-table table-hover align-middle${professional ? ' professional-agenda-table mb-0' : ''}`}>
+            <thead>
               <tr>
-                <td colSpan={professional ? 5 : 6} className="text-center py-5">
-                  <div className="text-muted">
-                    <i className="bi bi-funnel fs-4 d-block mb-2" aria-hidden="true" />
-                    No hay turnos para mostrar con el filtro seleccionado (<strong>{estadoFilter.toLowerCase()}</strong>).
-                  </div>
-                </td>
+                <th scope="col" className="prof-agenda-col-tight">Hora</th>
+                {professional ? (
+                  <>
+                    <th scope="col" className="prof-agenda-patient-cell">Paciente</th>
+                    <th scope="col">Especialidad</th>
+                    <th scope="col" className="prof-agenda-col-tight">Estado</th>
+                    <th scope="col" className="text-end prof-agenda-col-tight">Acciones</th>
+                  </>
+                ) : (
+                  <>
+                    <th scope="col">Profesional</th>
+                    <th scope="col">Salita</th>
+                    <th scope="col">Especialidad</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col">Motivo</th>
+                  </>
+                )}
               </tr>
-            ) : (
-              filteredTurnos.map((t) => (
-                <tr key={t.id_turno} className={professional ? `professional-turno--${t.estado.codigo}` : undefined}>
-                  <td data-label="Hora" className="fw-semibold text-dark text-nowrap">
-                    {filterRange && fecha !== fechaHasta ? (
-                      <>
-                        <div className="small text-muted">
-                          {new Date(t.fecha_hora_inicio).toLocaleDateString('es-AR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            timeZone: 'America/Argentina/Buenos_Aires',
-                          })}
-                        </div>
-                        <div>
-                          {new Date(t.fecha_hora_inicio).toLocaleTimeString('es-AR', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            timeZone: 'America/Argentina/Buenos_Aires',
-                          })}{' '}
-                          hs
-                        </div>
-                      </>
-                    ) : (
-                      `${new Date(t.fecha_hora_inicio).toLocaleTimeString('es-AR', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        timeZone: 'America/Argentina/Buenos_Aires',
-                      })} hs`
-                    )}
+            </thead>
+            <tbody>
+              {!filteredTurnos.length ? (
+                <tr>
+                  <td colSpan={professional ? 5 : 6} className="text-center py-5">
+                    <div className="text-muted">
+                      <i className="bi bi-funnel fs-4 d-block mb-2" aria-hidden="true" />
+                      No hay turnos para mostrar con el filtro seleccionado (<strong>{estadoFilter.toLowerCase()}</strong>).
+                    </div>
                   </td>
+                </tr>
+              ) : (
+                filteredTurnos.map((t) => (
+                  <tr key={t.id_turno} className={professional ? `professional-turno--${t.estado.codigo}` : undefined}>
+                    <td data-label="Hora" className="fw-semibold text-dark text-nowrap">
+                      {!daily ? (
+                        <>
+                          <div className="small text-muted fw-normal">
+                            {new Date(t.fecha_hora_inicio).toLocaleDateString('es-AR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              timeZone: 'America/Argentina/Buenos_Aires',
+                            })}
+                          </div>
+                          <div>
+                            {new Date(t.fecha_hora_inicio).toLocaleTimeString('es-AR', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: false,
+                              timeZone: 'America/Argentina/Buenos_Aires',
+                            })}
+                          </div>
+                        </>
+                      ) : (
+                        new Date(t.fecha_hora_inicio).toLocaleTimeString('es-AR', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: false,
+                          timeZone: 'America/Argentina/Buenos_Aires',
+                        })
+                      )}
+                    </td>
 
-                  {professional ? (
-                    <>
-                      <td data-label="Paciente">
-                        <button
-                          type="button"
-                          className="prof-table-patient-link text-start"
-                          onClick={() => setSelectedTurnoModal(t)}
-                          title="Ver ficha completa del paciente"
-                        >
-                          <i className="bi bi-person text-secondary me-1 flex-shrink-0" aria-hidden="true" />
-                          <span className="fw-bold text-dark">
-                            {t.paciente?.persona?.apellidos} {t.paciente?.persona?.nombres}
-                          </span>
-                        </button>
-                        <div className="text-muted small">
-                          DNI: {t.paciente?.persona?.dni || '—'}
-                        </div>
-                      </td>
-
-                      <td data-label="Especialidad">
-                        <div className="text-dark fw-medium">
-                          {t.especialidad?.nombre || 'General'}
-                        </div>
-                        <div className="text-muted small">
-                          <i className="bi bi-geo-alt me-1" />
-                          {t.salita?.nombre}
-                        </div>
-                      </td>
-
-                      <td data-label="Estado">
-                        <span className={getEstadoClass(t.estado.codigo)}>
-                          {t.estado.nombre}
-                        </span>
-                      </td>
-
-                      <td data-label="Acciones" style={{ width: '190px', minWidth: '185px' }}>
-                        <div className="prof-actions-cell">
+                    {professional ? (
+                      <>
+                        <td data-label="Paciente">
                           <button
                             type="button"
-                            className="prof-btn-view-card"
+                            className="prof-table-patient-link text-start"
                             onClick={() => setSelectedTurnoModal(t)}
                             title="Ver ficha completa del paciente"
-                            aria-label="Ver ficha completa del paciente"
                           >
-                            <i className="bi bi-eye" aria-hidden="true" />
-                            <span>Ver ficha</span>
+                            <i className="bi bi-person text-secondary me-1 flex-shrink-0" aria-hidden="true" />
+                            <span className="fw-bold text-dark">
+                              {t.paciente?.persona?.apellidos} {t.paciente?.persona?.nombres}
+                            </span>
                           </button>
+                          <div className="text-muted small">
+                            DNI: {t.paciente?.persona?.dni || '—'}
+                          </div>
+                        </td>
 
-                          {!t.estado.es_estado_final && (
-                            <>
-                              <button
-                                type="button"
-                                className="prof-btn-action-icon btn-attended"
-                                disabled={busy}
-                                onClick={() => void mark(t, 'ATENDIDO')}
-                                title="Marcar como atendido"
-                                aria-label="Marcar como atendido"
+                        <td data-label="Especialidad">
+                          <div className="text-dark fw-medium">
+                            {t.especialidad?.nombre || 'General'}
+                          </div>
+                          <div className="text-muted small prof-salita-truncate" title={t.salita?.nombre || undefined}>
+                            <i className="bi bi-geo-alt me-1" />
+                            {t.salita?.nombre}
+                          </div>
+                        </td>
+
+                        <td data-label="Estado">
+                          <span className={getEstadoClass(t.estado.codigo)}>
+                            {t.estado.nombre}
+                          </span>
+                        </td>
+
+                        <td data-label="Acciones" className="text-end">
+                          <div className="prof-actions-cell">
+                            <button
+                              type="button"
+                              className="prof-btn-view-card"
+                              onClick={() => setSelectedTurnoModal(t)}
+                              title="Ver ficha completa del paciente"
+                              aria-label="Ver ficha completa del paciente"
+                            >
+                              <i className="bi bi-eye" aria-hidden="true" />
+                              <span>Ver ficha</span>
+                            </button>
+
+                            {canViewHC && t.paciente?.id_paciente && (
+                              <Link
+                                to={`/historia-clinica/pacientes/${t.paciente.id_paciente}${t.salita?.id_salita ? `?salita=${encodeURIComponent(t.salita.id_salita)}` : ''}`}
+                                state={buildTurnoClinicalState(t)}
+                                className="prof-btn-action-secondary text-decoration-none"
+                                title="Abrir historia clínica del paciente"
                               >
-                                <i className="bi bi-check2" aria-hidden="true" />
-                              </button>
-                              <button
-                                type="button"
-                                className="prof-btn-action-icon btn-absent"
-                                disabled={busy}
-                                onClick={() => void mark(t, 'NO_ASISTIO')}
-                                title="Marcar como no asistió"
-                                aria-label="Marcar como no asistió"
+                                <i className="bi bi-journal-medical" aria-hidden="true" />
+                                <span>HC</span>
+                              </Link>
+                            )}
+                            {canCreateConsulta && t.paciente?.id_paciente && (
+                              <Link
+                                to={`/historia-clinica/pacientes/${t.paciente.id_paciente}/nueva-consulta?${new URLSearchParams({
+                                  ...(t.salita?.id_salita ? { salita: t.salita.id_salita } : {}),
+                                  turno: t.id_turno,
+                                }).toString()}`}
+                                state={buildTurnoClinicalState(t)}
+                                className="prof-btn-action-secondary text-decoration-none"
+                                title="Registrar consulta clínica desde este turno"
                               >
-                                <i className="bi bi-person-x" aria-hidden="true" />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      <td data-label="Profesional">
-                        {t.profesional?.persona?.apellidos} {t.profesional?.persona?.nombres}
-                      </td>
-                      <td data-label="Salita">{t.salita?.nombre}</td>
-                      <td data-label="Especialidad">{t.especialidad?.nombre}</td>
-                      <td data-label="Estado">
-                        <span className={getEstadoClass(t.estado.codigo)}>{t.estado.nombre}</span>
-                      </td>
-                      <td data-label="Motivo">{t.motivo_consulta || '—'}</td>
-                    </>
-                  )}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                                <i className="bi bi-file-earmark-plus" aria-hidden="true" />
+                                <span>Consulta</span>
+                              </Link>
+                            )}
+                            {!t.estado.es_estado_final && (
+                              <div className="prof-actions-menu-wrap">
+                                <button
+                                  type="button"
+                                  className="prof-btn-action-secondary"
+                                  disabled={busy}
+                                  aria-expanded={openMenuTurnoId === t.id_turno}
+                                  aria-label="Más acciones del turno"
+                                  title="Más acciones del turno"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenMenuTurnoId((prev) =>
+                                      prev === t.id_turno ? null : t.id_turno
+                                    );
+                                  }}
+                                >
+                                  <i className="bi bi-three-dots-vertical" aria-hidden="true" />
+                                </button>
+                                {openMenuTurnoId === t.id_turno && (
+                                  <div
+                                    className="prof-actions-dropdown"
+                                    role="menu"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <button
+                                      type="button"
+                                      className="prof-actions-dropdown-item is-success"
+                                      role="menuitem"
+                                      disabled={busy}
+                                      onClick={() => {
+                                        setOpenMenuTurnoId(null);
+                                        void mark(t, 'ATENDIDO');
+                                      }}
+                                    >
+                                      <i className="bi bi-check2-circle" aria-hidden="true" />
+                                      <span>Marcar atendido</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="prof-actions-dropdown-item is-danger"
+                                      role="menuitem"
+                                      disabled={busy}
+                                      onClick={() => {
+                                        setOpenMenuTurnoId(null);
+                                        void mark(t, 'NO_ASISTIO');
+                                      }}
+                                    >
+                                      <i className="bi bi-person-x" aria-hidden="true" />
+                                      <span>Marcar no asistió</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td data-label="Profesional">
+                          {t.profesional?.persona?.apellidos} {t.profesional?.persona?.nombres}
+                        </td>
+                        <td data-label="Salita">{t.salita?.nombre}</td>
+                        <td data-label="Especialidad">{t.especialidad?.nombre}</td>
+                        <td data-label="Estado">
+                          <span className={getEstadoClass(t.estado.codigo)}>{t.estado.nombre}</span>
+                        </td>
+                        <td data-label="Motivo">{t.motivo_consulta || '—'}</td>
+                      </>
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   };
@@ -827,6 +1092,9 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
         turno={selectedTurnoModal}
         onClose={() => setSelectedTurnoModal(null)}
         onStatusChanged={() => setRevision((r) => r + 1)}
+        clinicalOriginState={
+          selectedTurnoModal ? buildTurnoClinicalState(selectedTurnoModal) : undefined
+        }
       />
     </div>
   );

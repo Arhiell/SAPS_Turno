@@ -11,6 +11,9 @@ import {
   type TutorRequestDirection,
 } from '../../services/tutor-requests.service';
 import { authError } from '../../utils/auth-errors';
+import { FloatingFeedbackToast } from '../../components/ui/FormFeedback';
+import { useAutoDismiss } from '../../utils/useAutoDismiss';
+import { formatManagedKinship } from '../../utils/kinship';
 
 export default function PersonasACargoPage() {
   const { items, loading, error, retry } = useManagedPatients();
@@ -26,17 +29,8 @@ export default function PersonasACargoPage() {
   const [success, setSuccess] = useState('');
   const [revision, setRevision] = useState(0);
 
-  useEffect(() => {
-    if (!success) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setSuccess('');
-    }, 5000);
-
-    return () => window.clearTimeout(timer);
-  }, [success]);
+  useAutoDismiss(success, () => setSuccess(''), 15000);
+  useAutoDismiss(requestError, () => setRequestError(''), 15000);
 
   useEffect(() => {
     let active = true;
@@ -130,8 +124,20 @@ export default function PersonasACargoPage() {
             </button>
           </fieldset>
         </form>
-        {requestError && <p className="alert alert-danger mt-3 mb-0" role="alert">{requestError}</p>}
-        {success && <p className="alert alert-success mt-3 mb-0" role="status">{success}</p>}
+        {requestError && !success && (
+          <FloatingFeedbackToast
+            variant="error"
+            message={requestError}
+            onDismiss={() => setRequestError('')}
+          />
+        )}
+        {success && (
+          <FloatingFeedbackToast
+            variant="success"
+            message={success}
+            onDismiss={() => setSuccess('')}
+          />
+        )}
       </div>
 
       <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
@@ -155,7 +161,7 @@ export default function PersonasACargoPage() {
                   </span>
                   <h2 className="h5 mb-0">{person.apellidos}, {person.nombres}</h2>
                 </div>
-                <span className="person-card-badge">{person.parentesco}</span>
+                <span className="person-card-badge">{formatManagedKinship(person, titular)}</span>
               </div>
 
               <div className="person-card-info">
@@ -170,6 +176,10 @@ export default function PersonasACargoPage() {
               <div className="d-flex flex-wrap gap-2">
                 <Link className="btn btn-saps" to={`/solicitar-turno?paciente=${person.id_paciente}`}>Solicitar turno</Link>
                 <Link className="btn btn-outline-success" to={`/mis-turnos?paciente=${person.id_paciente}`}>Ver turnos</Link>
+                <Link className="btn btn-outline-primary" to={`/mi-historia?paciente=${person.id_paciente}`}>
+                  <i className="bi bi-journal-medical me-1" />
+                  Ver historia clínica
+                </Link>
               </div>
             </article>
           </div>

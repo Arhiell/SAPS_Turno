@@ -10,6 +10,10 @@ import {
 } from 'react-router-dom';
 
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
+import { FloatingFeedbackToast } from '../../components/ui/FormFeedback';
+import { useAgendaSocket } from '../../context/AgendaSocketContext';
+import ConnectionStatusBadge from '../../components/ui/ConnectionStatusBadge';
+import { useAutoDismiss } from '../../utils/useAutoDismiss';
 
 import {
   getTurnoById,
@@ -68,8 +72,13 @@ const TurnoDetallePage = () => {
   const [statusTarget, setStatusTarget] =
     useState<string | null>(null);
 
+  const { ultimoEvento, resyncTick } = useAgendaSocket();
+
+  useAutoDismiss(message, setMessage, 15_000, Boolean(message));
+  useAutoDismiss(error, setError, 15_000, Boolean(error));
+
   const loadTurno =
-    async () => {
+    async (isBackground = false) => {
       if (!id) {
         setError(
           'No se especificó el turno.',
@@ -79,7 +88,9 @@ const TurnoDetallePage = () => {
       }
 
       try {
-        setLoading(true);
+        if (!isBackground && !turno) {
+          setLoading(true);
+        }
         setError('');
 
         const response =
@@ -105,24 +116,35 @@ const TurnoDetallePage = () => {
     void loadTurno();
   }, [id]);
 
+  // Actualización reactiva ante eventos de WebSocket correspondientes a este turno
   useEffect(() => {
-    if (!message) {
-      return;
+    if (!ultimoEvento || !id) return;
+
+    if (ultimoEvento.id_turno === id) {
+      if (ultimoEvento.estado) {
+        setTurno((prev) =>
+          prev
+            ? {
+                ...prev,
+                estado: {
+                  ...prev.estado,
+                  codigo: ultimoEvento.estado!,
+                  nombre: ultimoEvento.estado!,
+                },
+              }
+            : null
+        );
+      }
+      void loadTurno(true);
     }
+  }, [ultimoEvento, id]);
 
-    const timer =
-      window.setTimeout(
-        () => {
-          setMessage('');
-        },
-        3500,
-      );
-
-    return () =>
-      window.clearTimeout(
-        timer,
-      );
-  }, [message]);
+  // Resincronización ante reconexión del socket
+  useEffect(() => {
+    if (resyncTick > 0 && id) {
+      void loadTurno(true);
+    }
+  }, [resyncTick, id]);
 
   const handleCancel = () => {
     if (!id || !turno) return;
@@ -270,8 +292,58 @@ const TurnoDetallePage = () => {
     turno.estado
       .es_estado_final;
 
+  const getStatusModalInfo = () => {
+    if (statusTarget === 'CONFIRMADO') {
+      return {
+        title: 'Confirmar turno',
+        message: '¿Querés confirmar este turno?',
+        confirmText: 'Confirmar turno',
+        variant: 'primary' as const,
+        icon: 'bi-check-circle',
+      };
+    }
+    if (statusTarget === 'EN_ESPERA') {
+      return {
+        title: 'Pasar turno a espera',
+        message: '¿El paciente ya se encuentra en la salita para su atención médica?',
+        confirmText: 'Pasar a espera',
+        variant: 'primary' as const,
+        icon: 'bi-hourglass-split',
+      };
+    }
+    if (statusTarget === 'NO_ASISTIO') {
+      return {
+        title: 'Registrar inasistencia',
+        message: '¿Querés registrar que el paciente no asistió a su turno?',
+        confirmText: 'Marcar inasistencia',
+        variant: 'danger' as const,
+        icon: 'bi-person-x',
+      };
+    }
+    return {
+      title: 'Actualizar estado',
+      message: '¿Querés cambiar el estado de este turno?',
+      confirmText: 'Aceptar',
+      variant: 'primary' as const,
+      icon: 'bi-check-circle',
+    };
+  };
+
+  const statusModalInfo = getStatusModalInfo();
+
   return (
     <div className="turnos-page">
+      {(message || error) && (
+        <FloatingFeedbackToast
+          message={message || error}
+          variant={error ? 'error' : 'success'}
+          onDismiss={() => {
+            setMessage('');
+            setError('');
+          }}
+        />
+      )}
+
       <ConfirmationModal
         open={cancelOpen}
         title="Cancelar turno"
@@ -307,8 +379,8 @@ const TurnoDetallePage = () => {
 
       <ConfirmationModal
         open={statusTarget !== null}
-        title={statusTarget === 'CONFIRMADO' ? 'Confirmar turno' : 'Pasar turno a espera'}
-        message={statusTarget === 'CONFIRMADO' ? '¿Querés confirmar este turno?' : '¿Querés pasar este turno a espera?'}
+        title={statusModalInfo.title}
+        message={statusModalInfo.message}
         detail={
           <>
             <div className="fw-semibold">Turno {turno.codigo_turno}</div>
@@ -317,9 +389,9 @@ const TurnoDetallePage = () => {
             </div>
           </>
         }
-        confirmText={statusTarget === 'CONFIRMADO' ? 'Confirmar turno' : 'Pasar a espera'}
-        variant="primary"
-        icon="bi-check-circle"
+        confirmText={statusModalInfo.confirmText}
+        variant={statusModalInfo.variant}
+        icon={statusModalInfo.icon}
         loading={changingStatus}
         onClose={() => setStatusTarget(null)}
         onConfirm={() => void confirmStatusChange()}
@@ -353,33 +425,22 @@ const TurnoDetallePage = () => {
             </p>
           </div>
 
-          <span
-            className={getEstadoClass(
-              turno.estado
-                .codigo,
-            )}
-          >
-            {
-              turno.estado
-                .nombre
-            }
-          </span>
+          <div className="d-flex align-items-center gap-2">
+            <ConnectionStatusBadge />
+            <span
+              className={getEstadoClass(
+                turno.estado
+                  .codigo,
+              )}
+            >
+              {
+                turno.estado
+                  .nombre
+              }
+            </span>
+          </div>
         </div>
       </div>
-
-      {message && (
-        <div className="alert alert-success">
-          <i className="bi bi-check-circle me-2" />
-          {message}
-        </div>
-      )}
-
-      {error && (
-        <div className="alert alert-danger">
-          <i className="bi bi-exclamation-triangle me-2" />
-          {error}
-        </div>
-      )}
 
       <div className="row g-4">
         <div className="col-xl-8">
@@ -571,36 +632,56 @@ const TurnoDetallePage = () => {
             <div className="card-body d-flex flex-column gap-2">
               {!isFinal && (
                 <>
-                  <button
-                    type="button"
-                    className="btn btn-outline-success"
-                    disabled={
-                      changingStatus
-                    }
-                    onClick={() =>
-                      void handleStatusChange(
-                        'CONFIRMADO',
-                      )
-                    }
-                  >
-                    <i className="bi bi-check-circle me-2" />
-                    Confirmar turno
-                  </button>
+                  {turno.estado.codigo === 'SOLICITADO' && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-success"
+                      disabled={
+                        changingStatus
+                      }
+                      onClick={() =>
+                        void handleStatusChange(
+                          'CONFIRMADO',
+                        )
+                      }
+                    >
+                      <i className="bi bi-check-circle me-2" />
+                      Confirmar turno
+                    </button>
+                  )}
+
+                  {turno.estado.codigo !== 'EN_ESPERA' && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-warning"
+                      disabled={
+                        changingStatus
+                      }
+                      onClick={() =>
+                        void handleStatusChange(
+                          'EN_ESPERA',
+                        )
+                      }
+                    >
+                      <i className="bi bi-hourglass-split me-2" />
+                      Pasar a espera
+                    </button>
+                  )}
 
                   <button
                     type="button"
-                    className="btn btn-outline-warning"
+                    className="btn btn-outline-secondary"
                     disabled={
                       changingStatus
                     }
                     onClick={() =>
                       void handleStatusChange(
-                        'EN_ESPERA',
+                        'NO_ASISTIO',
                       )
                     }
                   >
-                    <i className="bi bi-hourglass-split me-2" />
-                    Pasar a espera
+                    <i className="bi bi-person-x me-2" />
+                    Registrar inasistencia
                   </button>
 
                   <button

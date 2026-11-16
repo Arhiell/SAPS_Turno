@@ -14,14 +14,41 @@ import type {
   UpdateProfessionalSpecialtyRequest,
 } from '../types/profesional.types';
 
-// Obtiene el listado de profesionales.
-export const getProfessionals =
-  async (): Promise<ProfessionalsResponse> => {
-    const response = await api.get<ProfessionalsResponse>(
-      '/profesionales'
-    );
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
 
-    return response.data;
+let professionalsCache: { data: ProfessionalsResponse; timestamp: number } | null = null;
+let professionalsInflight: Promise<ProfessionalsResponse> | null = null;
+
+export const clearProfessionalsCache = () => {
+  professionalsCache = null;
+  professionalsInflight = null;
+};
+
+// Obtiene el listado de profesionales con caché en memoria e invalidación.
+export const getProfessionals =
+  async (forceRefresh = false): Promise<ProfessionalsResponse> => {
+    const now = Date.now();
+    if (!forceRefresh && professionalsCache && now - professionalsCache.timestamp < CACHE_TTL_MS) {
+      return professionalsCache.data;
+    }
+
+    if (!forceRefresh && professionalsInflight) {
+      return professionalsInflight;
+    }
+
+    professionalsInflight = api
+      .get<ProfessionalsResponse>('/profesionales')
+      .then((response) => {
+        professionalsCache = { data: response.data, timestamp: Date.now() };
+        professionalsInflight = null;
+        return response.data;
+      })
+      .catch((error) => {
+        professionalsInflight = null;
+        throw error;
+      });
+
+    return professionalsInflight;
   };
 
 // Obtiene los datos de un profesional por su identificador.
@@ -44,6 +71,7 @@ export const createProfessional = async (
     data
   );
 
+  clearProfessionalsCache();
   return response.data;
 };
 
@@ -57,6 +85,7 @@ export const updateProfessional = async (
     data
   );
 
+  clearProfessionalsCache();
   return response.data;
 };
 
@@ -68,6 +97,7 @@ export const deleteProfessional = async (
     `/profesionales/${id}`
   );
 
+  clearProfessionalsCache();
   return response.data;
 };
 

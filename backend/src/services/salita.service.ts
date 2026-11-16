@@ -23,6 +23,10 @@ import {
   getTurnoScope,
 } from './turno-access.service.js';
 
+import {
+  emitirCambioSalita,
+} from './socket.service.js';
+
 // Obtiene todas las salitas disponibles.
 export const getSalitas = async () => {
   return await getAllSalitas();
@@ -74,9 +78,21 @@ export const crearSalita = async (
     activo?: boolean;
   }
 ) => {
-  return await createSalita(
+  const created = await createSalita(
     salita
   );
+
+  try {
+    emitirCambioSalita({
+      tipo: 'SALITA_CONFIGURACION_ACTUALIZADA',
+      mensaje: `Nueva salita creada: ${salita.nombre}`,
+      id_salita: created.id_salita,
+    });
+  } catch {
+    // Notificación en tiempo real es complementaria
+  }
+
+  return created;
 };
 
 // Actualiza los datos de una salita.
@@ -96,10 +112,22 @@ export const actualizarSalita = async (
     activo?: boolean;
   }
 ) => {
-  return await updateSalita(
+  const updated = await updateSalita(
     id,
     salita
   );
+
+  try {
+    emitirCambioSalita({
+      tipo: 'SALITA_CONFIGURACION_ACTUALIZADA',
+      mensaje: `Configuración de salita actualizada`,
+      id_salita: id,
+    });
+  } catch {
+    // Notificación en tiempo real es complementaria
+  }
+
+  return updated;
 };
 
 // Realiza la baja lógica de una salita.

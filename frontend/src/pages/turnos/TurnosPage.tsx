@@ -1,13 +1,19 @@
 import { getEstadoClass } from '../../utils/turno-status';
 import {
   useEffect,
+  useRef,
   useState,
 } from 'react';
 
 import { useNavigate } from 'react-router-dom';
+import { useAgendaSocket } from '../../context/AgendaSocketContext';
+import ConnectionStatusBadge from '../../components/ui/ConnectionStatusBadge';
+import { FloatingFeedbackToast } from '../../components/ui/FormFeedback';
+import { useAutoDismiss } from '../../utils/useAutoDismiss';
 
 import {
   getTurnos,
+  changeTurnoStatus,
 } from '../../services/turnos.service';
 
 import {
@@ -169,6 +175,9 @@ const TurnosPage = () => {
   const [loading, setLoading] =
     useState(true);
 
+  const [refreshing, setRefreshing] =
+    useState(false);
+
   const [loadingFilters, setLoadingFilters] =
     useState(true);
 
@@ -178,106 +187,140 @@ const TurnosPage = () => {
   const [message, setMessage] =
     useState('');
 
-  const loadFilters =
-    async () => {
+  const [actionLoadingId, setActionLoadingId] =
+    useState<string | null>(null);
+
+  const { ultimoEvento, resyncTick } = useAgendaSocket();
+  const initialLoadedRef = useRef(false);
+  const requestId = useRef(0);
+  const lastFiltersRef = useRef<string>('');
+
+  useAutoDismiss(message, setMessage, 15_000, Boolean(message));
+  useAutoDismiss(error, setError, 15_000, Boolean(error));
+
+  const loadTurnos = async (
+    page = 1,
+    isBackground = false,
+    salitaIdOverride?: string,
+    force = false
+  ) => {
+    const currentSalita = salitaIdOverride !== undefined ? salitaIdOverride : salitaId;
+    const filtersKey = `${page}-${fecha}-${professionalId}-${specialtyId}-${patientId}-${currentSalita}-${estado}-${appliedSearch}`;
+
+    // Evita consultas duplicadas si los filtros y página no han cambiado, salvo que sea forzada por WebSocket/acción
+    if (!force && lastFiltersRef.current === filtersKey) {
+      return;
+    }
+    lastFiltersRef.current = filtersKey;
+
+    const currentRequest = ++requestId.current;
+
+    try {
+      // Muestra spinner solo si no hay datos previos en pantalla; si ya hay datos, refresca suavemente
+      if (!isBackground && turnos.length === 0) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
+      setError('');
+
+      const response = await getTurnos(
+        {
+          fecha: fecha || undefined,
+          id_profesional: professionalId || undefined,
+          id_especialidad: specialtyId || undefined,
+          id_paciente: patientId || undefined,
+          id_salita: currentSalita || undefined,
+          estado: estado || undefined,
+          search: appliedSearch || undefined,
+          page,
+          limit: 20,
+        },
+        force
+      );
+
+      if (currentRequest !== requestId.current) {
+        return;
+      }
+
+      setTurnos(response.data.turnos);
+      setPagination(response.data.pagination);
+    } catch (error) {
+      if (currentRequest === requestId.current) {
+        console.error(error);
+        setError('No se pudieron cargar los turnos.');
+      }
+    } finally {
+      if (currentRequest === requestId.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    }
+  };
+
+  // Carga inicial coordinada de catálogos y primera consulta única
+  useEffect(() => {
+    let active = true;
+
+    const init = async () => {
       try {
         setLoadingFilters(true);
         setError('');
 
         const [
-          patientsResponse,
           professionalsResponse,
           salitasResponse,
           especialidadesResponse,
         ] = await Promise.all([
-          getPatients(1, 100),
           getProfessionals(),
           getAdminSalitas(),
           getCatalogo('especialidades'),
         ]);
 
-        setPatients(
-          patientsResponse.data.patients,
-        );
+        if (!active) return;
 
-        setProfessionals(
-          professionalsResponse.data,
-        );
+        setProfessionals(professionalsResponse.data);
+        setSalitas(salitasResponse.data);
+        setEspecialidades(especialidadesResponse.filter((item) => item.activo));
 
-        setSalitas(
-          salitasResponse.data,
-        );
+        let initialSalita = salitaId;
+        if (salitasResponse.data.length === 1 && !salitaId) {
+          initialSalita = salitasResponse.data[0].id_salita;
+          setSalitaId(initialSalita);
+        }
 
-        setEspecialidades(
-          especialidadesResponse.filter((item) => item.activo),
-        );
-      } catch (error) {
-        console.error(error);
+        // Carga diferida en segundo plano para el dropdown de pacientes
+        getPatients(1, 20)
+          .then((res) => {
+            if (active) setPatients(res.data.patients);
+          })
+          .catch(() => undefined);
 
-        setError(
-          'No se pudieron cargar los filtros.',
-        );
-      } finally {
+        initialLoadedRef.current = true;
         setLoadingFilters(false);
+
+        // Primera consulta única con la salita resuelta
+        await loadTurnos(1, false, initialSalita);
+      } catch (err) {
+        if (active) {
+          console.error(err);
+          setError('No se pudieron cargar los datos iniciales.');
+          setLoadingFilters(false);
+          setLoading(false);
+        }
       }
     };
 
-  const loadTurnos =
-    async (
-      page = 1,
-    ) => {
-      try {
-        setLoading(true);
-        setError('');
+    void init();
 
-        const response =
-          await getTurnos({
-            fecha:
-              fecha || undefined,
-            id_profesional:
-              professionalId ||
-              undefined,
-            id_especialidad:
-              specialtyId ||
-              undefined,
-            id_paciente:
-              patientId ||
-              undefined,
-            id_salita:
-              salitaId ||
-              undefined,
-            estado:
-              estado || undefined,
-            search:
-              appliedSearch ||
-              undefined,
-            page,
-            limit: 20,
-          });
-
-        setTurnos(
-          response.data.turnos,
-        );
-
-        setPagination(
-          response.data.pagination,
-        );
-      } catch (error) {
-        console.error(error);
-
-        setError(
-          'No se pudieron cargar los turnos.',
-        );
-      } finally {
-        setLoading(false);
-      }
+    return () => {
+      active = false;
     };
-
-  useEffect(() => {
-    void loadFilters();
   }, []);
 
+  // Consultas subsecuentes disparadas por cambios en filtros
   useEffect(() => {
+    if (!initialLoadedRef.current) return;
     void loadTurnos(1);
   }, [
     fecha,
@@ -290,40 +333,60 @@ const TurnosPage = () => {
   ]);
 
   useEffect(() => {
-    const timer =
-      window.setTimeout(
-        () => {
-          setAppliedSearch(
-            search.trim(),
-          );
-        },
-        350,
-      );
+    const timer = window.setTimeout(() => {
+      setAppliedSearch(search.trim());
+    }, 350);
 
-    return () =>
-      window.clearTimeout(
-        timer,
-      );
+    return () => window.clearTimeout(timer);
   }, [search]);
 
+  // Actualización reactiva granular ante eventos de WebSocket (sin spinner intrusivo)
   useEffect(() => {
-    if (!message) {
-      return;
+    if (!initialLoadedRef.current) return;
+    if (ultimoEvento) {
+      if (ultimoEvento.id_turno && ultimoEvento.estado) {
+        setTurnos((prev) =>
+          prev.map((t) =>
+            t.id_turno === ultimoEvento.id_turno
+              ? {
+                  ...t,
+                  estado: {
+                    ...t.estado,
+                    codigo: ultimoEvento.estado!,
+                    nombre:
+                      estadoOptions.find((e) => e.value === ultimoEvento.estado)?.label ||
+                      ultimoEvento.estado!,
+                  },
+                }
+              : t
+          )
+        );
+      }
+      void loadTurnos(pagination.page, true, undefined, true);
     }
+  }, [ultimoEvento]);
 
-    const timer =
-      window.setTimeout(
-        () => {
-          setMessage('');
-        },
-        3500,
-      );
+  // Resincronización al reconectar
+  useEffect(() => {
+    if (resyncTick > 0 && initialLoadedRef.current) {
+      void loadTurnos(pagination.page, true, undefined, true);
+    }
+  }, [resyncTick]);
 
-    return () =>
-      window.clearTimeout(
-        timer,
-      );
-  }, [message]);
+  const handleQuickArrival = async (turnoId: string, pacienteNombre: string) => {
+    try {
+      setActionLoadingId(turnoId);
+      setError('');
+      await changeTurnoStatus(turnoId, { estado: 'EN_ESPERA' });
+      setMessage(`Se registró la llegada de ${pacienteNombre}. El turno pasó a sala de espera.`);
+      await loadTurnos(pagination.page, true, undefined, true);
+    } catch (cause) {
+      console.error(cause);
+      setError('No se pudo registrar la llegada del paciente.');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
 
   const clearFilters =
     () => {
@@ -378,18 +441,15 @@ const TurnosPage = () => {
         </button>
       </div>
 
-      {message && (
-        <div className="alert alert-success">
-          <i className="bi bi-check-circle me-2" />
-          {message}
-        </div>
-      )}
-
-      {error && (
-        <div className="alert alert-danger">
-          <i className="bi bi-exclamation-triangle me-2" />
-          {error}
-        </div>
+      {(message || error) && (
+        <FloatingFeedbackToast
+          message={message || error}
+          variant={error ? 'error' : 'success'}
+          onDismiss={() => {
+            setMessage('');
+            setError('');
+          }}
+        />
       )}
 
       <div className="card border-0 shadow-sm mb-4">
@@ -679,19 +739,28 @@ const TurnosPage = () => {
 
       <div className="card border-0 shadow-sm">
         <div className="card-header bg-white py-3">
-          <div className="d-flex justify-content-between align-items-center">
+          <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h5 className="mb-0 fw-bold">
               Turnos registrados
             </h5>
 
-            <span className="badge bg-light text-dark">
-              {pagination.total}
-            </span>
+            <div className="d-flex align-items-center gap-2">
+              <ConnectionStatusBadge />
+              {refreshing && (
+                <span className="text-muted small d-inline-flex align-items-center gap-1">
+                  <span className="spinner-border spinner-border-sm text-success" role="status" />
+                  Sincronizando...
+                </span>
+              )}
+              <span className="badge bg-light text-dark">
+                {pagination.total}
+              </span>
+            </div>
           </div>
         </div>
 
         <div className="card-body p-0">
-          {loading ? (
+          {loading && turnos.length === 0 ? (
             <div className="text-center py-5">
               <div
                 className="spinner-border text-success"
@@ -842,18 +911,42 @@ const TurnosPage = () => {
                         </td>
 
                         <td data-label="Acción" className="text-end">
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-success"
-                            title="Ver turno"
-                            onClick={() =>
-                              navigate(
-                                `/turnos/${turno.id_turno}`,
-                              )
-                            }
-                          >
-                            <i className="bi bi-eye" />
-                          </button>
+                          <div className="d-inline-flex align-items-center gap-1 justify-content-end">
+                            {(turno.estado.codigo === 'SOLICITADO' || turno.estado.codigo === 'CONFIRMADO') && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-warning text-dark d-inline-flex align-items-center"
+                                title="Marcar llegada / en sala de espera"
+                                disabled={actionLoadingId === turno.id_turno}
+                                onClick={() =>
+                                  void handleQuickArrival(
+                                    turno.id_turno,
+                                    `${turno.paciente.persona.apellidos}, ${turno.paciente.persona.nombres}`
+                                  )
+                                }
+                              >
+                                {actionLoadingId === turno.id_turno ? (
+                                  <span className="spinner-border spinner-border-sm me-1" role="status" />
+                                ) : (
+                                  <i className="bi bi-box-arrow-in-right me-1 text-warning" />
+                                )}
+                                <span className="d-none d-md-inline">Llegó</span>
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-success"
+                              title="Ver turno"
+                              onClick={() =>
+                                navigate(
+                                  `/turnos/${turno.id_turno}`,
+                                )
+                              }
+                            >
+                              <i className="bi bi-eye" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ),

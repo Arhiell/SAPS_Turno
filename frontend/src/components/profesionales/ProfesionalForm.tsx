@@ -1,4 +1,6 @@
+import { ActionInlineFeedback } from '../ui/FormFeedback';
 import ValidatedInput from '../ui/ValidatedInput';
+import { focusFirstInvalidControl } from '../../utils/form-feedback';
 
 import {
   useEffect,
@@ -28,6 +30,8 @@ export interface ProfessionalFormData {
 interface ProfesionalFormProps {
   professional?: Professional | null;
   loading?: boolean;
+  error?: string | null;
+  onDismissError?: () => void;
   onSubmit: (
     data: ProfessionalFormData
   ) => Promise<void>;
@@ -53,6 +57,8 @@ const emptyForm: ProfessionalFormData = {
 const ProfesionalForm = ({
   professional,
   loading = false,
+  error,
+  onDismissError,
   onSubmit,
   onCancel,
 }: ProfesionalFormProps) => {
@@ -60,6 +66,7 @@ const ProfesionalForm = ({
     useState<ProfessionalFormData>(
       emptyForm
     );
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   // Carga los datos cuando se edita un profesional.
   useEffect(() => {
@@ -112,6 +119,20 @@ const ProfesionalForm = ({
     event: React.FormEvent<HTMLFormElement>
   ) => {
     event.preventDefault();
+    setValidationError(null);
+
+    if (!event.currentTarget.checkValidity()) {
+      const invalidEl = focusFirstInvalidControl(event.currentTarget);
+      const fallbackMsg =
+        (invalidEl instanceof HTMLInputElement ||
+          invalidEl instanceof HTMLSelectElement ||
+          invalidEl instanceof HTMLTextAreaElement) &&
+        invalidEl.validationMessage
+          ? invalidEl.validationMessage
+          : 'Revisá los campos obligatorios resaltados.';
+      setValidationError(fallbackMsg);
+      return;
+    }
 
     await onSubmit({
       ...form,
@@ -130,8 +151,10 @@ const ProfesionalForm = ({
     });
   };
 
+  const activeError = validationError || error || null;
+
   return (
-    <form onSubmit={handleSubmit}>
+    <form noValidate onSubmit={handleSubmit}>
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-header bg-white py-3">
           <h5 className="mb-0 fw-bold">
@@ -407,38 +430,50 @@ const ProfesionalForm = ({
         </div>
       </div>
 
-      <div className="d-flex justify-content-end gap-2 mb-4">
-        <button
-          type="button"
-          className="btn btn-outline-secondary"
-          onClick={onCancel}
-          disabled={loading}
-        >
-          Cancelar
-        </button>
+      <div className="d-flex flex-column gap-2 mb-4">
+        {activeError && (
+          <ActionInlineFeedback
+            variant="error"
+            message={activeError}
+            onDismiss={() => {
+              setValidationError(null);
+              onDismissError?.();
+            }}
+          />
+        )}
+        <div className="d-flex justify-content-end gap-2">
+          <button
+            type="button"
+            className="btn btn-outline-secondary"
+            onClick={onCancel}
+            disabled={loading}
+          >
+            Cancelar
+          </button>
 
-        <button
-          type="submit"
-          className="btn btn-saps"
-          disabled={loading}
-        >
-          {loading ? (
-            <>
-              <span
-                className="spinner-border spinner-border-sm me-2"
-                role="status"
-              />
-              Guardando...
-            </>
-          ) : (
-            <>
-              <i className="bi bi-check-lg me-2" />
-              {professional
-                ? 'Guardar cambios'
-                : 'Registrar profesional'}
-            </>
-          )}
-        </button>
+          <button
+            type="submit"
+            className="btn btn-saps"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <span
+                  className="spinner-border spinner-border-sm me-2"
+                  role="status"
+                />
+                Guardando...
+              </>
+            ) : (
+              <>
+                <i className="bi bi-check-lg me-2" />
+                {professional
+                  ? 'Guardar cambios'
+                  : 'Registrar profesional'}
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </form>
   );

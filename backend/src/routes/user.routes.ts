@@ -15,6 +15,12 @@ import {
   requireRole
 } from "../middlewares/role.middleware.js";
 
+import {
+  requirePermission
+} from "../middlewares/permission.middleware.js";
+
+import { GENERAL_PERMISSIONS } from "../types/permission.types.js";
+
 const router = Router();
 
 /**
@@ -33,6 +39,10 @@ router.post(
   "/admins",
   authenticate,
   requireRole("SUPER_ADMIN"),
+  requirePermission(
+    GENERAL_PERMISSIONS.GESTIONAR_USUARIOS,
+    GENERAL_PERMISSIONS.GESTIONAR_ROLES
+  ),
   createAdmin
 );
 
@@ -47,6 +57,10 @@ router.post(
     "SUPER_ADMIN",
     "ADMIN_SALITA"
   ),
+  requirePermission(
+    GENERAL_PERMISSIONS.GESTIONAR_USUARIOS,
+    GENERAL_PERMISSIONS.GESTIONAR_PACIENTES
+  ),
   createPatient
 );
 
@@ -60,6 +74,10 @@ router.post(
   requireRole(
     "SUPER_ADMIN",
     "ADMIN_SALITA"
+  ),
+  requirePermission(
+    GENERAL_PERMISSIONS.GESTIONAR_USUARIOS,
+    GENERAL_PERMISSIONS.GESTIONAR_PROFESIONALES
   ),
   createProfessional
 );

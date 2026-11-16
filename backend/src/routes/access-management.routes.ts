@@ -2,7 +2,9 @@ import { Router } from 'express';
 import { z } from 'zod';
 
 import { authenticate } from '../middlewares/auth.middleware.js';
+import { requirePermission } from '../middlewares/permission.middleware.js';
 import { requireRole } from '../middlewares/role.middleware.js';
+import { GENERAL_PERMISSIONS } from '../types/permission.types.js';
 
 import {
   changeManagedAccess,
@@ -16,7 +18,8 @@ const router = Router();
 // Restringe el acceso a los administradores autorizados.
 router.use(
   authenticate,
-  requireRole('SUPER_ADMIN', 'ADMIN_SALITA')
+  requireRole('SUPER_ADMIN', 'ADMIN_SALITA'),
+  requirePermission(GENERAL_PERMISSIONS.GESTIONAR_USUARIOS)
 );
 
 // Obtiene las cuentas administrativas con filtros y paginación.

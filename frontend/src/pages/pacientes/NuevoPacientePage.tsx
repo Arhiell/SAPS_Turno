@@ -11,7 +11,9 @@ import {
 } from 'react-router-dom';
 
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
+import { ActionInlineFeedback } from '../../components/ui/FormFeedback';
 import ValidatedInput from '../../components/ui/ValidatedInput';
+import { focusFirstInvalidControl } from '../../utils/form-feedback';
 
 import {
   getBarrios,
@@ -114,12 +116,17 @@ const NuevoPacientePage = () => {
             )
           );
 
-          setSalitas(
-            salitasResponse.data.filter(
-              (salita) =>
-                salita.activo
-            )
+          const activeSalitas = salitasResponse.data.filter(
+            (salita) => salita.activo
           );
+          setSalitas(activeSalitas);
+
+          if (activeSalitas.length === 1) {
+            setForm((prev) => ({
+              ...prev,
+              id_salita_asignada: activeSalitas[0].id_salita,
+            }));
+          }
         } catch (error) {
           console.error(error);
 
@@ -330,19 +337,23 @@ const NuevoPacientePage = () => {
         </p>
       </div>
 
-      {error && (
-        <div
-          className="alert alert-danger"
-          role="alert"
-        >
-          <i className="bi bi-exclamation-triangle me-2" />
-          {error}
-        </div>
-      )}
-
       <form
+        noValidate
         onSubmit={(event) => {
           event.preventDefault();
+          setError('');
+          if (!event.currentTarget.checkValidity()) {
+            const invalidEl = focusFirstInvalidControl(event.currentTarget);
+            const fallbackMsg =
+              (invalidEl instanceof HTMLInputElement ||
+                invalidEl instanceof HTMLSelectElement ||
+                invalidEl instanceof HTMLTextAreaElement) &&
+              invalidEl.validationMessage
+                ? invalidEl.validationMessage
+                : 'Revisá los campos obligatorios resaltados.';
+            setError(fallbackMsg);
+            return;
+          }
           setConfirmOpen(true);
         }}
       >
@@ -780,39 +791,48 @@ const NuevoPacientePage = () => {
           </div>
         </div>
 
-        <div className="d-flex justify-content-end gap-2 mb-4">
-          <button
-            type="button"
-            className="btn btn-outline-secondary"
-            onClick={() =>
-              navigate('/pacientes')
-            }
-            disabled={saving}
-          >
-            Cancelar
-          </button>
+        <div className="d-flex flex-column gap-2 mb-4">
+          {error && (
+            <ActionInlineFeedback
+              variant="error"
+              message={error}
+              onDismiss={() => setError('')}
+            />
+          )}
+          <div className="d-flex justify-content-end gap-2">
+            <button
+              type="button"
+              className="btn btn-outline-secondary"
+              onClick={() =>
+                navigate('/pacientes')
+              }
+              disabled={saving}
+            >
+              Cancelar
+            </button>
 
-          <button
-            type="submit"
-            className="btn btn-saps"
-            disabled={saving}
-          >
-            {saving ? (
-              <>
-                <span
-                  className="spinner-border spinner-border-sm me-2"
-                  role="status"
-                />
+            <button
+              type="submit"
+              className="btn btn-saps"
+              disabled={saving}
+            >
+              {saving ? (
+                <>
+                  <span
+                    className="spinner-border spinner-border-sm me-2"
+                    role="status"
+                  />
 
-                Guardando...
-              </>
-            ) : (
-              <>
-                <i className="bi bi-person-plus me-2" />
-                Registrar paciente
-              </>
-            )}
-          </button>
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-person-plus me-2" />
+                  Registrar paciente
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </form>
     </div>

@@ -24,6 +24,7 @@ import {
 
 import { agendaDateTime } from '../utils/turno-time.js';
 import { supabase } from '../config/supabase.js';
+import { emitirCambioPaciente } from './socket.service.js';
 
 
 /**
@@ -95,7 +96,7 @@ export const editPatientTutorRelation = async (
   input: UpdatePatientTutorInput,
   userId: string,
 ) => {
-  await getPatientById(patientId);
+  const patient = await getPatientById(patientId);
   await getTutorById(tutorId);
 
   const current =
@@ -143,6 +144,15 @@ export const editPatientTutorRelation = async (
     );
   }
 
+  emitirCambioPaciente({
+    tipo: 'TUTOR_VINCULACION_ACTUALIZADA',
+    mensaje: `Se actualizó la relación de tutoría para ${patient.nombres} ${patient.apellidos}.`,
+    id_paciente: patientId,
+    id_salita: patient.id_salita_asignada ?? undefined,
+    nombre_paciente: `${patient.nombres} ${patient.apellidos}`,
+    dni_paciente: patient.dni ?? undefined,
+  });
+
   return updated;
 };
 
@@ -155,7 +165,7 @@ export const finishPatientTutorRelation = async (
   tutorId: string,
   userId: string,
 ) => {
-  await getPatientById(patientId);
+  const patient = await getPatientById(patientId);
   await getTutorById(tutorId);
 
   const relation =
@@ -190,6 +200,15 @@ export const finishPatientTutorRelation = async (
       409
     );
   }
+
+  emitirCambioPaciente({
+    tipo: 'TUTOR_VINCULACION_ACTUALIZADA',
+    mensaje: `Se actualizó la relación de tutoría para ${patient.nombres} ${patient.apellidos}.`,
+    id_paciente: patientId,
+    id_salita: patient.id_salita_asignada ?? undefined,
+    nombre_paciente: `${patient.nombres} ${patient.apellidos}`,
+    dni_paciente: patient.dni ?? undefined,
+  });
 
   return updated;
 };

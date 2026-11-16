@@ -49,6 +49,8 @@ interface AuthContextValue {
   roleInfo: ProfileResponse['data']['roleInfo'] | null;
   reloadProfile: () => Promise<void>;
   updateProfile: (profile: ProfileResponse['data']) => void;
+  permissions: string[];
+  hasPermission: (permission: string) => boolean;
 }
 
 // Crea el contexto de autenticación.
@@ -258,6 +260,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         roleInfo,
         reloadProfile,
         updateProfile,
+        permissions: user?.permisos ?? [],
+        hasPermission: (permission: string) =>
+          (user?.permisos ?? []).includes(permission),
       }}
     >
       {children}

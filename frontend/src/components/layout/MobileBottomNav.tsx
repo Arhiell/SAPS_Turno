@@ -15,11 +15,13 @@ import {
 
 import {
   getMenuForRole,
+  isMenuItemActive,
 } from './sidebar-menu';
 
 export default function MobileBottomNav() {
   const {
     user,
+    permissions,
   } = useAuth();
 
   const {
@@ -45,7 +47,8 @@ export default function MobileBottomNav() {
   // Obtiene las opciones disponibles según el rol del usuario.
   const items =
     getMenuForRole(
-      user?.rol
+      user?.rol,
+      permissions
     );
 
   const hasMore =
@@ -170,7 +173,7 @@ export default function MobileBottomNav() {
         isActive,
       }) =>
         `mobile-bottom-nav__link${
-          isActive
+          isActive && isMenuItemActive(pathname, item.path, items)
             ? ' is-active'
             : ''
         }`
@@ -222,7 +225,7 @@ export default function MobileBottomNav() {
           className={`mobile-bottom-nav__link${
             secondary.some(
               (item) =>
-                pathname.startsWith(
+                isMenuItemActive(pathname, item.path, items) && pathname.startsWith(
                   item.path
                 )
             )

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../../services/api';
 import { authError } from '../../utils/auth-errors';
+import ConfirmationModal from './ConfirmationModal';
 
 type Tutor = { id_tutor: string; nombres: string; apellidos: string; dni: string;
   parentesco: string; puede_gestionar_turnos: boolean; fecha_desde: string; fecha_hasta: string | null;
@@ -25,6 +26,7 @@ export default function PatientTutorsPanel({ patientId }: { patientId: string })
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [revision, setRevision] = useState(0);
+  const [tutorToRevoke, setTutorToRevoke] = useState<Tutor | null>(null);
   const url = `/patients/${patientId}/tutors`;
   const isLoading = loading || loadedPatientId !== patientId;
 
@@ -95,11 +97,37 @@ export default function PatientTutorsPanel({ patientId }: { patientId: string })
               {entry.actor ? ` por ${entry.actor.persona ? `${entry.actor.persona.apellidos}, ${entry.actor.persona.nombres}` : entry.actor.nombre_usuario}` : ' · actor previo no registrado'}
             </li>)}</ul>
           </details>}
-          {authorizationStatus(tutor) === 'Gestión de turnos autorizada' &&
-            <button type="button" className="btn btn-sm btn-outline-danger" disabled={busy}
-              onClick={() => { if (window.confirm(`¿Revocar la autorización de ${tutor.nombres} ${tutor.apellidos}? No podrá realizar nuevas gestiones.`)) void revoke(tutor); }}>
-              Revocar autorización</button>}
+          {authorizationStatus(tutor) === 'Gestión de turnos autorizada' && (
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-danger"
+              disabled={busy}
+              onClick={() => setTutorToRevoke(tutor)}
+            >
+              Revocar autorización
+            </button>
+          )}
         </li>)}</ul>}
     </div>
+
+    <ConfirmationModal
+      open={Boolean(tutorToRevoke)}
+      title="Revocar autorización de tutor"
+      subtitle="Esta acción retira el permiso de gestión de turnos."
+      message={`¿Confirmás que querés revocar la autorización de ${tutorToRevoke?.nombres} ${tutorToRevoke?.apellidos}? No podrá realizar nuevas gestiones para este paciente.`}
+      confirmText="Revocar autorización"
+      cancelText="Cancelar"
+      variant="danger"
+      icon="bi-shield-x"
+      loading={busy}
+      onClose={() => setTutorToRevoke(null)}
+      onConfirm={() => {
+        if (tutorToRevoke) {
+          const target = tutorToRevoke;
+          setTutorToRevoke(null);
+          void revoke(target);
+        }
+      }}
+    />
   </section>;
 }
