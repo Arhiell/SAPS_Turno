@@ -1,6 +1,6 @@
 # 🏗️ Arquitectura del sistema
 
-[← Índice](README.md) · [Backend](BACKEND.md) · [Frontend](FRONTEND.md)
+[← Índice](README.md) · [Diagramas](DIAGRAMAS.md) · [Backend](BACKEND.md) · [Frontend](FRONTEND.md) · [Historia Clínica](HISTORIA_CLINICA.md)
 
 ## Alcance y componentes
 

@@ -561,3 +561,40 @@ router.use(requireRole("SUPER_ADMIN", "ADMIN_SALITA", "RECEPCION"));
 | `router` | POST | `/` | `authenticate, requireRole("SUPER_ADMIN"), createZona` |
 | `router` | PUT | `/:id` | `authenticate, requireRole("SUPER_ADMIN"), updateZona` |
 | `router` | DELETE | `/:id` | `authenticate, requireRole("SUPER_ADMIN"), deleteZona` |
+
+
+## historia-clinica.routes.ts
+
+[Fuente](../backend/src/routes/historia-clinica.routes.ts) · [Documentación detallada](HISTORIA_CLINICA.md)
+
+Montado en el prefijo `/api/historia-clinica`. Todas las peticiones emiten la cabecera `Cache-Control: no-store` y exigen token JWT válido (`authenticate`).
+
+| Router | Método | Ruta local | Handlers declarados | Permiso / Alcance |
+| --- | --- | --- | --- | --- |
+| `router` | GET | `/mi-historia` | `requireRole('PACIENTE'), getMiHistoriaClinicaController` | Portal del Paciente (propia HCE y tutelados) |
+| `router` | GET | `/contexto` | `obtenerContextoClinicoController` | Contexto de salitas y especialidades del profesional |
+| `router` | GET | `/pacientes` | `requirePermission('VER_HISTORIA_CLINICA'), buscarPacientesClinicosController` | Búsqueda clínica en salita asignada |
+| `router` | GET | `/pacientes/:idPaciente` | `requirePermission('VER_HISTORIA_CLINICA'), clinicalScope(...), consultarHistoriaClinicaController` | Expediente longitudinal del paciente |
+| `router` | GET | `/pacientes/:idPaciente/antecedentes` | `requirePermission('VER_HISTORIA_CLINICA'), clinicalScope(...), consultarAntecedentesController` | Antecedentes personales y familiares |
+| `router` | GET | `/pacientes/:idPaciente/alergias` | `requirePermission('VER_HISTORIA_CLINICA'), clinicalScope(...), consultarAlergiasController` | Registro de alergias del paciente |
+| `router` | GET | `/consultas/:idConsulta` | `requirePermission('VER_HISTORIA_CLINICA'), clinicalResourceScope(...), consultarConsultaMedicaController` | Detalle de consulta médica |
+| `router` | GET | `/consultas/:idConsulta/diagnosticos`| `requirePermission('VER_HISTORIA_CLINICA'), clinicalResourceScope(...), consultarDiagnosticosConsultaController` | Diagnósticos de la consulta |
+| `router` | GET | `/consultas/:idConsulta/evoluciones` | `requirePermission('VER_HISTORIA_CLINICA'), clinicalResourceScope(...), consultarEvolucionesConsultaController` | Evoluciones de la consulta |
+| `router` | GET | `/consultas/:idConsulta/tratamientos`| `requirePermission('VER_HISTORIA_CLINICA'), clinicalResourceScope(...), consultarTratamientosConsultaController` | Tratamientos prescritos |
+| `router` | GET | `/consultas/:idConsulta/estudios` | `requirePermission('VER_HISTORIA_CLINICA'), clinicalResourceScope(...), consultarEstudiosConsultaController` | Estudios complementarios solicitados |
+| `router` | POST | `/consultas` | `requirePermission('CREAR_CONSULTA_CLINICA'), clinicalScope(...), registrarConsultaClinicaController` | Alta de consulta médica |
+| `router` | PATCH | `/consultas/:idConsulta` | `requirePermission('CREAR_CONSULTA_CLINICA'), clinicalResourceScope(...), actualizarConsultaBorradorController` | Modificación de borrador de consulta |
+| `router` | POST | `/consultas/:idConsulta/firmar` | `requirePermission('CREAR_CONSULTA_CLINICA'), clinicalResourceScope(...), firmarConsultaMedicaController` | Firma digital y consolidación inmutable |
+| `router` | POST | `/consultas/:idConsulta/anular` | `requirePermission('CREAR_CONSULTA_CLINICA'), clinicalResourceScope(...), anularConsultaBorradorController` | Anulación justificada de borrador |
+| `router` | GET | `/borradores-temporales` | `requirePermission('CREAR_CONSULTA_CLINICA'), clinicalScope(...), obtenerBorradorTemporalController` | Recupera borrador temporal autoguardado |
+| `router` | PUT | `/borradores-temporales` | `requirePermission('CREAR_CONSULTA_CLINICA'), clinicalScope(...), guardarBorradorTemporalController` | Autoguarda borrador temporal con versionado |
+| `router` | DELETE | `/borradores-temporales` | `requirePermission('CREAR_CONSULTA_CLINICA'), clinicalScope(...), descartarBorradorTemporalController` | Descarte del borrador temporal |
+| `router` | POST | `/consultas/:idConsulta/evoluciones` | `requirePermission('REGISTRAR_EVOLUCIONES'), clinicalResourceScope(...), registrarEvolucionClinicaController` | Registro de nueva evolución médica |
+| `router` | POST | `/evoluciones/:idEvolucion/rectificar` | `requirePermission('REGISTRAR_EVOLUCIONES'), clinicalResourceScope(...), rectificarEvolucionClinicaController` | Rectificación trazable con evolución previa |
+| `router` | PATCH | `/estudios/:idEstudio/estado` | `requirePermission('GESTIONAR_ESTUDIOS_CLINICOS'), clinicalResourceScope(...), actualizarEstadoEstudioController` | Cambio de estado de estudio clínico |
+| `router` | POST | `/estudios/:idEstudio/informar` | `requirePermission('GESTIONAR_ESTUDIOS_CLINICOS'), clinicalResourceScope(...), informarEstudioController` | Informe y resultado del estudio |
+| `router` | GET | `/derivaciones` | `requirePermission('GESTIONAR_DERIVACIONES_CLINICAS'), clinicalDerivationScope(), listarDerivacionesController` | Listado de derivaciones inter-salitas |
+| `router` | POST | `/derivaciones` | `requirePermission('GESTIONAR_DERIVACIONES_CLINICAS'), clinicalScope(...), solicitarDerivacionController` | Emisión de derivación inter-salita |
+| `router` | PATCH | `/derivaciones/:idDerivacion` | `requirePermission('GESTIONAR_DERIVACIONES_CLINICAS'), clinicalDerivationScope(), resolverDerivacionController` | Resolución / autorización de derivación |
+| `router` | PATCH | `/derivaciones/:idDerivacion/resolver` | `requirePermission('GESTIONAR_DERIVACIONES_CLINICAS'), clinicalDerivationScope(), resolverDerivacionController` | Alias para resolución de derivación |
+| `router` | GET | `/auditoria` | `requirePermission('VER_AUDITORIA_CLINICA'), clinicalAuditScope(), consultarAuditoriaClinicaController` | Auditoría inmutable de accesos clínicos |

@@ -1,6 +1,6 @@
 # ⚙️ Backend y reglas de implementación
 
-[← Índice](README.md) · [API](API.md) · [Datos](BASE_DE_DATOS.md)
+| [← Índice](README.md) · [API](API.md) · [Diagramas](DIAGRAMAS.md) · [Historia Clínica](HISTORIA_CLINICA.md) · [Datos](BASE_DE_DATOS.md)
 
 ## Estructura
 
@@ -32,6 +32,7 @@ API Express 5 y TypeScript con módulos ESM. Los imports locales del backend uti
 | Agenda | `turno-agenda.service`, `disponibilidad.service`, `agenda-impacto.service` |
 | Reprogramación | `turno-update.service`, `agenda-propuesta.service`, `agenda-confirmacion.service` |
 | Calendario | `cierre-calendario.service`, `calendario-sync.service` |
+| Historia Clínica | `historia-clinica.service`, `historia-clinica-support.service`, `patient-clinical.service`, `clinical-scope.service` |
 | Comunicación | `notificacion-admin.service`, `notificacion-worker.service`, `socket.service` |
 | Gestión | `reporte.service`, `dashboard.service`, `auditoria.service` |
 

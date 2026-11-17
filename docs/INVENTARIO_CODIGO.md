@@ -33,6 +33,11 @@ Inventario estático de archivos de fuente, pruebas y configuración versionable
 | [BBDD/20261107_cierres_calendario.sql](../backend/src/BBDD/20261107_cierres_calendario.sql) | DDL / funciones SQL; consultar diccionario y migraciones |
 | [BBDD/20261108_argentinadatos.sql](../backend/src/BBDD/20261108_argentinadatos.sql) | DDL / funciones SQL; consultar diccionario y migraciones |
 | [BBDD/20261109_profesional_salita_vigencia.sql](../backend/src/BBDD/20261109_profesional_salita_vigencia.sql) | DDL / funciones SQL; consultar diccionario y migraciones |
+| [BBDD/20261110_historia_clinica.sql](../backend/src/BBDD/20261110_historia_clinica.sql) | DDL / funciones SQL; consultar diccionario y migraciones |
+| [BBDD/20261110_super_admin_auditoria_clinica.sql](../backend/src/BBDD/20261110_super_admin_auditoria_clinica.sql) | DDL / funciones SQL; consultar diccionario y migraciones |
+| [BBDD/20261115_admin_recepcion_ver_historia_clinica.sql](../backend/src/BBDD/20261115_admin_recepcion_ver_historia_clinica.sql) | DDL / funciones SQL; consultar diccionario y migraciones |
+| [BBDD/20261115_fix_auditoria_clinica_columns.sql](../backend/src/BBDD/20261115_fix_auditoria_clinica_columns.sql) | DDL / funciones SQL; consultar diccionario y migraciones |
+| [BBDD/PROPUESTA_20261110_hc_borradores_y_turno_anticipado.sql](../backend/src/BBDD/PROPUESTA_20261110_hc_borradores_y_turno_anticipado.sql) | DDL / funciones SQL; consultar diccionario y migraciones |
 | [BBDD/SAPS_Turno_BBDD3_FINAL.sql](../backend/src/BBDD/SAPS_Turno_BBDD3_FINAL.sql) | DDL / funciones SQL; consultar diccionario y migraciones |
 | [BBDD/VERIFICACION_EMAIL.md](../backend/src/BBDD/VERIFICACION_EMAIL.md) | Módulo, configuración o documentación; consultar fuente |
 
@@ -66,6 +71,8 @@ Inventario estático de archivos de fuente, pruebas y configuración versionable
 | [controllers/especialidad.controller.ts](../backend/src/controllers/especialidad.controller.ts) | getAllEspecialidades, getEspecialidadById, createEspecialidad, updateEspecialidad, deleteEspecialidad |
 | [controllers/google-auth.controller.ts](../backend/src/controllers/google-auth.controller.ts) | googleLogin |
 | [controllers/health.controller.ts](../backend/src/controllers/health.controller.ts) | healthCheck, databaseHealthCheck |
+| [controllers/historia-clinica.controller.ts](../backend/src/controllers/historia-clinica.controller.ts) | registrarConsultaClinicaController, actualizarConsultaBorradorController, firmarConsultaMedicaController, anularConsultaBorradorController, consultarHistoriaClinicaController, consultarConsultaMedicaController, consultarDiagnosticosConsultaController, consultarEvolucionesConsultaController, consultarTratamientosConsultaController, consultarEstudiosConsultaController, consultarAntecedentesController, consultarAlergiasController, registrarEvolucionClinicaController, rectificarEvolucionClinicaController, actualizarEstadoEstudioController, informarEstudioController, listarDerivacionesController, solicitarDerivacionController, resolverDerivacionController, consultarAuditoriaClinicaController, obtenerBorradorTemporalController, guardarBorradorTemporalController, descartarBorradorTemporalController |
+| [controllers/historia-clinica-support.controller.ts](../backend/src/controllers/historia-clinica-support.controller.ts) | obtenerContextoClinicoController, buscarPacientesClinicosController |
 | [controllers/historial-turno.controller.ts](../backend/src/controllers/historial-turno.controller.ts) | getHistorialTurnoController, getHistorialGeneralController |
 | [controllers/horario-atencion.controller.ts](../backend/src/controllers/horario-atencion.controller.ts) | obtenerHorarios, obtenerHorario, crearHorarioController, actualizarHorarioController, eliminarHorarioController |
 | [controllers/notificacion.controller.ts](../backend/src/controllers/notificacion.controller.ts) | getNotificacionesController, getNotificacionController, leerNotificacionController, leerTodasController |
@@ -73,6 +80,7 @@ Inventario estático de archivos de fuente, pruebas y configuración versionable
 | [controllers/password-recovery.controller.ts](../backend/src/controllers/password-recovery.controller.ts) | forgotPassword, resetUserPassword |
 | [controllers/patient.controller.ts](../backend/src/controllers/patient.controller.ts) | createPatientController |
 | [controllers/patient-agenda.controller.ts](../backend/src/controllers/patient-agenda.controller.ts) | patientProfessionals |
+| [controllers/patient-clinical.controller.ts](../backend/src/controllers/patient-clinical.controller.ts) | getMiHistoriaClinicaController |
 | [controllers/patient-read.controller.ts](../backend/src/controllers/patient-read.controller.ts) | listPatientsController, getPatientController, getPatientByDniController |
 | [controllers/patient-tutor.controller.ts](../backend/src/controllers/patient-tutor.controller.ts) | listPatientTutorsController, listTutorPatientsController, updatePatientTutorController, finishPatientTutorController |
 | [controllers/patient-update.controller.ts](../backend/src/controllers/patient-update.controller.ts) | updatePatientController, updatePatientStatusController |
@@ -102,8 +110,10 @@ Inventario estático de archivos de fuente, pruebas y configuración versionable
 | --- | --- |
 | [middlewares/auth.middleware.ts](../backend/src/middlewares/auth.middleware.ts) | authenticate, authenticateForProfile |
 | [middlewares/chatbot-rate-limit.middleware.ts](../backend/src/middlewares/chatbot-rate-limit.middleware.ts) | ChatbotRateLimiter |
+| [middlewares/clinical-scope.middleware.ts](../backend/src/middlewares/clinical-scope.middleware.ts) | clinicalScope, clinicalResourceScope, clinicalDerivationScope, clinicalAuditScope |
 | [middlewares/error.middleware.ts](../backend/src/middlewares/error.middleware.ts) | errorHandler |
 | [middlewares/not-found.middleware.ts](../backend/src/middlewares/not-found.middleware.ts) | notFoundHandler |
+| [middlewares/permission.middleware.ts](../backend/src/middlewares/permission.middleware.ts) | requirePermission |
 | [middlewares/profile-scope.middleware.ts](../backend/src/middlewares/profile-scope.middleware.ts) | patientScope, professionalScope, scheduleScope |
 | [middlewares/role.middleware.ts](../backend/src/middlewares/role.middleware.ts) | requireRole |
 
@@ -119,12 +129,15 @@ Inventario estático de archivos de fuente, pruebas y configuración versionable
 | [repositories/barrio.repository.ts](../backend/src/repositories/barrio.repository.ts) | getAllBarrios, getBarrioById, createBarrio, updateBarrio, deleteBarrio |
 | [repositories/bloqueo-agenda.repository.ts](../backend/src/repositories/bloqueo-agenda.repository.ts) | getAllBloqueos, getBloqueoById, findBloqueoParaTurno |
 | [repositories/cierre-calendario.repository.ts](../backend/src/repositories/cierre-calendario.repository.ts) | findCierres, findCierre, saveCierre, findProfesionalesCierre, SyncYearResult, SyncSummary, SyncStatus, getCalendarioSync, claimCalendarioSync, applyFeriados, finishCalendarioSync, getCierresPendientes |
+| [repositories/clinical-scope.repository.ts](../backend/src/repositories/clinical-scope.repository.ts) | findClinicalScopeAccess, findClinicalResourceScopeAccess, findClinicalDerivationScopeAccess, findClinicalAuditScopeAccess |
 | [repositories/configuracion.repository.ts](../backend/src/repositories/configuracion.repository.ts) | findConfiguraciones, findConfiguracionById, findConfiguracionByClave, createConfiguracion, updateConfiguracion |
 | [repositories/dashboard.repository.ts](../backend/src/repositories/dashboard.repository.ts) | countDashboardRecords, countDashboardTurnos, findDashboardActivity |
 | [repositories/disponibilidad.repository.ts](../backend/src/repositories/disponibilidad.repository.ts) | getHorariosParaDisponibilidad, getBloqueosParaDisponibilidad, getTurnosParaDisponibilidad |
 | [repositories/email-verification.repository.ts](../backend/src/repositories/email-verification.repository.ts) | consumeEmailCode, issueEmailCode, invalidateEmailCode, findUserForEmailVerification, invalidatePreviousEmailTokens, createEmailVerificationToken, findEmailVerificationToken, markEmailAsVerified, markEmailTokenAsUsed, findLatestPendingEmailToken, registerEmailCodeAttempt |
 | [repositories/especialidad.repository.ts](../backend/src/repositories/especialidad.repository.ts) | getAllEspecialidades, getEspecialidadById, createEspecialidad, updateEspecialidad, deleteEspecialidad |
 | [repositories/google-auth.repository.ts](../backend/src/repositories/google-auth.repository.ts) | findGoogleIdentity, findUserByGoogleEmail, markGoogleEmailAsVerified, createGoogleUser, createGoogleIdentity |
+| [repositories/historia-clinica.repository.ts](../backend/src/repositories/historia-clinica.repository.ts) | findHistoriaClinicaByPaciente, createConsultaClinica, updateConsultaBorrador, firmarConsultaMedica, anularConsultaBorrador, findConsultaMedicaById, findDiagnosticosByConsulta, findEvolucionesByConsulta, findTratamientosByConsulta, findEstudiosByConsulta, findAntecedentesByPaciente, findAlergiasByPaciente, createEvolucionClinica, rectificarEvolucionClinica, updateEstadoEstudio, informarEstudio, listDerivacionesClinicas, createDerivacionClinica, resolveDerivacionClinica, findAuditoriaClinica, upsertBorradorTemporal, getBorradorTemporal, deleteBorradorTemporal |
+| [repositories/historia-clinica-support.repository.ts](../backend/src/repositories/historia-clinica-support.repository.ts) | getHistoriaClinicaContext, searchClinicalPatients |
 | [repositories/historial-turno.repository.ts](../backend/src/repositories/historial-turno.repository.ts) | findTurnoForHistorial, findHistorialByTurno, findHistorialGeneral |
 | [repositories/horario-atencion.repository.ts](../backend/src/repositories/horario-atencion.repository.ts) | getAllHorarios, getHorarioById, findHorariosParaTurno |
 | [repositories/municipal-news.repository.ts](../backend/src/repositories/municipal-news.repository.ts) | municipalSource, MunicipalNews, fetchMunicipalNews |
@@ -135,6 +148,7 @@ Inventario estático de archivos de fuente, pruebas y configuración versionable
 | [repositories/password-recovery.repository.ts](../backend/src/repositories/password-recovery.repository.ts) | findRecoveryUserByEmail, invalidatePreviousRecoveryTokens, createPasswordRecoveryToken, issuePasswordRecoveryCode, consumePasswordRecoveryCode, invalidatePasswordRecoveryCode, findPasswordRecoveryToken, markRecoveryTokenAsUsed, updateRecoveredPassword |
 | [repositories/patient.repository.ts](../backend/src/repositories/patient.repository.ts) | createPatient |
 | [repositories/patient-agenda.repository.ts](../backend/src/repositories/patient-agenda.repository.ts) | PatientProfessional, findPatientProfessionals |
+| [repositories/patient-clinical.repository.ts](../backend/src/repositories/patient-clinical.repository.ts) | findMyHistoriaClinica, findTuteladoHistoriaClinica |
 | [repositories/patient-read.repository.ts](../backend/src/repositories/patient-read.repository.ts) | findPatients, findPatientById, findPatientDetailsByDni, findPatientByPersonId |
 | [repositories/patient-select.ts](../backend/src/repositories/patient-select.ts) | PatientRow, patientSelect, patientAdminSelect, flattenPatient |
 | [repositories/patient-tutor.repository.ts](../backend/src/repositories/patient-tutor.repository.ts) | findActivePatientTutorRelation, findCurrentPrincipalTutor, findTutorsByPatientId, findPatientTutorHistory, findPatientsByTutorId, updatePatientTutorRelation, endPatientTutorRelation |
@@ -142,6 +156,7 @@ Inventario estático de archivos de fuente, pruebas y configuración versionable
 | [repositories/person.repository.ts](../backend/src/repositories/person.repository.ts) | createPerson, createPersonForAdmin |
 | [repositories/person-read.repository.ts](../backend/src/repositories/person-read.repository.ts) | personSelect, findPersonByDni, findPersonById, findPersonsByEmail |
 | [repositories/person-update.repository.ts](../backend/src/repositories/person-update.repository.ts) | updatePerson |
+| [repositories/permission.repository.ts](../backend/src/repositories/permission.repository.ts) | findUserPermissions, hasUserPermission |
 | [repositories/profesional.repository.ts](../backend/src/repositories/profesional.repository.ts) | findProfesionalIdentity, getAllProfesionales, getProfesionalById, createProfesional, updateProfesional, deleteProfesional |
 | [repositories/profesional-especialidad.repository.ts](../backend/src/repositories/profesional-especialidad.repository.ts) | getEspecialidadesByProfesional, createProfesionalEspecialidad, updateProfesionalEspecialidad, deleteProfesionalEspecialidad |
 | [repositories/profesional-salita.repository.ts](../backend/src/repositories/profesional-salita.repository.ts) | getSalitasByProfesional, createProfesionalSalita, updateProfesionalSalita, deleteProfesionalSalita |
@@ -186,6 +201,7 @@ Inventario estático de archivos de fuente, pruebas y configuración versionable
 | [routes/especialidad.routes.ts](../backend/src/routes/especialidad.routes.ts) | Módulo, configuración o documentación; consultar fuente |
 | [routes/google-auth.routes.ts](../backend/src/routes/google-auth.routes.ts) | Módulo, configuración o documentación; consultar fuente |
 | [routes/health.routes.ts](../backend/src/routes/health.routes.ts) | Módulo, configuración o documentación; consultar fuente |
+| [routes/historia-clinica.routes.ts](../backend/src/routes/historia-clinica.routes.ts) | Módulo, configuración o documentación; consultar fuente |
 | [routes/historial-turno.routes.ts](../backend/src/routes/historial-turno.routes.ts) | Módulo, configuración o documentación; consultar fuente |
 | [routes/horario-atencion.routes.ts](../backend/src/routes/horario-atencion.routes.ts) | Módulo, configuración o documentación; consultar fuente |
 | [routes/index.ts](../backend/src/routes/index.ts) | Módulo, configuración o documentación; consultar fuente |
@@ -238,6 +254,7 @@ Inventario estático de archivos de fuente, pruebas y configuración versionable
 | [services/chatbot.service.ts](../backend/src/services/chatbot.service.ts) | createChatbotService, replyToChatbot |
 | [services/cierre-access.service.ts](../backend/src/services/cierre-access.service.ts) | cierreScope, assertCierreScope, authorizeCierre |
 | [services/cierre-calendario.service.ts](../backend/src/services/cierre-calendario.service.ts) | listCierres, notificarCalendario, guardarCierre, desactivarCierre |
+| [services/clinical-scope.service.ts](../backend/src/services/clinical-scope.service.ts) | verifyClinicalScope, verifyClinicalResourceScope, verifyClinicalDerivationScope, verifyClinicalAuditScope |
 | [services/configuracion.service.ts](../backend/src/services/configuracion.service.ts) | getClinicSpecialtyIds, assertClinicSpecialty, getConfiguraciones, getConfiguracionesPublicas, getConfiguracion, registerConfiguracion, editConfiguracion, getConfiguracionValue |
 | [services/configuracion-policy.ts](../backend/src/services/configuracion-policy.ts) | configuracionAdminKeys, assertConfiguracionValue, isSafePublic, assertPublicValue, requireConfiguracionUser, configuracionReadAccess, assertConfiguracionWrite, publicConfiguracion |
 | [services/dashboard.service.ts](../backend/src/services/dashboard.service.ts) | getDashboardSummary |
@@ -252,6 +269,8 @@ Inventario estático de archivos de fuente, pruebas y configuración versionable
 | [services/google-auth.service.ts](../backend/src/services/google-auth.service.ts) | loginWithGoogle |
 | [services/google-token.service.ts](../backend/src/services/google-token.service.ts) | VerifiedGoogleUser, verifyGoogleCredential |
 | [services/health.service.ts](../backend/src/services/health.service.ts) | checkDatabaseConnection |
+| [services/historia-clinica.service.ts](../backend/src/services/historia-clinica.service.ts) | getHistoriaClinica, registrarConsulta, actualizarConsultaBorrador, firmarConsulta, anularConsultaBorrador, getConsultaMedica, getDiagnosticosConsulta, getEvolucionesConsulta, getTratamientosConsulta, getEstudiosConsulta, getAntecedentesPaciente, getAlergiasPaciente, registrarEvolucion, rectificarEvolucion, actualizarEstadoEstudio, informarEstudio, listarDerivaciones, solicitarDerivacion, resolverDerivacion, getAuditoriaClinica, obtenerBorradorTemporal, guardarBorradorTemporal, descartarBorradorTemporal |
+| [services/historia-clinica-support.service.ts](../backend/src/services/historia-clinica-support.service.ts) | getHistoriaClinicaContext, searchClinicalPatients |
 | [services/historial-turno.service.ts](../backend/src/services/historial-turno.service.ts) | getHistorialByTurno, getHistorialGeneral |
 | [services/horario-atencion.service.ts](../backend/src/services/horario-atencion.service.ts) | getHorarios, getHorario, crearHorario, actualizarHorario, eliminarHorario |
 | [services/jwt.service.ts](../backend/src/services/jwt.service.ts) | generateAccessToken, verifyAccessToken, generateLoginVerificationToken, verifyLoginVerificationToken |
@@ -271,12 +290,14 @@ Inventario estático de archivos de fuente, pruebas y configuración versionable
 | [services/patient.service.ts](../backend/src/services/patient.service.ts) | registerPatient |
 | [services/patient-account.service.ts](../backend/src/services/patient-account.service.ts) | linkPatientAccount |
 | [services/patient-agenda.service.ts](../backend/src/services/patient-agenda.service.ts) | getPatientProfessionals, getPatientAvailability, getPatientAvailableDates |
+| [services/patient-clinical.service.ts](../backend/src/services/patient-clinical.service.ts) | getMyHistoriaClinica |
 | [services/patient-coverage.service.ts](../backend/src/services/patient-coverage.service.ts) | getCoveredSalitas, getOwnPatient, resolvePatientSalita, assertOwnCoverage |
 | [services/patient-data.ts](../backend/src/services/patient-data.ts) | splitPatientInput |
 | [services/patient-managed.service.ts](../backend/src/services/patient-managed.service.ts) | resolveManagedPatient, getManagedPatients |
 | [services/patient-read.service.ts](../backend/src/services/patient-read.service.ts) | getPatients, getPatientById, getPatientByDni |
 | [services/patient-tutor.service.ts](../backend/src/services/patient-tutor.service.ts) | getPatientTutors, getTutorPatients, editPatientTutorRelation, finishPatientTutorRelation |
 | [services/patient-update.service.ts](../backend/src/services/patient-update.service.ts) | editOwnPatient, editPatient, changePatientStatus |
+| [services/permission.service.ts](../backend/src/services/permission.service.ts) | getUserPermissions, assertUserPermission |
 | [services/person.service.ts](../backend/src/services/person.service.ts) | findOrCreatePerson, validatePersonUpdate, editPerson |
 | [services/profesional.service.ts](../backend/src/services/profesional.service.ts) | getProfesionales, getProfesional, crearProfesional, actualizarProfesional, eliminarProfesional |
 | [services/profesional-especialidad.service.ts](../backend/src/services/profesional-especialidad.service.ts) | getEspecialidadesProfesional, agregarEspecialidadProfesional, actualizarEspecialidadProfesional, eliminarEspecialidadProfesional |
@@ -324,6 +345,8 @@ Inventario estático de archivos de fuente, pruebas y configuración versionable
 | [types/auth.types.ts](../backend/src/types/auth.types.ts) | AuthenticatedUser |
 | [types/configuracion.types.ts](../backend/src/types/configuracion.types.ts) | ConfiguracionRow, ConfiguracionAccess |
 | [types/express.d.ts](../backend/src/types/express.d.ts) | Módulo, configuración o documentación; consultar fuente |
+| [types/historia-clinica.types.ts](../backend/src/types/historia-clinica.types.ts) | ClinicalPermission, AntecedenteTipo, AlergiaGravedad, DiagnosticoTipo, ConsultaEstado, EvolucionEstado, TratamientoEstado, EstudioEstado, DerivacionTipo, DerivacionAlcance, DerivacionEstado |
+| [types/permission.types.ts](../backend/src/types/permission.types.ts) | CLINICAL_PERMISSIONS, ClinicalPermission |
 | [types/public-news.types.ts](../backend/src/types/public-news.types.ts) | PublicNews, AdminNews |
 | [types/reporte-agenda.types.ts](../backend/src/types/reporte-agenda.types.ts) | AgendaPaciente, AgendaLista, ReporteSecciones, esReporteSecciones |
 | [types/request-metadata.types.ts](../backend/src/types/request-metadata.types.ts) | RequestMetadata |
@@ -557,10 +580,17 @@ Inventario estático de archivos de fuente, pruebas y configuración versionable
 | [pages/dashboard/ConfiguracionPage.tsx](../frontend/src/pages/dashboard/ConfiguracionPage.tsx) | ConfiguracionPage |
 | [pages/dashboard/Dashboard.tsx](../frontend/src/pages/dashboard/Dashboard.tsx) | Dashboard |
 | [pages/dashboard/SuperAdminOverview.tsx](../frontend/src/pages/dashboard/SuperAdminOverview.tsx) | SuperAdminOverview |
+| [pages/historia-clinica/AuditoriaClinicaPage.tsx](../frontend/src/pages/historia-clinica/AuditoriaClinicaPage.tsx) | AuditoriaClinicaPage |
+| [pages/historia-clinica/ConsultaDetallePage.tsx](../frontend/src/pages/historia-clinica/ConsultaDetallePage.tsx) | ConsultaDetallePage |
+| [pages/historia-clinica/DerivacionesClinicasPage.tsx](../frontend/src/pages/historia-clinica/DerivacionesClinicasPage.tsx) | DerivacionesClinicasPage |
+| [pages/historia-clinica/HistoriaClinicaBuscadorPage.tsx](../frontend/src/pages/historia-clinica/HistoriaClinicaBuscadorPage.tsx) | HistoriaClinicaBuscadorPage |
+| [pages/historia-clinica/HistoriaClinicaPacientePage.tsx](../frontend/src/pages/historia-clinica/HistoriaClinicaPacientePage.tsx) | HistoriaClinicaPacientePage |
+| [pages/historia-clinica/NuevaConsultaPage.tsx](../frontend/src/pages/historia-clinica/NuevaConsultaPage.tsx) | NuevaConsultaPage |
 | [pages/notificaciones/DetalleNotificacionPage.tsx](../frontend/src/pages/notificaciones/DetalleNotificacionPage.tsx) | DetalleNotificacionPage |
 | [pages/notificaciones/HistorialNotificacionesPage.tsx](../frontend/src/pages/notificaciones/HistorialNotificacionesPage.tsx) | HistorialNotificacionesPage |
 | [pages/notificaciones/MisNotificacionesPage.tsx](../frontend/src/pages/notificaciones/MisNotificacionesPage.tsx) | MisNotificacionesPage |
 | [pages/notificaciones/NuevaNotificacionPage.tsx](../frontend/src/pages/notificaciones/NuevaNotificacionPage.tsx) | NuevaNotificacionPage |
+| [pages/pacientes/MiHistoriaClinicaPage.tsx](../frontend/src/pages/pacientes/MiHistoriaClinicaPage.tsx) | MiHistoriaClinicaPage |
 | [pages/pacientes/MiPerfilPage.tsx](../frontend/src/pages/pacientes/MiPerfilPage.tsx) | MiPerfilPage |
 | [pages/pacientes/NuevoPacientePage.tsx](../frontend/src/pages/pacientes/NuevoPacientePage.tsx) | Módulo, configuración o documentación; consultar fuente |
 | [pages/pacientes/PacienteDetallePage.tsx](../frontend/src/pages/pacientes/PacienteDetallePage.tsx) | Módulo, configuración o documentación; consultar fuente |
@@ -610,6 +640,7 @@ Inventario estático de archivos de fuente, pruebas y configuración versionable
 | [services/configuracion.service.ts](../frontend/src/services/configuracion.service.ts) | getZonas, getCatalogo, guardarCatalogo, getCoberturas, guardarCobertura, getHorarios, guardarHorario, getBloqueos, guardarBloqueo, getParametros, getSalitasConfigurables, guardarParametro |
 | [services/dashboard.service.ts](../frontend/src/services/dashboard.service.ts) | DashboardTotals, DashboardSummary, getDashboardSummary |
 | [services/especialidades.service.ts](../frontend/src/services/especialidades.service.ts) | getSpecialties |
+| [services/historia-clinica.service.ts](../frontend/src/services/historia-clinica.service.ts) | getHistoriaClinicaContext, searchClinicalPatients, getHistoriaClinicaPaciente, getMiHistoriaClinica, getConsultaMedicaById, registrarConsultaClinica, actualizarConsultaBorrador, firmarConsultaMedica, anularConsultaBorrador, obtenerBorradorTemporal, guardarBorradorTemporal, descartarBorradorTemporal, registrarEvolucionClinica, rectificarEvolucionClinica, actualizarEstadoEstudio, informarEstudio, listDerivacionesClinicas, solicitarDerivacionClinica, resolverDerivacionClinica, getAuditoriaClinica |
 | [services/managed-patients.service.ts](../frontend/src/services/managed-patients.service.ts) | ManagedPatient, getManagedPatients |
 | [services/notificaciones.service.ts](../frontend/src/services/notificaciones.service.ts) | getNotificaciones, leerNotificacion, leerTodasNotificaciones, getOpcionesEnvio, previewEnvio, buscarDestinatarios, crearEnvioAdministrativo, editarEnvioAdministrativo, getEnvios, getEnvio, cancelarEnvio |
 | [services/patients.service.ts](../frontend/src/services/patients.service.ts) | updateOwnPatient, getPatients, getPatientByDni, getPatientById, createPatient, updatePatientStatus, updatePatient |
@@ -652,6 +683,7 @@ Inventario estático de archivos de fuente, pruebas y configuración versionable
 | [types/chatbot.types.ts](../frontend/src/types/chatbot.types.ts) | ChatbotResponse, ChatbotMessage |
 | [types/cierre-calendario.types.ts](../frontend/src/types/cierre-calendario.types.ts) | tiposCierre, CierreInput, Cierre, datosCierre, SyncYearResult, SyncStatus, SyncResult |
 | [types/configuracion.types.ts](../frontend/src/types/configuracion.types.ts) | Zona, CatalogoTipo, CatalogoRegistro, CatalogoInput, Cobertura, HorarioInput, Horario, BloqueoInput, Bloqueo, Parametro |
+| [types/historia-clinica.types.ts](../frontend/src/types/historia-clinica.types.ts) | CLINICAL_PERMISSIONS, ClinicalPermission, AntecedenteTipo, AntecedenteEstado, AlergiaGravedad, AlergiaEstado, DiagnosticoTipo, DiagnosticoEstado, ConsultaEstado, EvolucionEstado, TratamientoEstado, EstudioEstado, DerivacionTipo, DerivacionAlcance, DerivacionEstado, HistoriaClinicaContextData, ClinicalPatientSearchItem, ConsultaMedicaDetalle, BorradorFormularioClinico |
 | [types/notificacion.types.ts](../frontend/src/types/notificacion.types.ts) | Notificacion, NotificacionesResponse, Audiencia, Destinatario, PreviewEnvio, OpcionesEnvio, NuevoEnvio, EnvioAdministrativo, ProgramacionOriginal, HistorialEnvios |
 | [types/patient.types.ts](../frontend/src/types/patient.types.ts) | PatientSex, PatientStatusFilter, OwnPatientUpdate, Patient, PatientPagination, PatientsResponse, PatientResponse, UpdatePatientRequest, CreatePatientRequest |
 | [types/profesional.types.ts](../frontend/src/types/profesional.types.ts) | ProfessionalSex, ProfessionalPerson, Professional, ProfessionalResponse, ProfessionalsResponse, CreateProfessionalRequest, UpdateProfessionalRequest, ProfessionalSpecialty, ProfessionalSpecialtiesResponse, CreateProfessionalSpecialtyRequest, UpdateProfessionalSpecialtyRequest, ProfessionalClinic, ProfessionalClinicsResponse, CreateProfessionalClinicRequest, UpdateProfessionalClinicRequest, Specialty, SpecialtiesResponse, PatientProfessional |
@@ -671,6 +703,8 @@ Inventario estático de archivos de fuente, pruebas y configuración versionable
 | [utils/auth-storage.ts](../frontend/src/utils/auth-storage.ts) | getAccessToken, getRefreshToken, getStoredUser, saveAuthSession, updateAuthTokens, clearAuthSession, saveStoredUser |
 | [utils/chatbot-session.ts](../frontend/src/utils/chatbot-session.ts) | ChatbotSession |
 | [utils/field-validation.ts](../frontend/src/utils/field-validation.ts) | fieldRule, fieldError, personFieldsError |
+| [utils/historia-clinica-format.ts](../frontend/src/utils/historia-clinica-format.ts) | formatArgentinaDate, formatArgentinaDateTime, getNowArgentinaDateTimeLocal, getTodayArgentinaIsoDate, toArgentinaOffsetIso, formatSignedConsultaNotice |
+| [utils/historia-clinica-navigation.ts](../frontend/src/utils/historia-clinica-navigation.ts) | buildConsultaSectionsForMode, resolveConsultaBlockViewMode, resolvePrimaryBackTarget, ClinicalNavState, ConsultaSectionKey |
 | [utils/news-schedule.ts](../frontend/src/utils/news-schedule.ts) | retainedNewsDate, newsScheduleError |
 | [utils/privacy-notice.ts](../frontend/src/utils/privacy-notice.ts) | PRIVACY_NOTICE_VERSION, PRIVACY_NOTICE_STORAGE_KEY, PrivacyAcknowledgement, parsePrivacyAcknowledgement, getPrivacyNoticeSnapshot, acknowledgePrivacyNotice, subscribePrivacyNotice |
 | [utils/turno-status.ts](../frontend/src/utils/turno-status.ts) | getEstadoClass |

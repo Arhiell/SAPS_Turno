@@ -1,6 +1,6 @@
 # 🌐 Frontend, navegación y estado
 
-[← Índice](README.md) · [Manual de usuario](MANUAL_USUARIO.md) · [API](API.md)
+| [← Índice](README.md) · [Manual de usuario](MANUAL_USUARIO.md) · [Diagramas](DIAGRAMAS.md) · [Historia Clínica](HISTORIA_CLINICA.md) · [API](API.md)
 
 ## Aplicación
 
@@ -26,8 +26,9 @@ flowchart TD
 | Pública | `/`, `/noticias/:id` |
 | Acceso | `/login`, `/registro`, `/recuperar-contrasena`, `/restablecer-contrasena`, `/verificar-email`, `/verificar-codigo` |
 | Compartida | `/panel`, `/mi-perfil`, `/mis-notificaciones`, `/privacidad`, `/asistente` |
-| Paciente | `/solicitar-turno`, `/mis-turnos`, `/mis-turnos/:id`, `/personas-a-cargo` |
-| Profesional | `/mi-agenda`, `/mis-pacientes`, `/mis-horarios` |
+| Paciente | `/solicitar-turno`, `/mis-turnos`, `/mis-turnos/:id`, `/personas-a-cargo`, `/mi-historia` |
+| Profesional | `/mi-agenda`, `/mis-pacientes`, `/mis-horarios`, `/historia-clinica`, `/historia-clinica/nueva`, `/historia-clinica/derivaciones` |
+| Historia Clínica | `/historia-clinica/pacientes/:id`, `/historia-clinica/consultas/:id`, `/historia-clinica/auditoria` |
 | Administración | `/pacientes`, `/profesionales`, `/turnos`, `/reportes`, `/administracion`, `/solicitudes-vinculacion` |
 | Configuración | `/configuracion/horarios`, `/configuracion/bloqueos`, `/configuracion/cierres`, `/configuracion/parametros` |
 | Territorio | `/salitas`, `/configuracion/zonas`, `/configuracion/barrios`, `/configuracion/cobertura` |

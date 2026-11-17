@@ -1,57 +1,64 @@
-# 🔐 Seguridad y autorización
+# 🔐 Seguridad, Permisos y Autorización
 
-[Índice](README.md) · [Autenticación](AUTENTICACION.md) · [Privacidad](PRIVACIDAD_NAVEGADOR.md)
+[← Volver al Índice](README.md) · [Autenticación](AUTENTICACION.md) · [Historia Clínica](HISTORIA_CLINICA.md) · [Diagramas](DIAGRAMAS.md) · [Privacidad](PRIVACIDAD_NAVEGADOR.md)
 
-## Límites de confianza
+## Límites de confianza y arquitectura de seguridad
 
 ```mermaid
 flowchart LR
-    B["🌐 Navegador"] -->|Bearer JWT| A["API"]
-    A --> J["Verificar firma y vencimiento"]
-    J --> U["Consultar usuario y rol actuales"]
-    U --> P["Validar perfil y acceso"]
-    P --> S["Resolver alcance del recurso"]
-    S --> D["PostgreSQL y restricciones"]
+    B["🌐 Navegador (React)"] -->|Bearer JWT| A["API Gateway (Express)"]
+    A --> J["Verificar firma JWT y vencimiento"]
+    J --> U["Validar usuario y rol activos"]
+    U --> P["requirePermission / requireRole"]
+    P --> S["clinicalScope / Scope Middleware"]
+    S --> D["PostgreSQL: Triggers & RLS"]
+    D --> AUD["🛡️ Auditoría Inmutable (INSERT only)"]
 ```
 
-Los controles de React mejoran la navegación, pero no conceden permisos. El servidor autentica y vuelve a resolver el alcance. Los identificadores enviados por el cliente no prueban propiedad ni asignación.
+Los controles en la interfaz de usuario (React) facilitan la experiencia de navegación, pero **no conceden privilegios**. Toda autorización se evalúa de manera estricta y determinista en el backend antes de resolver cualquier operación sobre la base de datos.
 
-## Modelo de autorización
+---
 
-Las rutas declaran los roles permitidos mediante middleware (`requireRole`) y los servicios/middlewares de alcance verifican la operación y la relación con el recurso. La autorización no se deriva de permisos configurables por usuario: aunque el esquema SQL contiene catálogos de permisos y asociaciones rol-permiso, el middleware de rutas comprueba el código de rol y aplica controles específicos. No interpretar la existencia de esas tablas como un motor dinámico de permisos.
+## Modelo de autorización híbrido (Roles + Permisos + Alcance Clínico)
 
-## Roles y alcance
+El sistema combina tres capas complementarias de autorización:
+1. **Roles del Sistema (`requireRole`)**: Valida el rol estructural (`SUPER_ADMIN`, `ADMIN_SALITA`, `PROFESIONAL`, `PACIENTE`, `RECEPCION`).
+2. **Permisos Asignados (`requirePermission`)**: Verifica que el rol del usuario contenga el código del permiso en la tabla `rol_permisos`.
+3. **Alcance Contextual (`clinicalScope` / `clinicalResourceScope` / `clinicalDerivationScope`)**: Verifica la relación física o jurídica entre el usuario y el recurso:
+   - Para un `PROFESIONAL`: requiere asignación vigente a la salita del paciente o existencia de una **derivación clínica autorizada**.
+   - Para un `ADMIN_SALITA` / `RECEPCION`: restringe la lectura exclusivamente a pacientes radicados en su propia salita.
+   - Para un `PACIENTE`: restringe el acceso exclusivamente a su propio registro (`id_paciente`) o a tutelados con vínculo formalmente aprobado.
 
-| Rol | Criterio general |
-| --- | --- |
-| SUPER_ADMIN | Administración global, con controles propios de cada operación |
-| ADMIN_SALITA | Salitas de asignaciones vigentes de `usuario_salita` |
-| RECEPCION | Alcance territorial asignado y operaciones expresamente habilitadas por ruta; la interfaz ofrece actualmente acceso limitado a bloqueos de agenda |
-| PROFESIONAL | Identidad profesional asociada y agenda propia |
-| PACIENTE | Identidad propia o relaciones delegadas aprobadas con permisos válidos |
+---
 
-La asignación administrativa se evalúa para el día actual; la habilitación de atención profesional se evalúa para el día de la consulta. No intercambiar ambas fechas.
+## Matriz de Roles y Permisos Clínicos
 
-## Credenciales y sesiones
+| Permiso | Código | SUPER_ADMIN | ADMIN_SALITA | RECEPCION | PROFESIONAL | PACIENTE |
+| --- | --- | :---: | :---: | :---: | :---: | :---: |
+| **Ver historia clínica** | `VER_HISTORIA_CLINICA` | ❌ (1) | ✅ (Salita) | ✅ (Salita) | ✅ (Vigente / Derivación) | ✅ (Propia) |
+| **Crear consulta médica** | `CREAR_CONSULTA_CLINICA` | ❌ | ❌ | ❌ | ✅ | ❌ |
+| **Gestionar antecedentes** | `GESTIONAR_ANTECEDENTES_CLINICOS` | ❌ | ❌ | ❌ | ✅ | ❌ |
+| **Registrar diagnósticos** | `REGISTRAR_DIAGNOSTICOS` | ❌ | ❌ | ❌ | ✅ | ❌ |
+| **Registrar evoluciones** | `REGISTRAR_EVOLUCIONES` | ❌ | ❌ | ❌ | ✅ | ❌ |
+| **Gestionar tratamientos** | `GESTIONAR_TRATAMIENTOS` | ❌ | ❌ | ❌ | ✅ | ❌ |
+| **Gestionar estudios** | `GESTIONAR_ESTUDIOS_CLINICOS` | ❌ | ❌ | ❌ | ✅ | ❌ |
+| **Gestionar derivaciones** | `GESTIONAR_DERIVACIONES_CLINICAS`| ❌ | ❌ | ❌ | ✅ | ❌ |
+| **Ver auditoría clínica** | `VER_AUDITORIA_CLINICA` | ✅ | ❌ | ❌ | ❌ | ❌ |
 
-Las contraseñas se procesan con Argon2. Los JWT de acceso se firman y verifican con JOSE. Las sesiones de renovación guardan el token de forma hasheada y lo rotan; existen expiración y revocación. El acceso HTTP consulta que usuario y rol continúen activos. El acceso administrativo exige correo verificado y perfil completo; las rutas destinadas a completar perfil tienen un tratamiento específico.
+*(1) Por principio de separación de funciones y confidencialidad médica, el rol administrativo global `SUPER_ADMIN` no cuenta con lectura directa de historias clínicas de pacientes, pero sí audita todos los accesos mediante `VER_AUDITORIA_CLINICA`.*
 
-El frontend almacena tokens y usuario en `localStorage`. Este mecanismo implica exposición ante JavaScript ejecutado en el mismo origen: evitar HTML no confiable y revisar dependencias. No describir las sesiones como cookies HttpOnly.
+---
 
-La verificación con Google comprueba el token contra el cliente configurado. La gestión de recuperación, verificación y cambio de correo se desarrolla en [autenticación](AUTENTICACION.md).
+## Protección de datos sensibles e inmutabilidad
 
-## HTTP y canales secundarios
-
-Express incorpora Helmet y límites de cuerpo. La configuración actual de CORS refleja el origen (`origin: true`) y permite credenciales; `FRONTEND_URL` no es por sí mismo una lista restrictiva de CORS. CORS tampoco sustituye autenticación.
-
-Socket.IO verifica JWT, usuario y rol activos, y resuelve el profesional. Su conexión no debe describirse como una ejecución idéntica de todos los middlewares HTTP. Las consultas posteriores de agenda siguen sujetas a la autorización de la API.
-
-Los límites del chatbot se mantienen por proceso; varias réplicas no comparten automáticamente esos contadores. Las claves de Supabase, JWT, SMTP y Gemini permanecen del lado del servidor. Las variables `VITE_*` se incorporan al cliente y no son lugar para secretos.
-
-## Datos y trazabilidad
-
-Los permisos de representación se basan en relaciones aprobadas, no solamente en parentesco. Los reportes nominales y los destinatarios de notificaciones requieren resolver alcance. La auditoría registra operaciones, pero no equivale a una certificación legal ni a un registro inmutable externo.
-
-El aviso de privacidad del navegador registra reconocimiento local; no es un consentimiento clínico ni una prueba de aceptación firmada. La política institucional requiere su propia validación.
-
-Fuentes: [middlewares](../backend/src/middlewares), [sesiones y servicios](../backend/src/services), [configuración Express](../backend/src/app.ts), [frontend](FRONTEND.md). No se ejecutó una auditoría de penetración como parte de esta documentación.
+1. **Cabecera Anti-Caché**: En todas las rutas de historia clínica (`/api/historia-clinica/*`) se inyecta la cabecera `Cache-Control: no-store` para impedir que proxies, navegadores o memorias intermedias retengan datos de salud.
+2. **Inmutabilidad en Motor SQL**:
+   - Disparador `tr_auditoria_clinica_inmutable`: Dispara excepción inmediata ante sentencias `UPDATE` o `DELETE` sobre la tabla `auditoria_clinica`.
+   - Disparador `tr_auditoria_acc_aud_inmutable`: Protege la tabla de auditoría de accesos a la propia auditoría.
+3. **Criptografía y Credenciales**:
+   - Contraseñas almacenadas mediante hash seguro con **Argon2id**.
+   - Tokens de acceso (JWT) firmados con **JOSE / HS256** con tiempo de vida corto (15 minutos).
+   - Refresh tokens almacenados con hash criptográfico en `sesiones_refresh` con revocación dinámica y rotación obligatoria.
+4. **Protección de Navegación**:
+   - Cabeceras de seguridad aplicadas mediante **Helmet**.
+   - Validación estricta de esquemas de entrada para prevenir inyecciones y desbordes de datos.

@@ -2,52 +2,54 @@
 
 <div align="center">
 
-# 馃┖ CORA 路 SAPS Turno
+# 🩺 CORA · SAPS Turno
 
-### Gesti贸n de turnos y atenci贸n primaria de la salud
+### Plataforma de Gestión Integral de Turnos, Atención Primaria e Historia Clínica Electrónica
 
-**Salas de Atenci贸n Primaria de la Salud 路 Goya, Corrientes, Argentina**
+**Salas de Atención Primaria de la Salud (SAPS) · Goya, Corrientes, Argentina**
 
-Una plataforma para conectar pacientes, profesionales y equipos administrativos.
+Una solución modular y robusta para conectar pacientes, profesionales médicos y equipos de gestión territorial.
 
-![Frontend](https://img.shields.io/badge/Frontend-React_19-149ECA?style=for-the-badge&logo=react&logoColor=white)
-![Backend](https://img.shields.io/badge/Backend-Express_5-333333?style=for-the-badge&logo=express&logoColor=white)
-![Lenguaje](https://img.shields.io/badge/Lenguaje-TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-![Base de datos](https://img.shields.io/badge/Datos-Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
+[![Frontend](https://img.shields.io/badge/Frontend-React_19-149ECA?style=for-the-badge&logo=react&logoColor=white)](frontend/)
+[![Backend](https://img.shields.io/badge/Backend-Express_5-333333?style=for-the-badge&logo=express&logoColor=white)](backend/)
+[![Lenguaje](https://img.shields.io/badge/Lenguaje-TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Base de datos](https://img.shields.io/badge/Datos-Supabase_PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](docs/BASE_DE_DATOS.md)
+[![Documentación](https://img.shields.io/badge/Docs-Completa_y_Auditada-blueviolet?style=for-the-badge&logo=googledocs&logoColor=white)](docs/README.md)
 
-[Funciones](#funciones) 路 [Roles](#roles) 路 [Instalaci贸n](#instalacion) 路 [Arquitectura](#arquitectura) 路 [Autores](#autores)
+[Funciones](#funciones) · [Roles](#roles) · [Historia Clínica](docs/HISTORIA_CLINICA.md) · [Diagramas](docs/DIAGRAMAS.md) · [Instalación](#instalacion) · [Arquitectura](#arquitectura) · [Autores](#autores)
 
 </div>
 
 ---
 
-## 馃摉 Acerca del proyecto
+## 📖 Acerca del proyecto
 
-**SAPS Turno**, presentado en la interfaz como **CORA**, centraliza la organizaci贸n de la atenci贸n en las salitas: pacientes, cobertura territorial, profesionales, especialidades, horarios y reservas.
+**SAPS Turno**, presentado en la interfaz pública y asistencial como **CORA**, centraliza la administración integral de la atención primaria en los centros de salud de la ciudad de Goya: padrón de pacientes, cobertura barrial, cartilla de profesionales, especialidades médicas, cronogramas de horarios, reserva atómica de turnos, reprogramación asistida ante cierres e **Historia Clínica Electrónica (HCE)** con firma digital y auditoría inmutable.
 
-El sistema incluye una **aplicaci贸n web** y una **API REST**. Cada usuario accede a funciones seg煤n su rol y las relaciones registradas en el sistema, como su salita asignada o su perfil profesional.
+El sistema está compuesto por una **aplicación cliente SPA (React 19)** y una **API REST modular (Express 5 y Node.js)** respaldada por **PostgreSQL**. La seguridad se basa en tokens JWT, políticas RBAC estrictas y middleware de alcance contextual (*Clinical Scope* y *Territorial Scope*).
 
-| 馃懁 Para pacientes | 馃┖ Para profesionales | 馃彞 Para administraci贸n |
+| 👤 Para pacientes y tutores | 🩺 Para profesionales de la salud | 🏥 Para administración y recepción |
 | --- | --- | --- |
-| Encontrar atenci贸n disponible y gestionar sus turnos. | Consultar su agenda y registrar el resultado de la atenci贸n. | Organizar recursos, gestionar cuentas y consultar la actividad de las salitas. |
+| Consultar salitas disponibles por cobertura territorial, reservar turnos propios o de personas a cargo y consultar su historial médico en **Mi Historia Clínica**. | Consultar agenda diaria en tiempo real, registrar asistencia/inasistencia, redactar consultas con autoguardado, firmar actos médicos y emitir derivaciones inter-salitas. | Configurar recursos, gestionar horarios, analizar y confirmar reprogramaciones asistidas masivas, aprobar tutelas y auditar la actividad de las salitas. |
 
 <details>
-<summary><strong>馃Л 脥ndice de documentaci贸n</strong></summary>
+<summary><strong>📑 Índice general de documentación</strong></summary>
 
-- [Funciones principales](#funciones)
-- [Asistente CORA: prototipo funcional, configuraci贸n y privacidad](docs/CHATBOT.md)
-- [Roles y alcance](#roles)
-- [C贸mo se utiliza](#uso)
-- [Reglas de reservas, sanciones y bloqueos](#reglas)
-- [Agenda, reprogramaci贸n y calendario institucional](#agenda)
-- [Seguridad, privacidad y l铆mites actuales](#seguridad)
-- [Herramientas y tecnolog铆as](#tecnologias)
-- [Arquitectura y organizaci贸n](#arquitectura)
-- [Instalaci贸n y configuraci贸n](#instalacion)
-- [Comandos de desarrollo](#comandos)
-- [API y documentaci贸n relacionada](#api)
-- [Contribuciones](#contribuciones)
-- [Autores y colaboradores](#autores)
+- [✨ Funciones principales](#funciones)
+- [🛡️ Roles y alcance de permisos](#roles)
+- [🚶‍♂️ Cómo se utiliza (Recorridos por rol)](#uso)
+- [🩺 Historia Clínica Electrónica (HCE)](docs/HISTORIA_CLINICA.md)
+- [📊 Diagramas de Casos de Uso, Secuencia y Base de Datos](docs/DIAGRAMAS.md)
+- [📅 Reglas de reservas, sanciones y bloqueos](#reglas)
+- [🔄 Agenda, reprogramación y calendario institucional](#agenda)
+- [🔐 Seguridad, privacidad y límites actuales](#seguridad)
+- [🛠️ Herramientas y tecnologías](#tecnologias)
+- [🏗️ Arquitectura y organización del código](#arquitectura)
+- [🚀 Instalación y puesta en marcha](#instalacion)
+- [💻 Comandos de desarrollo](#comandos)
+- [📡 API y documentación relacionada](#api)
+- [🤝 Contribuciones](#contribuciones)
+- [👨‍💻 Autores y colaboradores](#autores)
 
 </details>
 
@@ -55,493 +57,448 @@ El sistema incluye una **aplicaci贸n web** y una **API REST**. Cada usuario acc
 
 <a id="funciones"></a>
 
-## 鉁?Funciones principales
+## ✨ Funciones principales
 
-| M贸dulo | Acciones disponibles |
+| Módulo | Acciones y capacidades del sistema |
 | --- | --- |
-| 馃攼 **Acceso y cuentas** | Inicio de sesi贸n, verificaci贸n de correo, recuperaci贸n de contrase帽a, acceso con Google para pacientes y administraci贸n de cuentas seg煤n permisos. |
-| 馃懃 **Pacientes y personas a cargo** | Fichas personales, solicitudes de vinculaci贸n, aprobaci贸n administrativa, delegaci贸n de gesti贸n y revocaci贸n de autorizaciones. |
-| 馃彞 **Salitas y cobertura** | Gesti贸n de salitas, barrios, zonas y relaciones que determinan la cobertura territorial. |
-| 馃┖ **Profesionales** | Registro de profesionales, matr铆cula, especialidades, asignaciones a salitas y cuentas de acceso. |
-| 馃棑锔?**Horarios y disponibilidad** | Carga de varios d铆as y franjas, duraci贸n de turnos, cupos, vigencias y bloqueos de agenda. |
-| 馃師锔?**Turnos** | Solicitud, consulta, confirmaci贸n, cancelaci贸n, reprogramaci贸n administrativa e historial de cambios. |
-| 馃攧 **Reprogramaci贸n asistida** | An谩lisis de turnos afectados, b煤squeda de destinos, propuestas y confirmaci贸n individual por turno con control de versi贸n. |
-| 馃彌锔?**Calendario institucional** | Feriados, asuetos y cierres globales o por salita; sincronizaci贸n manual y semanal de feriados nacionales desde ArgentinaDatos. |
-| 鈿栵笍 **Sanciones** | Restricciones de reserva por inasistencia, consulta de sanciones y anulaci贸n administrativa seg煤n permisos. |
-| 馃敂 **Notificaciones** | Avisos internos, comunicaciones administrativas y env铆os por correo seg煤n configuraci贸n. |
-| 馃搳 **Reportes** | Res煤menes de actividad, informaci贸n por especialidad y profesional, agenda diaria y exportaciones en PDF, Excel o Word seg煤n el reporte. |
-| 馃搱 **Dashboard general** | Totales de entidades, turnos registrados/programados hoy y actividad reciente para SUPER_ADMIN. |
-| 馃摪 **Contenido p煤blico** | P谩gina p煤blica, novedades y administraci贸n de publicaciones. |
-| 鈿欙笍 **Configuraci贸n y auditor铆a** | Cat谩logos, par谩metros del sistema y consulta de registros de auditor铆a mediante la API autorizada. |
-| 馃挰 **Asistente CORA** | Prototipo optativo de orientaci贸n sobre pantallas y funciones; deshabilitado por defecto, sin acceso a datos del negocio ni ejecuci贸n de operaciones. |
+| 🔐 **Acceso e identidad** | Inicio de sesión, verificación obligatoria de correo electrónico, recuperación por código OTP, acceso directo con Google y administración de usuarios. |
+| 👥 **Pacientes y personas a cargo** | Fichas personales, solicitudes de vinculación familiar/tutela, aprobación administrativa formal, delegación de reservas e historial de vínculos. |
+| 🏥 **Salitas y territorio** | Catálogos de salitas (SAPS), barrios y zonas geográficas que determinan la cobertura territorial de atención para cada paciente. |
+| 🩺 **Profesionales y especialidades** | Registro de médicos y especialistas, matrículas provinciales, asignaciones a salitas con vigencia temporal y habilitación de usuarios. |
+| 📅 **Horarios y disponibilidad** | Carga de franjas horarias por día de la semana, duración de turnos (5 a 240 min), cupos diarios máximos, vigencias y bloqueos programados. |
+| 🎟️ **Turnos y agenda atómica** | Solicitud y confirmación con exclusión relacional GiST (sin solapamiento), cancelación, verificación de concurrencia y trazabilidad histórica. |
+| 📋 **Historia Clínica Electrónica** | Expediente longitudinal por paciente (1:1), consultas médicas vinculadas a turnos o de demanda espontánea, antecedentes, alergias, diagnósticos (CIE-10), evoluciones versionadas con rectificación trazable, prescripciones farmacológicas, órdenes de estudios complementarios y autoguardado en borrador temporal. |
+| 🔄 **Derivaciones inter-salitas** | Solicitud, autorización y resolución de derivaciones entre centros de salud para acceso asistencial cruzado y justificado. |
+| ⚡ **Reprogramación asistida** | Detección de turnos afectados por asuetos o ausencias médicas, cálculo asistido de propuestas en franjas óptimas y reubicación atómica. |
+| 🏛️ **Calendario institucional** | Feriados nacionales, asuetos municipales y cierres globales o por salita; sincronización manual y automática desde la API de ArgentinaDatos con control por *lease*. |
+| ⚖️ **Sanciones por inasistencia** | Suspensión temporal automática (7 días) para reservar turnos ante inasistencias injustificadas, con anulación administrativa motivada. |
+| 🔔 **Notificaciones multicanal** | Mensajería interna en tiempo real mediante WebSockets (Socket.IO), avisos administrativos masivos y despacho de correos electrónicos vía SMTP. |
+| 📊 **Reportes y estadísticas** | Métricas de atención por especialidad y profesional, hoja de ruta de agenda diaria para impresión y exportaciones en PDF, Excel y Word. |
+| 📈 **Dashboard administrativo** | Métricas consolidadas en tiempo real para `SUPER_ADMIN`: totales de entidades, turnos del día, distribución territorial y registro de actividad reciente. |
+| 🛡️ **Auditoría inmutable** | Auditoría operativa de cambios y registro inmutable protegido por disparadores SQL para la auditoría de accesos a historias clínicas (`auditoria_clinica` y `auditoria_accesos_auditoria`). |
+| 📰 **Portal público y novedades** | Página de inicio pública para la comunidad, guía interactiva de uso, cartelera de noticias municipales y buscador informativo de salitas. |
+| 💬 **Asistente virtual CORA** | Prototipo optativo de orientación funcional y navegación basado en Gemini API, desconectado de datos clínicos privados. |
+
+---
 
 <a id="roles"></a>
 
-## 馃洝锔?Roles y alcance
+## 🛡️ Roles y alcance de permisos
 
-Los permisos se verifican en el servidor. Una opci贸n visible en la interfaz no reemplaza los controles de acceso de la API.
+El sistema valida cada petición mediante un esquema de control de acceso en capas (*Layered Access Control*):
+1. **Firma y vigencia del JWT** (`authenticate`).
+2. **Rol del usuario** (`requireRole`).
+3. **Permisos granulares en base de datos** (`requirePermission`).
+4. **Alcance contextual** (`clinicalScope`, `clinicalResourceScope`, `cierreScope`).
 
-| Rol | Responsabilidad | Alcance general |
+| Rol | Responsabilidad principal | Alcance y limitaciones |
 | --- | --- | --- |
-| 馃憫 `SUPER_ADMIN` | Administraci贸n general del sistema, salitas, cuentas, cat谩logos, agendas y reportes. | Gesti贸n global, sujeta a las validaciones de cada operaci贸n. |
-| 馃彞 `ADMIN_SALITA` | Gesti贸n operativa de pacientes, profesionales, horarios, turnos y comunicaciones. | Salitas autorizadas para su cuenta. |
-| 馃┖ `PROFESIONAL` | Consulta de su agenda y registro de atenci贸n o inasistencia. | Informaci贸n vinculada a su perfil y turnos autorizados. |
-| 馃懁 `PACIENTE` | Gesti贸n de su perfil, solicitud y cancelaci贸n de turnos, consulta de avisos y solicitudes de vinculaci贸n. | Su cuenta y los pacientes sobre los que tiene una autorizaci贸n aprobada y vigente. |
-| 馃Ь `RECEPCION` | Operaciones de atenci贸n administrativa habilitadas en determinadas rutas. | Rol contemplado en la API; no cuenta con un recorrido independiente completo en la interfaz actual. |
+| 👑 `SUPER_ADMIN` | Gestión global de la plataforma, salitas, cuentas, roles, catálogo, calendario y auditoría general. | Control integral del sistema. No tiene lectura clínica asistencial directa por secreto profesional, pero sí acceso a la **Auditoría Clínica Inmutable** (`VER_AUDITORIA_CLINICA`). |
+| 🏥 `ADMIN_SALITA` | Gestión operativa de recursos, agenda, turnos, comunicaciones y tutelas en salitas asignadas. | Restringido estrictamente a las salitas vinculadas en `usuario_salita`. Posee lectura clínica asistencial (`VER_HISTORIA_CLINICA`) para pacientes de su propia sede. |
+| 🩺 `PROFESIONAL` | Atención de pacientes, gestión de agenda médica propia y registro clínico. | Acceso a sus turnos asignados y a la **Historia Clínica** de pacientes citados o asignados mediante derivaciones vigentes. Facultad exclusiva de firmar consultas y evoluciones. |
+| 👤 `PACIENTE` | Autogestión de turnos de atención primaria, vinculaciones familiares y consulta personal de salud. | Acceso a su propia cuenta, sus reservas y a su expediente personal en **Mi Historia Clínica** (`/mi-historia`), extensivo a tutelados formalmente aprobados. |
+| 🏢 `RECEPCION` | Admisión de pacientes en mostrador, confirmación de llegadas y asignación de turnos presenciales. | Operaciones administrativas de soporte. Posee lectura clínica asistencial limitada a su salita para tareas de admisión y recepción física. |
 
-> [!NOTE]
-> El alcance exacto depende de la ruta, el rol y las asignaciones vigentes. La autorizaci贸n de una operaci贸n no implica acceso a todos los registros de una salita o del sistema.
+---
 
 <a id="uso"></a>
 
-## 馃毝 C贸mo se utiliza
+## 🚶‍♂️ Cómo se utiliza
 
-### 馃懁 Recorrido del paciente
+### 👤 Recorrido del paciente
+1. **Registro e Identidad**: Registrarse con correo y contraseña o vincular cuenta Google; verificar el email mediante código OTP o enlace.
+2. **Ficha y Cobertura**: Completar datos personales y barrio de residencia para determinar automáticamente las salitas con cobertura territorial.
+3. **Reserva de Turno**:
+   - Ingresar a **Solicitar turno**.
+   - Elegir el beneficiario (el propio titular o una persona a cargo con vinculación aprobada).
+   - Seleccionar la especialidad médica, el profesional y una fecha/hora disponible de la grilla.
+   - Confirmar la reserva y descargar o consultar el comprobante desde **Mis turnos**.
+4. **Mi Historia Clínica**: Ingresar a la sección personal para revisar atenciones recibidas, diagnósticos prescriptos, tratamientos vigentes e indicaciones farmacológicas.
 
-1. Registrarse o iniciar sesi贸n y completar las verificaciones requeridas.
-2. Completar sus datos personales y revisar su cobertura.
-3. Ingresar a **Solicitar turno**.
-4. Elegir para qui茅n se solicita el turno 鈥攖itular o persona a cargo autorizada鈥? especialidad y profesional.
-5. Seleccionar uno de los **d铆as disponibles** del desplegable y luego un horario.
-6. Confirmar la solicitud y consultar el turno desde **Mis turnos**.
+### 🩺 Recorrido del profesional de salud
+1. **Inicio de Jornada**: Ingresar al panel médico y consultar la **Agenda Diaria** por salita.
+2. **Recepción y Atención**: Marcar la llegada del paciente o registrar inasistencia (lo que dispara la sanción automática si corresponde).
+3. **Historia Clínica y Consulta Médica**:
+   - Abrir el expediente longitudinal del paciente.
+   - Redactar motivo de consulta, síntomas y examen físico (con autoguardado en segundo plano).
+   - Registrar diagnósticos CIE-10, prescripciones de tratamientos y solicitudes de estudios.
+   - **Firmar digitalmente la consulta**: Se sella el acto clínico de forma inmutable y el turno se actualiza automáticamente a `ATENDIDO`.
+   - Si se requiere una interconsulta especializada en otra salita, emitir una **Derivación Clínica Inter-Salita**.
 
-En **Personas a cargo** puede solicitarse gestionar los turnos de otra persona o delegar la gesti贸n propia. El parentesco y el env铆o de la solicitud no conceden acceso: la administraci贸n debe verificar identidad, documentaci贸n y autorizaci贸n. La cobertura, sanciones y l铆mites se aplican al paciente que recibe la atenci贸n. Los historiales se consultan por separado. Ver [personas a cargo](docs/personas-a-cargo.md).
-
-### 馃彞 Recorrido administrativo
-
-1. Revisar las salitas, barrios y relaciones de cobertura.
-2. Registrar al profesional y asignar sus especialidades y salitas.
-3. Configurar los d铆as de atenci贸n, las franjas horarias y la vigencia.
-4. Gestionar reservas, cancelaciones y reprogramaciones.
-5. Consultar la agenda, los reportes y las comunicaciones del equipo.
-
-La administraci贸n tambi茅n revisa solicitudes de vinculaci贸n y gestiona ausencias y cierres. Si un cambio manual de agenda afecta reservas, debe resolverlas antes de guardar. Los feriados importados tienen un tratamiento espec铆fico explicado en [calendario institucional](#agenda).
-
-Al crear horarios, las asignaciones 煤nicas se seleccionan autom谩ticamente. Cuando hay varias opciones autorizadas, el administrador elige la correspondiente. Un mismo d铆a puede tener m谩s de una franja, por ejemplo ma帽ana y tarde.
-
-### 馃┖ Recorrido del profesional
-
-1. Ingresar con su cuenta vinculada al registro profesional.
-2. Consultar su agenda de atenci贸n.
-3. Registrar el resultado del turno: **atendido** o **no asisti贸**, seg煤n corresponda.
+### 🏥 Recorrido de la administración de salita
+1. **Recursos y Agendas**: Configurar los días de atención, franjas y vigencias para cada médico de la salita.
+2. **Cierres y Contingencias**: Si surge un asueto edilicio o ausencia médica, cargar el bloqueo y ejecutar el asistente de **Reprogramación Asistida** para reubicar en lote a los pacientes sin perder sus citas.
+3. **Tutelas y Vinculaciones**: Revisar en la bandeja de solicitudes los pedidos de tutoría para autorizar la gestión delegada de menores o adultos mayores.
 
 ---
 
 <a id="reglas"></a>
 
-## 馃搮 Reglas de reservas, sanciones y bloqueos
+## 📅 Reglas de reservas, sanciones y bloqueos
 
-### Ventana semanal
+### Ventana semanal de reserva
+- **Antes del sábado a las 12:00**: Habilitada la semana en curso (hasta el domingo inclusive).
+- **Desde el sábado a las 12:00**: Se abre adicionalmente la agenda de la **semana completa siguiente**.
+- La zona horaria oficial del motor de agenda es **Argentina** (`America/Argentina/Buenos_Aires`).
 
-| Momento | Fechas habilitadas para el paciente |
-| --- | --- |
-| Antes del s谩bado a las 12:00 | Desde el d铆a actual hasta el domingo de esa semana. |
-| Desde el s谩bado a las 12:00 | Tambi茅n se habilita la semana siguiente completa. |
+### Unicidad de turnos por especialidad
+Un paciente no puede poseer dos turnos simultáneos en estado activo para la misma especialidad médica, garantizando equidad distributiva en la atención primaria. La validación se respalda por un índice único parcial en PostgreSQL.
 
-- La referencia horaria es **Argentina**, zona `America/Argentina/Buenos_Aires`.
-- Se conservan los horarios restantes del fin de semana actual.
-- La API verifica la ventana al consultar disponibilidad y al reservar.
-- La pantalla actualiza la agenda peri贸dicamente y al recuperar el foco.
-- Esta restricci贸n corresponde al autoservicio del paciente; administraci贸n conserva sus operaciones de gesti贸n y reprogramaci贸n.
+### Sanciones automáticas por inasistencia
+Al registrarse un turno como `NO_ASISTIO`, el sistema aplica una suspensión automática por **7 días (168 horas)** que inhabilita nuevas reservas de turnos en todas las especialidades. La sanción cuenta con vencimiento automático y puede ser anulada justificadamente por la administración.
 
-### Reservas por especialidad
+### Vigencia temporal profesional-salita
+Toda atención médica exige una relación activa entre el médico y la salita con `fecha_desde <= fecha_atención` y `(fecha_hasta IS NULL OR fecha_hasta >= fecha_atención)`.
 
-Un paciente no puede mantener **dos turnos abiertos de la misma especialidad**, aunque seleccione profesionales diferentes. La restricci贸n se comprueba en la aplicaci贸n y mediante un 铆ndice 煤nico en la base de datos.
-
-Cuando un turno pasa a un estado que deja de impedir otra reserva 鈥攃omo atendido o cancelado鈥?puede solicitarse uno nuevo, siempre que se cumplan las dem谩s condiciones de disponibilidad y acceso.
-
-### Inasistencias
-
-La migraci贸n de sanciones incorpora una suspensi贸n de **siete d铆as 鈥?68 horas鈥?* desde el registro de la inasistencia:
-
-- Se genera al marcar el turno como **`NO_ASISTIO`**.
-- Impide nuevas reservas de **todas las especialidades**.
-- La interfaz informa la restricci贸n, su motivo y su vencimiento.
-- Al vencer o anularse la sanci贸n, deja de impedir nuevas reservas.
-- No cancela autom谩ticamente los turnos que ya estaban reservados.
-
-> [!IMPORTANT]
-> La generaci贸n autom谩tica requiere aplicar [`20261020_sancion_global_inasistencia.sql`](backend/src/BBDD/20261020_sancion_global_inasistencia.sql) en la base de datos correspondiente. La presencia del archivo en el repositorio no confirma que la migraci贸n est茅 aplicada.
->
-> La duraci贸n actual es fija: **siete d铆as**. La configuraci贸n de una duraci贸n diferente por salita todav铆a no est谩 implementada.
-
-### Bloqueos de cuenta
-
-Una cuenta deshabilitada o temporalmente bloqueada no puede continuar operando con normalidad. Los controles se aplican durante la autenticaci贸n, la renovaci贸n de sesi贸n y las solicitudes protegidas, y la interfaz muestra un aviso modal para los distintos roles.
-
-**Sanci贸n de reservas** y **bloqueo de cuenta** son situaciones distintas: la primera restringe la solicitud de turnos; el segundo restringe el acceso a la cuenta.
-
-### Vigencia de asociaciones profesional-salita
-
-Una asociaci贸n operativa requiere `activo = true`, `fecha_desde <= fecha evaluada` y `fecha_hasta` nula o igual/posterior a esa fecha. Ambas fechas son inclusivas y se almacenan como `DATE`; `fecha_desde` no admite NULL y `fecha_hasta = NULL` significa sin finalizaci贸n definida.
-
-- Disponibilidad y horarios propios eval煤an la fecha consultada.
-- Creaci贸n, confirmaci贸n y reprogramaci贸n eval煤an la fecha argentina del turno o del nuevo destino.
-- El alcance para crear cuentas profesionales se eval煤a respecto de hoy en Argentina.
-- Las consultas administrativas hist贸ricas conservan las relaciones vencidas. El vencimiento de una salita no invalida las otras asignaciones del profesional.
-- Acortar una asociaci贸n no cancela ni reprograma autom谩ticamente turnos existentes.
-
-El repositorio reutiliza `getSalitasByProfesional` con una fecha opcional para las consultas operativas. La validaci贸n SQL complementaria se encuentra en [20261109_profesional_salita_vigencia.sql](backend/src/BBDD/20261109_profesional_salita_vigencia.sql).
+---
 
 <a id="agenda"></a>
 
-## 馃棑锔?Agenda, reprogramaci贸n y calendario institucional
+## 🔄 Agenda, reprogramación y calendario institucional
 
-### Horarios, cupos y estados
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Admin as 🏥 Administrador
+    participant API as 🔐 API Reprogramación
+    participant Srv as ⚙️ AgendaImpactoService
+    participant DB as 🗃️ PostgreSQL (Lock & RPC)
+    participant WS as 📡 Socket.IO / Notif
 
-`cupo_maximo_diario` limita los turnos que ocupan agenda por horario de atenci贸n y d铆a argentino; no representa capacidad simult谩nea de un mismo slot. NULL significa sin ese l铆mite diario. La duraci贸n y la finalizaci贸n del turno se obtienen del horario configurado.
+    Admin->>API: POST /api/turnos/reprogramacion/impacto (Cierre / Ausencia)
+    API->>Srv: calcularImpacto(criterios)
+    Srv->>DB: Detectar turnos afectados
+    DB-->>Srv: Lista de turnos colisionados
+    Srv-->>API: Total de turnos a reubicar
+    Admin->>API: POST /api/turnos/reprogramacion/propuesta
+    API->>Srv: buscarFranjasDisponibles()
+    Srv->>DB: Calcular franjas libres válidas
+    DB-->>Srv: Slots alternativos
+    Srv-->>API: Matriz de propuestas óptimas
+    Admin->>API: POST /api/turnos/reprogramacion/confirmar
+    API->>DB: Iniciar RPC transaccional con pg_advisory_xact_lock
+    DB-->>API: Reubicación atómica confirmada
+    API->>WS: Emitir cambios de agenda en tiempo real
+    API-->>Admin: Reporte final de reprogramación
+```
 
-| Estados iniciales del cat谩logo | Ocupan agenda |
-| --- | --- |
-| `SOLICITADO`, `CONFIRMADO`, `EN_ESPERA` | S铆 |
-| `ATENDIDO`, `NO_ASISTIO`, `CANCELADO`, `REPROGRAMADO` | No |
+- **Bloqueo concurrente**: Se utiliza un cerrojo consultivo transaccional (`pg_advisory_xact_lock`) para evitar condiciones de carrera durante la reserva masiva.
+- **Sincronización con ArgentinaDatos**: Tarea periódica automatizada (ejecutada semanalmente los sábados a las 03:00 de Argentina) para importar feriados nacionales oficiales a la tabla `cierres_calendario`.
 
-Los indicadores se derivan del cat谩logo mediante un trigger. La reprogramaci贸n administrativa actual modifica el mismo turno y conserva su estado operativo; no lo convierte autom谩ticamente al estado final `REPROGRAMADO`.
-
-### Ausencias y reprogramaci贸n asistida
-
-Los bloqueos afectan una salita y una fecha, con profesional y especialidad opcionales. Admiten d铆a completo o franja parcial. El flujo permite analizar afectados, consultar destinos, revisar una propuesta y confirmar cambios. Cada turno se guarda con control de versi贸n y en su propia transacci贸n: una confirmaci贸n de lote puede informar 茅xitos y fallos parciales.
-
-Los bloqueos y cierres manuales rechazan su guardado mientras queden turnos afectados pendientes. La vista de horarios habituales orienta la elecci贸n de fechas; no garantiza lugares libres. M谩s detalles en [agenda asistida](docs/agenda-reprogramacion-asistida.md) y [ausencias y reprogramaci贸n r谩pida](docs/ausencias-reprogramacion-rapida.md).
-
-### Feriados y cierres
-
-Desde **Configuraci贸n 鈫?Feriados y cierres**, SUPER_ADMIN gestiona cierres globales o por salita; ADMIN_SALITA gestiona los de sus salitas y consulta los globales. Los cierres pueden abarcar varias fechas inclusivas, d铆as completos o una franja repetida cada d铆a.
-
-- SUPER_ADMIN puede solicitar **Actualizar feriados nacionales**.
-- La sincronizaci贸n intenta el a帽o argentino actual y el siguiente, sin copiar ni inventar fechas.
-- La ejecuci贸n autom谩tica corresponde al s谩bado a las **03:00 de Argentina**, en el siguiente ciclo del procesador del backend. Al reiniciar recupera la ejecuci贸n debida.
-- Un lease persistente coordina las instancias; si un a帽o no puede consultarse o su respuesta es inv谩lida, se conserva la informaci贸n anterior.
-- Los importados son de solo lectura y bloquean nuevas reservas inmediatamente. Los turnos existentes permanecen como afectados hasta que administraci贸n los resuelve; no se mueven autom谩ticamente.
-- Las consultas de disponibilidad leen la base SAPS, sin llamar al proveedor externo durante una reserva.
-
-Consultar [cierres institucionales](docs/feriados-cierres-institucionales.md) y [sincronizaci贸n con ArgentinaDatos](docs/argentinadatos-calendario.md), incluidas sus limitaciones sobre fechas que desaparecen o cambian en la fuente.
-
-### Consistencia y concurrencia
-
-La disponibilidad es informativa y puede cambiar antes de reservar. El backend revalida la operaci贸n y PostgreSQL constituye la 煤ltima protecci贸n de la escritura:
-
-- Turnos, horarios, bloqueos y cierres comparten el advisory lock transaccional `pg_advisory_xact_lock(20261103, 1)`.
-- Los triggers comprueban cupos, bloqueos y cierres dentro de la transacci贸n. Las RPC de agenda reutilizan el mismo lock.
-- Las restricciones de exclusi贸n impiden superposiciones por profesional y por paciente; el 铆ndice 煤nico parcial evita otro turno abierto de la misma especialidad.
-- Los intervalos son `[inicio, fin)`: dos turnos que solo comparten un extremo son adyacentes.
-- Historial y auditor铆a se registran junto con la escritura; correos y eventos de interfaz se procesan despu茅s.
-
-Estas garant铆as requieren las migraciones y triggers instalados. El lock es global y puede hacer esperar operaciones de salitas diferentes. Las consultas previas realizadas desde TypeScript no forman por s铆 mismas una transacci贸n com煤n.
+---
 
 <a id="seguridad"></a>
 
-## 馃攼 Seguridad, privacidad y l铆mites actuales
+## 🔐 Seguridad, privacidad y límites actuales
 
-La API verifica identidad, rol, alcance y relaciones autorizadas. Las claves de servidor permanecen en el backend; ocultar una opci贸n en React no sustituye la autorizaci贸n. La autenticaci贸n propia y sus flujos se describen en [AUTENTICACION.md](docs/AUTENTICACION.md).
-
-El aviso de privacidad informa sobre datos y almacenamiento del navegador. **Entendido** registra la lectura del aviso, no un consentimiento para tratamientos adicionales. La pol铆tica incluida es un borrador de prueba pendiente de validaci贸n institucional. Ver [privacidad del navegador](docs/PRIVACIDAD_NAVEGADOR.md).
-
-El **Asistente CORA** es un prototipo acad茅mico optativo, no habilitado para uso sanitario real. Orienta sobre funciones: no diagnostica, reserva ni consulta pacientes o agendas. El texto libre se interpreta localmente; al proveedor se env铆an preguntas can贸nicas y documentaci贸n est谩tica autorizada. Su configuraci贸n, l铆mites por proceso y tratamiento de datos est谩n en [CHATBOT.md](docs/CHATBOT.md).
-
-El dashboard distingue entidades activas de asociaciones vigentes y turnos registrados hoy de turnos programados para hoy. Sus conteos son independientes, no una fotograf铆a transaccional 煤nica. Ver [dashboard de SUPER_ADMIN](docs/DASHBOARD_SUPER_ADMIN.md).
+- **Inmutabilidad Médica y de Auditoría**: Las consultas médicas firmadas y los eventos de auditoría clínica rechazan físicamente instrucciones `DELETE` y `UPDATE` mediante triggers PL/pgSQL.
+- **Cabeceras Anti-Caché**: Todas las rutas de salud emiten `Cache-Control: no-store` para impedir la persistencia de datos confidenciales en cachés intermedias.
+- **Contraseñas y Criptografía**: Hash seguro con algoritmo **Argon2id** y tokens JWT efímeros firmados mediante **JOSE**.
+- **Privacidad en el Navegador**: Panel de términos y aviso de almacenamiento local conforme a estándares de privacidad.
+- **Asistente Virtual CORA**: Desconectado del almacenamiento clínico. Utiliza contexto estático de orientación y cuenta con limitadores de tasa (*Rate Limiting*) en memoria.
 
 ---
 
 <a id="tecnologias"></a>
 
-## 馃О Herramientas y tecnolog铆as
+## 🛠️ Herramientas y tecnologías
 
-| 脕rea | Herramientas | Uso en el proyecto |
+| Capa | Tecnologías | Propósito |
 | --- | --- | --- |
-| Interfaz | React 19 路 TypeScript 路 Vite | Componentes, tipado y construcci贸n de la aplicaci贸n web. |
-| Dise帽o | Bootstrap 5 路 Bootstrap Icons 路 CSS | Formularios, navegaci贸n, tablas, iconos y estilos. |
-| Navegaci贸n y HTTP | React Router 路 Axios | Rutas de la aplicaci贸n y comunicaci贸n con la API. |
-| Servidor | Node.js 路 Express 5 路 TypeScript | API REST y l贸gica de negocio. |
-| Datos | Supabase 路 PostgreSQL | Persistencia, relaciones, restricciones y triggers. |
-| Validaci贸n | Zod | Validaci贸n de entradas y variables de entorno. |
-| Autenticaci贸n | Argon2 路 JOSE 路 Google Auth Library | Contrase帽as, tokens y verificaci贸n de identidad con Google. |
-| Correo | Nodemailer 路 SMTP | Verificaci贸n de correo y comunicaciones. |
-| Tiempo real | Socket.IO 路 Socket.IO Client | Eventos de cambios de agenda para actualizar la interfaz autenticada. |
-| Integraciones | ArgentinaDatos 路 RSS municipal 路 Gemini optativo | Importaci贸n de feriados, lectura de novedades y orientaci贸n funcional del asistente. |
-| Documentos | PDFKit 路 ExcelJS 路 docx | Generaci贸n de reportes y exportaciones. |
-| Verificaci贸n | Node Test Runner 路 tsx 路 TypeScript 路 Oxlint | Pruebas del backend, comprobaci贸n de tipos y an谩lisis est谩tico del frontend. |
-| Middleware | Helmet 路 CORS 路 Morgan | Cabeceras HTTP, acceso entre or铆genes y registro de solicitudes. |
+| **Frontend** | React 19 · TypeScript · Vite · React Router DOM | Aplicación web reactiva, componentes modulares y carga diferida. |
+| **Diseño y UI** | Bootstrap 5 · Bootstrap Icons · CSS Modules | Estilos consistentes, sistema de diseño responsivo y accesibilidad. |
+| **Backend** | Node.js · Express 5 · TypeScript (ESM) | Servidor API REST, middlewares de seguridad y lógica de negocio. |
+| **Persistencia** | PostgreSQL · Supabase | Base de datos relacional, triggers, índices GiST y procedimientos almacenados (RPC). |
+| **Validación** | Zod | Validación estricta en tiempo de ejecución de esquemas de datos y variables de entorno. |
+| **Seguridad** | Argon2id · JOSE (JWT) · Google Auth Library · Helmet | Criptografía, gestión de sesiones, tokens de renovación y cabeceras seguras. |
+| **Tiempo real** | Socket.IO | Notificaciones bidireccionales de eventos de agenda e interacciones asistenciales. |
+| **Comunicaciones**| Nodemailer · Servidor SMTP | Despacho de correos de verificación, códigos de recuperación y avisos de turnos. |
+| **Integraciones** | API ArgentinaDatos · RSS Municipal · Gemini API | Feriados nacionales automáticos, noticias locales y asistente de ayuda optativo. |
+| **Exportaciones** | PDFKit · ExcelJS · docx | Generación dinámica de reportes en PDF, hojas de cálculo Excel y documentos Word. |
 
-Las versiones declaradas se encuentran en los archivos [`package.json` del backend](backend/package.json) y [del frontend](frontend/package.json).
+---
 
 <a id="arquitectura"></a>
 
-## 馃彈锔?Arquitectura y organizaci贸n
+## 🏗️ Arquitectura y organización
 
 ```mermaid
-flowchart LR
-    U["馃懃 Usuarios"] --> F["馃寪 Frontend 路 React"]
-    F -->|"HTTP / JSON"| A["馃攼 API REST 路 Express"]
-    A --> S["鈿欙笍 Servicios y validaciones"]
-    S --> R["馃梼锔?Repositorios"]
-    R --> D[("Supabase 路 PostgreSQL")]
-    S --> M["鉁夛笍 Correo SMTP"]
-    A <-->|"Socket.IO"| F
-    W["Procesador peri贸dico"] --> S
-    S --> E["ArgentinaDatos / RSS municipal"]
-    S -.-> G["Gemini 路 asistente optativo"]
+flowchart TB
+    subgraph FRONTEND["🌐 Frontend (SPA React 19)"]
+        UI["Interfaz de Usuario / Contextos"]
+        ROUTING["Enrutador Protegido (ProtectedRoute)"]
+    end
+
+    subgraph BACKEND["🔐 Backend (Express 5 REST API)"]
+        ROUTES["Rutas (/api/*)"]
+        MW["Middlewares (Auth, Roles, ClinicalScope)"]
+        SRV["Capa de Servicios de Negocio"]
+        REPO["Repositorios de Datos"]
+        WORKER["Worker Asíncrono (Notificaciones / Sync Feriados)"]
+    end
+
+    subgraph DATABASE["🗄️ Persistencia (Supabase PostgreSQL)"]
+        TABLES[("Tablas Relacionales")]
+        TRIGGERS["Triggers de Integridad & Inmutabilidad"]
+        RPC["Funciones Transaccionales RPC"]
+    end
+
+    FRONTEND -->|"HTTPS + Bearer JWT"| BACKEND
+    FRONTEND <-->|"WSS (Socket.IO)"| BACKEND
+    BACKEND --> DATABASE
 ```
+
+### Estructura del árbol del repositorio
 
 ```text
 SAPS_Turno/
-鈹溾攢鈹€ backend/
-鈹?  鈹溾攢鈹€ src/
-鈹?  鈹?  鈹溾攢鈹€ BBDD/           Esquema SQL y migraciones
-鈹?  鈹?  鈹溾攢鈹€ config/         Configuraci贸n e integraciones
-鈹?  鈹?  鈹溾攢鈹€ controllers/    Entrada y salida HTTP
-鈹?  鈹?  鈹溾攢鈹€ middlewares/    Autenticaci贸n, permisos y errores
-鈹?  鈹?  鈹溾攢鈹€ repositories/   Acceso a datos
-鈹?  鈹?  鈹溾攢鈹€ routes/         Rutas de la API
-鈹?  鈹?  鈹溾攢鈹€ services/       Reglas de negocio
-鈹?  鈹?  鈹溾攢鈹€ validators/     Esquemas de validaci贸n
-鈹?  鈹?  鈹溾攢鈹€ types/          Tipos compartidos del backend
-鈹?  鈹?  鈹斺攢鈹€ utils/          Utilidades
-鈹?  鈹斺攢鈹€ tests/              Pruebas automatizadas
-鈹溾攢鈹€ frontend/
-鈹?  鈹斺攢鈹€ src/
-鈹?      鈹溾攢鈹€ components/     Componentes de interfaz
-鈹?      鈹溾攢鈹€ context/        Sesi贸n y estado compartido
-鈹?      鈹溾攢鈹€ pages/          Pantallas por m贸dulo
-鈹?      鈹溾攢鈹€ routes/         Navegaci贸n y rutas protegidas
-鈹?      鈹溾攢鈹€ services/       Clientes de la API
-鈹?      鈹溾攢鈹€ styles/         Estilos de la aplicaci贸n
-鈹?      鈹溾攢鈹€ types/          Tipos del frontend
-鈹?      鈹斺攢鈹€ utils/          Utilidades
-鈹溾攢鈹€ docs/                  Documentaci贸n funcional y t茅cnica por m贸dulo
-鈹斺攢鈹€ README.md              Presentaci贸n, configuraci贸n y mapa de documentaci贸n
+├── backend/
+│   ├── src/
+│   │   ├── BBDD/              # Esquema SQL principal y migraciones incrementales
+│   │   ├── config/            # Validación de variables de entorno y clientes Supabase
+│   │   ├── controllers/       # Controladores HTTP de la API REST
+│   │   ├── middlewares/       # Autenticación JWT, verificación de roles y alcances clínicos
+│   │   ├── repositories/      # Capa de acceso a datos y llamadas a funciones RPC
+│   │   ├── routes/            # Declaración y montaje de rutas de la API
+│   │   ├── services/          # Lógica del negocio, turnos e historia clínica
+│   │   ├── types/             # Definiciones de tipos TypeScript
+│   │   ├── utils/             # Funciones auxiliares de fechas, errores y tokens
+│   │   ├── validators/        # Esquemas de validación Zod
+│   │   ├── app.ts             # Configuración central de Express, CORS y Helmet
+│   │   └── server.ts          # Inicialización de HTTP, WebSockets y worker periódico
+│   ├── tests/                 # Suites de pruebas automatizadas del backend
+│   └── package.json           # Dependencias y scripts del backend
+├── frontend/
+│   ├── src/
+│   │   ├── assets/            # Imágenes, logotipos e iconos vectoriales
+│   │   ├── components/        # Componentes UI reutilizables (layout, turnos, historia clínica)
+│   │   ├── context/           # Contextos React (AuthContext, AgendaSocketContext)
+│   │   ├── pages/             # Vistas principales de la aplicación por módulo funcional
+│   │   ├── routes/            # Enrutamiento protegido por rol y permisos
+│   │   ├── services/          # Clientes HTTP (Axios) para consumo de la API
+│   │   ├── styles/            # Hojas de estilo CSS y variables globales
+│   │   ├── types/             # Tipos e interfaces de datos del frontend
+│   │   └── utils/             # Formateadores, helpers y políticas locales
+│   ├── index.html             # Punto de entrada HTML
+│   ├── vite.config.ts         # Configuración del empaquetador Vite
+│   └── package.json           # Dependencias y scripts del frontend
+├── docs/                      # Biblioteca exhaustiva de documentación técnica y operativa
+│   ├── DIAGRAMAS.md           # Diagramas formales de Casos de Uso, Secuencia y Base de Datos
+│   ├── HISTORIA_CLINICA.md    # Documentación técnica completa del módulo de Historia Clínica
+│   ├── BASE_DE_DATOS.md       # Modelo relacional de entidades y familias de tablas
+│   ├── DICCIONARIO_SQL.md     # Diccionario SQL detallado de tablas, columnas y triggers
+│   ├── API_RUTAS.md           # Inventario completo de endpoints HTTP y middlewares
+│   ├── MIGRACIONES.md         # Catálogo cronológico y orden de aplicación de scripts SQL
+│   ├── SEGURIDAD_Y_ACCESO.md  # Modelo de seguridad, matriz de permisos y control de alcance
+│   └── MANUAL_USUARIO.md      # Manual operativo para Pacientes, Médicos y Administradores
+└── README.md                  # Presentación general del proyecto (este archivo)
 ```
 
 ---
 
 <a id="instalacion"></a>
 
-## 馃殌 Instalaci贸n y configuraci贸n
+## 🚀 Instalación y puesta en marcha
 
-### 1. Preparar el entorno
+### 1. Requisitos previos
+- **Node.js**: Versión 18.x, 20.x o superior instalada.
+- **npm**: Gestor de paquetes oficial.
+- **Proyecto Supabase / PostgreSQL**: Instancia activa con extensiones `uuid-ossp` y `btree_gist`.
+- **Servidor SMTP**: Para el despacho de correos electrónicos transaccionales.
+- **Credenciales Google Cloud** (opcional): Cliente OAuth 2.0 para habilitar inicio de sesión social.
 
-Se necesita Node.js compatible con las versiones fijadas en los archivos de bloqueo, npm, una base de Supabase configurada y credenciales SMTP. El esquema de entorno actual tambi茅n exige `GOOGLE_CLIENT_ID`. Los paquetes no declaran una versi贸n unificada de Node para todo el repositorio: comprobar los requisitos de las dependencias antes de preparar el entorno.
+### 2. Clonar el repositorio e instalar dependencias
 
 ```bash
 git clone https://github.com/Arhiell/SAPS_Turno.git
 cd SAPS_Turno
+
+# Instalar dependencias del backend
 npm ci --prefix backend
+
+# Instalar dependencias del frontend
 npm ci --prefix frontend
 ```
 
-### 2. Configurar el backend
+### 3. Configuración del entorno del Backend
 
-Crear `backend/.env` a partir de [`backend/.env.example`](backend/.env.example). Si el archivo ya existe, conservar sus valores y completar 煤nicamente los faltantes.
+Crear el archivo `backend/.env` tomando como base `backend/.env.example`:
 
-La definici贸n que valida los nombres, requisitos y valores predeterminados est谩 en [`backend/src/config/env.ts`](backend/src/config/env.ts).
+```dotenv
+# Configuración del Servidor
+PORT=3000
+NODE_ENV=development
+FRONTEND_URL=http://localhost:5173
 
-| Grupo | Variables principales |
-| --- | --- |
-| Aplicaci贸n | `NODE_ENV`, `PORT`, `FRONTEND_URL` |
-| Supabase | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`; `SUPABASE_JWKS_URL` es opcional |
-| Sesiones | `JWT_ACCESS_SECRET`, `JWT_ACCESS_EXPIRES_MINUTES`, `REFRESH_TOKEN_EXPIRES_DAYS` |
-| Control de acceso | `LOGIN_MAX_ATTEMPTS`, `LOGIN_LOCK_MINUTES` |
-| Recuperaci贸n y verificaci贸n | `PASSWORD_RECOVERY_MINUTES`, `EMAIL_VERIFICATION_HOURS` |
-| Google | `GOOGLE_CLIENT_ID` |
-| Correo | `MAIL_HOST`, `MAIL_PORT`, `MAIL_SECURE`, `MAIL_USER`, `MAIL_PASSWORD`, `MAIL_FROM_NAME`, `MAIL_FROM_EMAIL` |
-| Asistente optativo | `CHATBOT_ENABLED`, `GEMINI_API_KEY`, `GEMINI_MODEL` |
+# Conexión a Supabase / PostgreSQL
+SUPABASE_URL=https://tu-proyecto.supabase.co
+SUPABASE_PUBLISHABLE_KEY=tu_publishable_anon_key
+SUPABASE_SECRET_KEY=tu_secret_service_role_key
 
-El archivo de ejemplo puede contener nombres hist贸ricos: usar `env.ts` como referencia para la configuraci贸n vigente. El backend valida su configuraci贸n al iniciar.
+# Configuración de Sesiones y Tokens JWT
+JWT_ACCESS_SECRET=tu_clave_secreta_jwt_de_al_menos_32_caracteres
+JWT_ACCESS_EXPIRES_MINUTES=15
+REFRESH_TOKEN_EXPIRES_DAYS=7
 
-El asistente permanece apagado salvo que `CHATBOT_ENABLED=true`. No hace falta una clave Gemini para iniciar los dem谩s m贸dulos. El nombre de modelo configurado no garantiza disponibilidad ni cuota del proveedor; consultar la [configuraci贸n del asistente](docs/CHATBOT.md) antes de habilitarlo.
+# Servidor de Correo (SMTP)
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_SECURE=false
+MAIL_USER=tu_correo@gmail.com
+MAIL_PASSWORD=tu_contrasenia_de_aplicacion
+MAIL_FROM_NAME="SAPS Turno - CORA"
+MAIL_FROM_EMAIL=tu_correo@gmail.com
 
-### 3. Configurar el frontend
+# Integración con Google (OAuth)
+GOOGLE_CLIENT_ID=tu_cliente_id_de_google.apps.googleusercontent.com
 
-Crear `frontend/.env`:
+# Asistente Virtual CORA (Optativo)
+CHATBOT_ENABLED=false
+GEMINI_API_KEY=tu_clave_api_gemini
+GEMINI_MODEL=gemini-2.5-flash
+```
+
+### 4. Configuración del entorno del Frontend
+
+Crear el archivo `frontend/.env`:
 
 ```dotenv
 VITE_API_URL=http://localhost:3000/api
-VITE_GOOGLE_CLIENT_ID=tu_identificador_de_cliente_google
+VITE_GOOGLE_CLIENT_ID=tu_cliente_id_de_google.apps.googleusercontent.com
 ```
 
-El identificador de Google debe corresponder al configurado en el backend.
+### 5. Preparación de la base de datos PostgreSQL
 
-> [!WARNING]
-> Las variables `VITE_*` se incorporan al c贸digo del navegador. No colocar all铆 claves secretas de Supabase, credenciales SMTP ni secretos JWT. Los archivos `.env` no deben publicarse.
+Las migraciones incrementales se encuentran en `backend/src/BBDD/`. En una base de datos nueva, aplicar los scripts en el orden documentado en [MIGRACIONES.md](docs/MIGRACIONES.md), asegurando la ejecución de la migración de Historia Clínica:
 
-### 4. Preparar la base de datos
-
-El directorio [`backend/src/BBDD`](backend/src/BBDD) contiene el esquema y las migraciones.
-
-- **Instalaci贸n nueva:** revisar el esquema inicial y las migraciones necesarias.
-- **Base existente:** aplicar 煤nicamente las migraciones pendientes, respetando sus dependencias.
-- Las migraciones se aplican manualmente; los comandos `dev`, `build` y `start` no las ejecutan.
-
-Adem谩s de las migraciones anteriores de autenticaci贸n, correo, notificaciones y contenido, revisar estas dependencias funcionales:
-
-| Orden relativo | Archivo | Funci贸n |
-| --- | --- | --- |
-| 1 | [20261020_sancion_global_inasistencia.sql](backend/src/BBDD/20261020_sancion_global_inasistencia.sql) | Sanci贸n global autom谩tica por inasistencia. |
-| 2 | [20261031_solicitudes_vinculacion.sql](backend/src/BBDD/20261031_solicitudes_vinculacion.sql) | Solicitudes, aprobaci贸n y trazabilidad de personas a cargo. |
-| 3 | [20261103_agenda_impacto.sql](backend/src/BBDD/20261103_agenda_impacto.sql) | Impacto, protecci贸n de horarios/bloqueos y serializaci贸n compartida. |
-| 4 | [20261103_agenda_escritura.sql](backend/src/BBDD/20261103_agenda_escritura.sql) | RPC de escritura y reprogramaci贸n; requiere la anterior. |
-| 5 | [20261107_cierres_calendario.sql](backend/src/BBDD/20261107_cierres_calendario.sql) | Cierres institucionales; requiere las dos migraciones de agenda. |
-| 6 | [20261108_argentinadatos.sql](backend/src/BBDD/20261108_argentinadatos.sql) | Importaci贸n y coordinaci贸n persistente de feriados; requiere cierres. |
-| 7 | [20261109_profesional_salita_vigencia.sql](backend/src/BBDD/20261109_profesional_salita_vigencia.sql) | Completa la comprobaci贸n de asociaciones en `validar_turno`. |
-
-La tabla no reemplaza el inventario completo de `BBDD`: revisar las cabeceras y dependencias de cada archivo, especialmente las migraciones de notificaciones del mismo d铆a. No todos los scripts est谩n preparados para ejecutarse repetidamente. La presencia de un archivo no confirma su aplicaci贸n en Supabase.
+1. `SAPS_Turno_BBDD3_FINAL.sql` (Esquema estructural base).
+2. `20261020_sancion_global_inasistencia.sql`
+3. `20261031_solicitudes_vinculacion.sql`
+4. `20261103_agenda_impacto.sql`
+5. `20261103_agenda_escritura.sql`
+6. `20261107_cierres_calendario.sql`
+7. `20261108_argentinadatos.sql`
+8. `20261109_profesional_salita_vigencia.sql`
+9. `20261110_historia_clinica.sql`
+10. `20261110_super_admin_auditoria_clinica.sql`
+11. `20261115_admin_recepcion_ver_historia_clinica.sql`
+12. `20261115_fix_auditoria_clinica_columns.sql`
 
 > [!CAUTION]
-> El esquema `SAPS_Turno_BBDD3_FINAL.sql` contiene instrucciones de eliminaci贸n de tablas. No utilizarlo como actualizaci贸n de una base con datos que deban conservarse.
+> El archivo `SAPS_Turno_BBDD3_FINAL.sql` ejecuta sentencias de eliminación de tablas (`DROP TABLE ... CASCADE`). No debe ejecutarse sobre una base con datos productivos preexistentes.
 
-### 5. Iniciar la aplicaci贸n
+### 6. Iniciar los servicios en modo desarrollo
 
-Abrir dos terminales desde la ra铆z del repositorio:
+Abrir dos terminales independientes:
 
 ```bash
-# Terminal 1 路 API
+# Terminal 1: Iniciar el servidor API Backend
 npm run dev --prefix backend
-```
 
-```bash
-# Terminal 2 路 Aplicaci贸n web
+# Terminal 2: Iniciar el servidor de desarrollo Frontend
 npm run dev --prefix frontend
 ```
 
-| Servicio | Direcci贸n de desarrollo |
-| --- | --- |
-| 馃寪 Frontend | `http://localhost:5173` 鈥?comprobar la direcci贸n informada por Vite |
-| 鈿欙笍 API | `http://localhost:3000/api` 鈥?salvo que se cambie `PORT` |
-| 馃挌 Estado de la API | `http://localhost:3000/api/health` |
+| Servicio | URL Local | Descripción |
+| --- | --- | --- |
+| 🌐 **Aplicación Web (Frontend)** | `http://localhost:5173` | Portal web para pacientes, médicos y administración. |
+| 🔐 **API REST (Backend)** | `http://localhost:3000/api` | Servidor de servicios y endpoints HTTP. |
+| 🩺 **Chequeo de Salud** | `http://localhost:3000/api/health` | Diagnóstico de conectividad de la API y PostgreSQL. |
 
-### 6. Consideraciones de ejecuci贸n y despliegue
-
-- `server.ts` inicia la API, Socket.IO y el procesador peri贸dico de notificaciones, que tambi茅n revisa la sincronizaci贸n del calendario. Con el backend apagado no se procesan esas tareas.
-- Configurar el alojamiento del frontend para servir las rutas de React y apuntar `VITE_API_URL` a la API correspondiente. Las variables `VITE_*` se resuelven al compilar.
-- El proxy del backend debe permitir las conexiones de Socket.IO adem谩s del tr谩fico HTTP de `/api`.
-- Configurar `FRONTEND_URL` y el origen autorizado del cliente Google para el entorno destino.
-- La consulta de salud no demuestra que todas las migraciones, el correo o los proveedores externos est茅n operativos.
-- El limitador del asistente mantiene contadores por proceso; no representa una cuota coordinada entre varias r茅plicas.
+---
 
 <a id="comandos"></a>
 
-## 馃洜锔?Comandos de desarrollo
+## 💻 Comandos de desarrollo
 
-Ejecutar desde la ra铆z del repositorio:
-
-En PowerShell, si la pol铆tica de ejecuci贸n bloquea `npm.ps1`, utilizar `npm.cmd` con los mismos argumentos. Los comandos siguientes est谩n documentados para ejecuci贸n manual; no implican que las comprobaciones hayan pasado en el estado actual del proyecto.
-
-| Acci贸n | Comando |
+| Acción | Comando |
 | --- | --- |
 | Iniciar backend en desarrollo | `npm run dev --prefix backend` |
 | Iniciar frontend en desarrollo | `npm run dev --prefix frontend` |
-| Comprobar tipos del backend | `npm run typecheck --prefix backend` |
-| Ejecutar pruebas del backend | `npm test --prefix backend` |
-| Analizar el frontend | `npm run lint --prefix frontend` |
-| Compilar backend | `npm run build --prefix backend` |
-| Compilar frontend | `npm run build --prefix frontend` |
-| Iniciar backend compilado | `npm start --prefix backend` |
-| Previsualizar frontend compilado | `npm run preview --prefix frontend` |
+| Verificación de tipos TypeScript en backend | `npm run typecheck --prefix backend` |
+| Ejecutar pruebas automatizadas en backend | `npm test --prefix backend` |
+| Análisis estático (Linter) en frontend | `npm run lint --prefix frontend` |
+| Compilar backend para producción | `npm run build --prefix backend` |
+| Compilar frontend para producción | `npm run build --prefix frontend` |
+| Iniciar backend compilado (`dist/server.js`) | `npm start --prefix backend` |
+| Previsualizar compilación del frontend | `npm run preview --prefix frontend` |
 
 <details>
-<summary><strong>馃敡 Utilidades administrativas</strong></summary>
+<summary><strong>🔧 Utilidades y scripts administrativos</strong></summary>
 
-| Comando | Prop贸sito |
+| Comando | Propósito |
 | --- | --- |
-| `npm run check:email --prefix backend` | Ejecutar la utilidad de comprobaci贸n de correo. |
-| `npm run seed:superadmin --prefix backend` | Ejecutar la utilidad de creaci贸n de la cuenta superadministradora. |
-
-Revisar la configuraci贸n y los scripts en [`backend/src/scripts`](backend/src/scripts) antes de ejecutarlos. Estas utilidades pueden enviar correos o modificar la base configurada.
+| `npm run check:email --prefix backend` | Envía un correo de prueba para validar la configuración del servidor SMTP. |
+| `npm run seed:superadmin --prefix backend` | Ejecuta la creación segura de una cuenta inicial de Super Administrador. |
 
 </details>
-
-`preview` permite revisar el frontend compilado localmente; no reemplaza la configuraci贸n de alojamiento de producci贸n.
 
 ---
 
 <a id="api"></a>
 
-## 馃攲 API y documentaci贸n relacionada
+## 📡 API y documentación técnica relacionada
 
-Todas las rutas siguientes utilizan el prefijo **`/api`**. La tabla identifica m贸dulos; cada operaci贸n tiene sus propios m茅todos, par谩metros y permisos.
+Todos los endpoints se encuentran montados bajo el prefijo unificado **`/api`**. Para una descripción exhaustiva de parámetros, códigos HTTP y permisos, consulte el inventario completo en [docs/API_RUTAS.md](docs/API_RUTAS.md).
 
-| Familia de rutas | Responsabilidad |
+| Familia de endpoints | Responsabilidad técnica |
 | --- | --- |
-| `/auth`, `/auth/google`, `/auth/email`, `/auth/password` | Sesiones, identidad, correo y recuperaci贸n de acceso. |
-| `/users`, `/access-management` | Usuarios y administraci贸n de cuentas. |
-| `/patients`, `/tutors` | Pacientes y tutores. |
-| `/patients/personas-a-cargo`, `/patients/mis-responsables`, `/patients/solicitudes-vinculacion`, `/tutor-requests` | Gesti贸n delegada y aprobaci贸n administrativa de vinculaciones. |
-| `/salitas`, `/barrios`, `/zonas`, `/salita-barrios` | Cat谩logos territoriales y cobertura. |
-| `/profesionales`, `/especialidades` | Profesionales, asignaciones y especialidades. |
-| `/horarios-atencion`, `/bloqueos-agenda` | Configuraci贸n de la agenda. |
-| `/cierres-calendario`, `/cierres-calendario/sincronizacion` | Cierres institucionales, consulta de sincronizaci贸n e importaci贸n manual autorizada. |
-| `/disponibilidad`, `/disponibilidad/fechas` | Horarios disponibles y fechas habilitadas para pacientes. |
-| `/turnos`, `/sanciones` | Reservas y restricciones. |
-| `/turnos/reprogramacion/impacto`, `/turnos/reprogramacion/propuesta`, `/turnos/reprogramacion/disponibilidad`, `/turnos/reprogramacion/confirmar` | Flujo de reprogramaci贸n asistida. |
-| `/notificaciones`, `/reportes`, `/auditoria` | Comunicaciones, indicadores y trazabilidad. |
-| `/reportes/dashboard` | Resumen general reservado a SUPER_ADMIN. |
-| `/configuracion`, `/public`, `/contenido` | Par谩metros, contenido p煤blico y publicaciones. |
-| `/chatbot` | Orientaci贸n funcional optativa para roles autorizados. |
+| `/api/auth/*` | Autenticación de credenciales, tokens de renovación, Google OAuth, verificación de email y cambio/recuperación de contraseñas. |
+| `/api/users/*`, `/api/access-management/*` | Alta y administración de cuentas de usuario, asignación de roles y desbloqueo. |
+| `/api/patients/*`, `/api/tutors/*` | Gestión de pacientes, empadronamiento, tutores y aprobación de vínculos delegados. |
+| `/api/salitas/*`, `/api/barrios/*`, `/api/zonas/*` | Gestión territorial y cobertura geográfica de salitas de atención primaria. |
+| `/api/profesionales/*`, `/api/especialidades/*` | Registro de profesionales médicos, especialidades y asignaciones territoriales. |
+| `/api/horarios-atencion/*`, `/api/bloqueos-agenda/*` | Configuración de cronogramas semanales, cupos y suspensiones por mantenimiento. |
+| `/api/cierres-calendario/*` | Feriados nacionales, asuetos locales y sincronización con ArgentinaDatos. |
+| `/api/disponibilidad/*` | Cálculo de franjas horarias y fechas válidas disponibles para pacientes. |
+| `/api/turnos/*`, `/api/sanciones/*` | Reserva atómica, cancelación, registro de atención y sanciones por inasistencia. |
+| `/api/historia-clinica/*` | **Historia clínica longitudinal**, consultas médicas, diagnósticos (CIE-10), evoluciones con rectificación, tratamientos, estudios complementarios, derivaciones inter-salitas y auditoría clínica inmutable. |
+| `/api/notificaciones/*` | Envío de notificaciones internas y auditoría de despacho de correos electrónicos. |
+| `/api/reportes/*`, `/api/reportes/dashboard` | Informes de actividad, exportaciones (PDF, Excel, Word) y dashboard general. |
+| `/api/configuracion/*`, `/api/public/*`, `/api/contenido/*` | Parámetros del sistema, novedades públicas y contenido para la comunidad. |
+| `/api/chatbot/*` | Respuestas de orientación funcional mediante asistente inteligente CORA. |
 
-### 馃摎 Referencias del repositorio
-
-- [Registro central de rutas](backend/src/routes/index.ts).
-- [Navegaci贸n de la aplicaci贸n](frontend/src/routes/AppRoutes.tsx).
-- [Configuraci贸n del entorno](backend/src/config/env.ts).
-- [Pruebas del backend](backend/tests).
-- [Esquema y migraciones SQL](backend/src/BBDD).
-- [Migraci贸n de sanci贸n global por inasistencia](backend/src/BBDD/20261020_sancion_global_inasistencia.sql).
-
-| Tema | Documentaci贸n |
-| --- | --- |
-| Acceso y cuentas | [Autenticaci贸n](docs/AUTENTICACION.md) |
-| Autoservicio del paciente | [Perfil, cobertura y reservas](docs/PACIENTE_AUTOGESTION.md) |
-| Gesti贸n delegada | [Personas a cargo y solicitudes](docs/personas-a-cargo.md) |
-| Cambios de agenda | [Reprogramaci贸n asistida](docs/agenda-reprogramacion-asistida.md) 路 [Ausencias y reprogramaci贸n r谩pida](docs/ausencias-reprogramacion-rapida.md) |
-| Calendario institucional | [Feriados y cierres](docs/feriados-cierres-institucionales.md) 路 [ArgentinaDatos](docs/argentinadatos-calendario.md) |
-| Comunicaciones | [Notificaciones](docs/NOTIFICACIONES.md) |
-| Contenido y m茅tricas | [Contenido p煤blico](docs/CONTENIDO_PUBLICO.md) 路 [Dashboard general](docs/DASHBOARD_SUPER_ADMIN.md) |
-| Asistente | [Configuraci贸n y alcance](docs/CHATBOT.md) 路 [Verificaci贸n documentada](docs/CHATBOT_VERIFICACION.md) |
-| Privacidad | [Aviso y almacenamiento del navegador](docs/PRIVACIDAD_NAVEGADOR.md) |
-
-Los informes de verificaci贸n describen ejecuciones hist贸ricas, no certifican el estado actual. Ante diferencias, contrastar la documentaci贸n con las rutas, validadores, scripts y migraciones vigentes del repositorio.
+---
 
 <a id="contribuciones"></a>
 
-## 馃 Contribuciones
+## 🤝 Contribuciones
 
-1. Crear una rama con un nombre que describa el cambio.
-2. Mantener la organizaci贸n por m贸dulos y los controles de permisos del servidor.
-3. Documentar cualquier cambio de configuraci贸n, API o base de datos.
-4. Ejecutar las comprobaciones pertinentes y las pruebas relacionadas.
-5. Presentar el cambio con una descripci贸n del problema, la soluci贸n y su verificaci贸n.
+1. Crear una rama descriptiva para la funcionalidad (`feature/nueva-funcionalidad`) o corrección (`fix/descripcion-error`).
+2. Respetar la arquitectura en capas y asegurar que las reglas de autorización residan en el backend.
+3. Si el cambio involucra la base de datos, incluir la migración SQL correspondiente en `backend/src/BBDD/` con documentación de precondiciones.
+4. Mantener la consistencia de tipos en TypeScript y ejecutar `npm run typecheck --prefix backend` y `npm run lint --prefix frontend`.
+5. No incluir credenciales, secretos ni archivos `.env` en los commits.
 
-Los cambios de base de datos deben incluir una migraci贸n revisable. No incorporar credenciales, informaci贸n personal real ni archivos de entorno al repositorio.
+---
 
 <a id="autores"></a>
 
-## 馃懆鈥嶐煉?Autores y colaboradores
+## 👨‍💻 Autores y colaboradores
 
-El historial de Git registra contribuciones bajo los siguientes nombres:
+Proyecto desarrollado para la modernización de la atención primaria de la salud en la Municipalidad de Goya, Corrientes:
 
-| Colaborador | Referencia |
+| Colaborador | Rol / Referencia |
 | --- | --- |
-| **Arhiell** | [Perfil de GitHub](https://github.com/Arhiell) |
-| **Ariel Ayala** | Historial de contribuciones del repositorio |
-| **Andres Herrero** | Historial de contribuciones del repositorio |
-| **Leonel Fernandez** | Historial de contribuciones del repositorio |
+| **Arhiell** | [Perfil en GitHub](https://github.com/Arhiell) |
+| **Ariel Ayala** | Contribuidor del proyecto |
+| **Andrés Herrero** | Contribuidor del proyecto |
+| **Leonel Fernández** | Contribuidor del proyecto |
 
-Los nombres se presentan tal como aparecen en Git; distintos nombres pueden corresponder a una misma persona.
+[📜 Ver historial completo de contribuciones en GitHub](https://github.com/Arhiell/SAPS_Turno/commits)
 
-[馃摐 Consultar el historial de contribuciones](https://github.com/Arhiell/SAPS_Turno/commits)
+### 📄 Licencia
 
-### 馃搫 Licencia
-
-El paquete del backend declara **ISC** en su `package.json`. Consultar la documentaci贸n de licencia que acompa帽e cada distribuci贸n; esa declaraci贸n no describe por s铆 sola una licencia unificada de todos los componentes del repositorio.
+El proyecto se distribuye bajo los términos de la licencia **ISC** declarada en el paquete del backend. Consulte los archivos de licencia correspondientes para más detalles.
 
 ---
 
 <div align="center">
 
-**馃彞 CORA 路 SAPS Turno**
+**🏥 CORA · SAPS Turno**
 
-Organizaci贸n de la atenci贸n primaria 路 Goya, Corrientes
+Salas de Atención Primaria de la Salud · Goya, Corrientes, Argentina
 
-[猬嗭笍 Volver al inicio](#inicio)
+[🔼 Volver al inicio](#inicio)
 
 </div>

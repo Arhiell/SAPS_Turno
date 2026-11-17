@@ -1157,3 +1157,306 @@ ALTER TABLE public.calendario_sincronizacion ENABLE ROW LEVEL SECURITY;
 | --- | --- |
 | FUNCTION | `public.validar_turno` |
 
+
+
+## 20261110_historia_clinica.sql
+
+[Fuente completa](../backend/src/BBDD/20261110_historia_clinica.sql)
+
+```sql
+CREATE TABLE public.historias_clinicas (
+    id_historia_clinica     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_paciente             UUID NOT NULL UNIQUE REFERENCES public.pacientes(id_paciente) ON DELETE RESTRICT,
+    estado                  VARCHAR(20) NOT NULL DEFAULT 'ACTIVA',
+    observaciones_generales TEXT,
+    creado_por              UUID REFERENCES public.usuarios(id_usuario) ON DELETE SET NULL,
+    fecha_apertura          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    fecha_creacion          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    fecha_actualizacion     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT ck_hc_estado CHECK (estado IN ('ACTIVA', 'INACTIVA', 'ARCHIVADA'))
+);
+
+CREATE TABLE public.derivaciones_autorizaciones_clinicas (
+    id_derivacion               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tipo                        VARCHAR(30) NOT NULL DEFAULT 'DERIVACION',
+    alcance                     VARCHAR(30) NOT NULL DEFAULT 'ESPECIALIDAD',
+    id_paciente                 UUID NOT NULL REFERENCES public.pacientes(id_paciente) ON DELETE RESTRICT,
+    id_salita_origen            UUID NOT NULL REFERENCES public.salitas(id_salita) ON DELETE RESTRICT,
+    id_salita_destino           UUID NOT NULL REFERENCES public.salitas(id_salita) ON DELETE RESTRICT,
+    id_profesional_destino      UUID REFERENCES public.profesionales(id_profesional) ON DELETE RESTRICT,
+    id_especialidad_destino     UUID REFERENCES public.especialidades(id_especialidad) ON DELETE RESTRICT,
+    motivo                      TEXT NOT NULL,
+    fecha_desde                 DATE NOT NULL DEFAULT CURRENT_DATE,
+    fecha_hasta                 DATE NOT NULL,
+    estado                      VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE',
+    id_usuario_solicita         UUID NOT NULL REFERENCES public.usuarios(id_usuario) ON DELETE RESTRICT,
+    id_profesional_solicita     UUID REFERENCES public.profesionales(id_profesional) ON DELETE RESTRICT,
+    id_usuario_autoriza         UUID REFERENCES public.usuarios(id_usuario) ON DELETE RESTRICT,
+    fecha_resolucion            TIMESTAMPTZ,
+    motivo_resolucion           TEXT,
+    id_usuario_revoca           UUID REFERENCES public.usuarios(id_usuario) ON DELETE RESTRICT,
+    fecha_revocacion            TIMESTAMPTZ,
+    motivo_revocacion           TEXT,
+    fecha_creacion              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    fecha_actualizacion         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT ck_derivacion_tipo CHECK (tipo IN ('DERIVACION', 'AUTORIZACION_ACCESO')),
+    CONSTRAINT ck_derivacion_alcance CHECK (alcance IN ('PROFESIONAL', 'ESPECIALIDAD', 'LONGITUDINAL')),
+    CONSTRAINT ck_derivacion_salitas_distintas CHECK (id_salita_origen <> id_salita_destino),
+    CONSTRAINT ck_derivacion_fechas CHECK (fecha_hasta >= fecha_desde),
+    CONSTRAINT ck_derivacion_estado CHECK (estado IN ('PENDIENTE', 'AUTORIZADA', 'RECHAZADA', 'REVOCADA', 'VENCIDA'))
+);
+
+CREATE TABLE public.derivaciones_autorizaciones_historial (
+    id_historial        BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_derivacion       UUID NOT NULL REFERENCES public.derivaciones_autorizaciones_clinicas(id_derivacion) ON DELETE RESTRICT,
+    id_usuario_actor    UUID REFERENCES public.usuarios(id_usuario) ON DELETE SET NULL,
+    accion              VARCHAR(10) NOT NULL,
+    estado_anterior     VARCHAR(20),
+    estado_nuevo        VARCHAR(20) NOT NULL,
+    datos_anteriores    JSONB,
+    datos_nuevos        JSONB NOT NULL,
+    fecha               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT ck_derivaciones_hist_accion CHECK (accion IN ('INSERT', 'UPDATE'))
+);
+
+CREATE TABLE public.antecedentes_clinicos (
+    id_antecedente          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_historia_clinica     UUID NOT NULL REFERENCES public.historias_clinicas(id_historia_clinica) ON DELETE RESTRICT,
+    id_paciente             UUID NOT NULL REFERENCES public.pacientes(id_paciente) ON DELETE RESTRICT,
+    tipo                    VARCHAR(30) NOT NULL,
+    categoria               VARCHAR(100),
+    descripcion             TEXT NOT NULL,
+    fecha_antecedente       DATE NOT NULL DEFAULT CURRENT_DATE,
+    estado                  VARCHAR(20) NOT NULL DEFAULT 'ACTIVO',
+    id_profesional_autor    UUID NOT NULL REFERENCES public.profesionales(id_profesional) ON DELETE RESTRICT,
+    id_salita_registro      UUID REFERENCES public.salitas(id_salita) ON DELETE RESTRICT,
+    fecha_creacion          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    fecha_actualizacion     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT ck_antecedente_tipo CHECK (tipo IN ('PERSONAL', 'FAMILIAR', 'QUIRURGICO', 'PATOLOGICO', 'GINECOLOGICO', 'OTRO')),
+    CONSTRAINT ck_antecedente_estado CHECK (estado IN ('ACTIVO', 'RESUELTO', 'INACTIVO', 'ANULADO'))
+);
+
+CREATE TABLE public.alergias_paciente (
+    id_alergia              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_historia_clinica     UUID NOT NULL REFERENCES public.historias_clinicas(id_historia_clinica) ON DELETE RESTRICT,
+    id_paciente             UUID NOT NULL REFERENCES public.pacientes(id_paciente) ON DELETE RESTRICT,
+    alergeno                VARCHAR(150) NOT NULL,
+    tipo_reaccion           VARCHAR(150) NOT NULL,
+    gravedad                VARCHAR(20) NOT NULL,
+    observaciones           TEXT,
+    estado                  VARCHAR(20) NOT NULL DEFAULT 'ACTIVA',
+    fecha_deteccion         DATE,
+    id_profesional_autor    UUID NOT NULL REFERENCES public.profesionales(id_profesional) ON DELETE RESTRICT,
+    id_salita_registro      UUID REFERENCES public.salitas(id_salita) ON DELETE RESTRICT,
+    fecha_creacion          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    fecha_actualizacion     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT ck_alergia_gravedad CHECK (gravedad IN ('LEVE', 'MODERADA', 'GRAVE', 'DESCONOCIDA')),
+    CONSTRAINT ck_alergia_estado CHECK (estado IN ('ACTIVA', 'RESUELTA', 'DESCARTADA', 'ANULADA'))
+);
+
+CREATE TABLE public.consultas_medicas (
+    id_consulta             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_historia_clinica     UUID NOT NULL REFERENCES public.historias_clinicas(id_historia_clinica) ON DELETE RESTRICT,
+    id_paciente             UUID NOT NULL REFERENCES public.pacientes(id_paciente) ON DELETE RESTRICT,
+    id_profesional          UUID NOT NULL REFERENCES public.profesionales(id_profesional) ON DELETE RESTRICT,
+    id_especialidad         UUID NOT NULL REFERENCES public.especialidades(id_especialidad) ON DELETE RESTRICT,
+    id_salita               UUID NOT NULL REFERENCES public.salitas(id_salita) ON DELETE RESTRICT,
+    id_turno                UUID UNIQUE REFERENCES public.turnos(id_turno) ON DELETE RESTRICT,
+    id_autorizacion_clinica UUID REFERENCES public.derivaciones_autorizaciones_clinicas(id_derivacion) ON DELETE RESTRICT,
+    acompanante_tutor_id    UUID REFERENCES public.tutores(id_tutor) ON DELETE RESTRICT,
+    tutor_verificado        BOOLEAN NOT NULL DEFAULT FALSE,
+    fecha_atencion          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    motivo_consulta         TEXT NOT NULL,
+    sintomas                TEXT,
+    examen_fisico           TEXT,
+    observaciones           TEXT,
+    estado                  VARCHAR(20) NOT NULL DEFAULT 'BORRADOR',
+    firmada_en              TIMESTAMPTZ,
+    motivo_anulacion        TEXT,
+    anulada_en              TIMESTAMPTZ,
+    id_profesional_autor    UUID NOT NULL REFERENCES public.profesionales(id_profesional) ON DELETE RESTRICT,
+    version                 INTEGER NOT NULL DEFAULT 1,
+    fecha_creacion          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    fecha_actualizacion     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT ck_consulta_estado CHECK (estado IN ('BORRADOR', 'FIRMADA', 'ANULADA'))
+);
+
+CREATE TABLE public.diagnosticos_clinicos (
+    id_diagnostico          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_consulta             UUID NOT NULL REFERENCES public.consultas_medicas(id_consulta) ON DELETE RESTRICT,
+    id_historia_clinica     UUID NOT NULL REFERENCES public.historias_clinicas(id_historia_clinica) ON DELETE RESTRICT,
+    id_paciente             UUID NOT NULL REFERENCES public.pacientes(id_paciente) ON DELETE RESTRICT,
+    codigo                  VARCHAR(30),
+    descripcion             VARCHAR(300) NOT NULL,
+    tipo                    VARCHAR(20) NOT NULL DEFAULT 'PRESUNTIVO',
+    fecha_diagnostico       DATE NOT NULL DEFAULT CURRENT_DATE,
+    observaciones           TEXT,
+    estado                  VARCHAR(20) NOT NULL DEFAULT 'ACTIVO',
+    id_profesional_autor    UUID NOT NULL REFERENCES public.profesionales(id_profesional) ON DELETE RESTRICT,
+    fecha_creacion          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    fecha_actualizacion     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT ck_diagnostico_tipo CHECK (tipo IN ('PRESUNTIVO', 'CONFIRMADO', 'DIFERENCIAL', 'PRINCIPAL', 'SECUNDARIO', 'DESCARTADO')),
+    CONSTRAINT ck_diagnostico_estado CHECK (estado IN ('ACTIVO', 'RESUELTO', 'DESCARTADO', 'ANULADO'))
+);
+
+CREATE TABLE public.evoluciones_clinicas (
+    id_evolucion                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_consulta                 UUID NOT NULL REFERENCES public.consultas_medicas(id_consulta) ON DELETE RESTRICT,
+    id_historia_clinica         UUID NOT NULL REFERENCES public.historias_clinicas(id_historia_clinica) ON DELETE RESTRICT,
+    id_paciente                 UUID NOT NULL REFERENCES public.pacientes(id_paciente) ON DELETE RESTRICT,
+    evolucion                   TEXT NOT NULL,
+    observaciones               TEXT,
+    id_profesional_responsable  UUID NOT NULL REFERENCES public.profesionales(id_profesional) ON DELETE RESTRICT,
+    fecha_evolucion             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    version                     INTEGER NOT NULL DEFAULT 1,
+    es_correccion               BOOLEAN NOT NULL DEFAULT FALSE,
+    id_evolucion_origen         UUID REFERENCES public.evoluciones_clinicas(id_evolucion) ON DELETE RESTRICT,
+    motivo_correccion           TEXT,
+    estado                      VARCHAR(20) NOT NULL DEFAULT 'FIRMADA',
+    firmada_en                  TIMESTAMPTZ,
+    fecha_creacion              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    fecha_actualizacion         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT ck_evolucion_estado CHECK (estado IN ('BORRADOR', 'FIRMADA', 'RECTIFICADA', 'ANULADA'))
+);
+
+CREATE TABLE public.tratamientos_clinicos (
+    id_tratamiento              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_consulta                 UUID NOT NULL REFERENCES public.consultas_medicas(id_consulta) ON DELETE RESTRICT,
+    id_historia_clinica         UUID NOT NULL REFERENCES public.historias_clinicas(id_historia_clinica) ON DELETE RESTRICT,
+    id_paciente                 UUID NOT NULL REFERENCES public.pacientes(id_paciente) ON DELETE RESTRICT,
+    medicacion                  VARCHAR(200) NOT NULL,
+    dosis                       VARCHAR(120) NOT NULL,
+    frecuencia                  VARCHAR(120) NOT NULL,
+    duracion                    VARCHAR(120),
+    indicaciones                TEXT,
+    fecha_inicio                DATE NOT NULL DEFAULT CURRENT_DATE,
+    fecha_fin                   DATE,
+    estado                      VARCHAR(20) NOT NULL DEFAULT 'ACTIVO',
+    id_profesional_responsable  UUID NOT NULL REFERENCES public.profesionales(id_profesional) ON DELETE RESTRICT,
+    fecha_creacion              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    fecha_actualizacion     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT ck_tratamiento_estado CHECK (estado IN ('ACTIVO', 'FINALIZADO', 'SUSPENDIDO', 'ANULADO'))
+);
+
+CREATE TABLE public.estudios_clinicos (
+    id_estudio                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_consulta                 UUID NOT NULL REFERENCES public.consultas_medicas(id_consulta) ON DELETE RESTRICT,
+    id_historia_clinica         UUID NOT NULL REFERENCES public.historias_clinicas(id_historia_clinica) ON DELETE RESTRICT,
+    id_paciente                 UUID NOT NULL REFERENCES public.pacientes(id_paciente) ON DELETE RESTRICT,
+    tipo_estudio                VARCHAR(120) NOT NULL,
+    descripcion                 TEXT NOT NULL,
+    fecha_solicitud             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    resultado                   TEXT,
+    fecha_resultado             TIMESTAMPTZ,
+    estado                      VARCHAR(20) NOT NULL DEFAULT 'SOLICITADO',
+    id_profesional_solicitante  UUID NOT NULL REFERENCES public.profesionales(id_profesional) ON DELETE RESTRICT,
+    id_profesional_informa      UUID REFERENCES public.profesionales(id_profesional) ON DELETE RESTRICT,
+    fecha_creacion              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    fecha_actualizacion         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT ck_estudio_estado CHECK (estado IN ('SOLICITADO', 'EN_PROCESO', 'COMPLETADO', 'CANCELADO'))
+);
+
+CREATE TABLE public.auditoria_clinica (
+    id_auditoria_clinica    BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_usuario              UUID NOT NULL REFERENCES public.usuarios(id_usuario) ON DELETE RESTRICT,
+    id_profesional          UUID REFERENCES public.profesionales(id_profesional) ON DELETE RESTRICT,
+    id_paciente             UUID NOT NULL REFERENCES public.pacientes(id_paciente) ON DELETE RESTRICT,
+    id_historia_clinica     UUID REFERENCES public.historias_clinicas(id_historia_clinica) ON DELETE RESTRICT,
+    id_salita               UUID NOT NULL REFERENCES public.salitas(id_salita) ON DELETE RESTRICT,
+    tipo_operacion          VARCHAR(20) NOT NULL,
+    recurso                 VARCHAR(60) NOT NULL DEFAULT 'HISTORIA_CLINICA',
+    id_recurso              UUID,
+    alcance_acceso          VARCHAR(30),
+    fecha_acto_clinico      DATE,
+    motivo_acceso           TEXT NOT NULL,
+    id_derivacion           UUID REFERENCES public.derivaciones_autorizaciones_clinicas(id_derivacion) ON DELETE RESTRICT,
+    ip_origen               INET,
+    fecha_hora              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT ck_auditoria_clinica_operacion CHECK (tipo_operacion IN ('CONSULTA', 'CREACION', 'MODIFICACION', 'CORRECCION', 'EXPORTACION')),
+    CONSTRAINT ck_auditoria_clinica_alcance CHECK (alcance_acceso IS NULL OR alcance_acceso IN ('SALITA_ASIGNADA', 'PROFESIONAL', 'ESPECIALIDAD', 'LONGITUDINAL', 'ADMINISTRATIVO'))
+);
+
+CREATE TABLE public.auditoria_accesos_auditoria (
+    id_acceso_auditoria     BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_usuario              UUID NOT NULL REFERENCES public.usuarios(id_usuario) ON DELETE RESTRICT,
+    rol_usuario             VARCHAR(50) NOT NULL,
+    id_salita               UUID REFERENCES public.salitas(id_salita) ON DELETE RESTRICT,
+    id_paciente_filtrado    UUID REFERENCES public.pacientes(id_paciente) ON DELETE RESTRICT,
+    filtros                 JSONB NOT NULL DEFAULT '{}'::jsonb,
+    ip_origen               INET,
+    fecha_hora              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+### Objetos asociados
+
+| Tipo | Nombre |
+| --- | --- |
+| TRIGGER | `tr_auditoria_clinica_inmutable` |
+| TRIGGER | `tr_auditoria_acc_aud_inmutable` |
+| FUNCTION | `public.impedir_eliminacion_clinica` |
+| FUNCTION | `public.inmutabilidad_auditoria_clinica` |
+| FUNCTION | `public.validar_derivacion_clinica` |
+| FUNCTION | `public.verificar_acceso_clinico` |
+| FUNCTION | `public.registrar_consulta_clinica` |
+| FUNCTION | `public.firmar_consulta_medica` |
+| FUNCTION | `public.anular_consulta_borrador` |
+| FUNCTION | `public.registrar_evolucion_clinica` |
+| FUNCTION | `public.rectificar_evolucion_clinica` |
+| FUNCTION | `public.registrar_acceso_auditoria_clinica` |
+
+
+## 20261110_super_admin_auditoria_clinica.sql
+
+[Fuente completa](../backend/src/BBDD/20261110_super_admin_auditoria_clinica.sql)
+
+Asigna el permiso `VER_AUDITORIA_CLINICA` al rol `SUPER_ADMIN` en `rol_permisos`.
+
+
+## 20261115_admin_recepcion_ver_historia_clinica.sql
+
+[Fuente completa](../backend/src/BBDD/20261115_admin_recepcion_ver_historia_clinica.sql)
+
+Asigna exclusivamente el permiso `VER_HISTORIA_CLINICA` a los roles `ADMIN_SALITA` y `RECEPCION` en `rol_permisos` y actualiza la función `verificar_acceso_clinico()` para habilitar lectura asistencial estricta a la salita asignada.
+
+
+## 20261115_fix_auditoria_clinica_columns.sql
+
+[Fuente completa](../backend/src/BBDD/20261115_fix_auditoria_clinica_columns.sql)
+
+Armoniza nombres de columnas en `auditoria_clinica` y actualiza el trigger `tr_auditoria_clinica_inmutable`.
+
+
+## PROPUESTA_20261110_hc_borradores_y_turno_anticipado.sql
+
+[Fuente completa](../backend/src/BBDD/PROPUESTA_20261110_hc_borradores_y_turno_anticipado.sql)
+
+```sql
+CREATE TABLE public.borradores_formulario_clinico (
+    id_borrador         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_usuario          UUID NOT NULL REFERENCES public.usuarios(id_usuario) ON DELETE CASCADE,
+    id_profesional      UUID NOT NULL REFERENCES public.profesionales(id_profesional) ON DELETE CASCADE,
+    id_paciente         UUID NOT NULL REFERENCES public.pacientes(id_paciente) ON DELETE CASCADE,
+    id_salita           UUID NOT NULL REFERENCES public.salitas(id_salita) ON DELETE RESTRICT,
+    id_especialidad     UUID REFERENCES public.especialidades(id_especialidad) ON DELETE RESTRICT,
+    id_turno            UUID REFERENCES public.turnos(id_turno) ON DELETE SET NULL,
+    datos_formulario    JSONB NOT NULL,
+    version             INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+    fecha_preparacion   DATE NOT NULL DEFAULT ((NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::DATE),
+    expira_en           TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '72 hours'),
+    fecha_creacion      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    fecha_actualizacion TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT ck_borrador_datos_objeto CHECK (jsonb_typeof(datos_formulario) = 'object')
+);
+```
+
+### Objetos asociados
+
+| Tipo | Nombre |
+| --- | --- |
+| UNIQUE INDEX | `ux_borradores_form_sin_turno` |
+| UNIQUE INDEX | `ux_borradores_form_con_turno` |
+| TRIGGER | `tr_borradores_form_fecha` |
+| FUNCTION | `public.guardar_borrador_formulario_clinico` |
+| FUNCTION | `public.obtener_borrador_formulario_clinico` |
+| FUNCTION | `public.descartar_borrador_formulario_clinico` |
