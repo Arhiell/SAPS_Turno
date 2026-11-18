@@ -167,20 +167,41 @@ export const sidebarMenu: SidebarMenuItem[] = [
   },
 ];
 
-// Filtra las opciones del menú y prioriza la página de inicio.
-export const getMenuForRole = (role?: string, permissions: string[] = []) =>
-  sidebarMenu
-    .filter((item) =>
+// Filtra las opciones del menú y prioriza el orden de navegación según el rol.
+export const getMenuForRole = (role?: string, permissions: string[] = []) => {
+  const filtered = sidebarMenu.filter(
+    (item) =>
       item.roles.some((allowed) => allowed === role) &&
       (!item.permission || permissions.includes(item.permission))
-    )
-    .sort((a, b) =>
-      a.path === '/panel'
-        ? -1
-        : b.path === '/panel'
-          ? 1
-          : 0
-    );
+  );
+
+  if (role === 'PACIENTE') {
+    const patientOrder: Record<string, number> = {
+      '/panel': 1,
+      '/solicitar-turno': 2,
+      '/mis-turnos': 3,
+      '/personas-a-cargo': 4,
+      '/mi-historia': 5,
+      '/mi-perfil': 6,
+      '/mis-notificaciones': 7,
+      '/asistente': 8,
+    };
+
+    return filtered.sort((a, b) => {
+      const orderA = patientOrder[a.path] ?? 99;
+      const orderB = patientOrder[b.path] ?? 99;
+      return orderA - orderB;
+    });
+  }
+
+  return filtered.sort((a, b) =>
+    a.path === '/panel'
+      ? -1
+      : b.path === '/panel'
+        ? 1
+        : 0
+  );
+};
 
 // Determina si una opción del menú debe mostrarse activa evitando doble marcado en rutas hermanas/hijas.
 export const isMenuItemActive = (

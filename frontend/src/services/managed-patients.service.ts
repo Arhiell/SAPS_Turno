@@ -3,7 +3,7 @@ import type { Patient } from '../types/patient.types';
 
 export type ManagedPatient = Pick<
   Patient,
-  'id_paciente' | 'id_barrio' | 'id_salita_asignada' | 'nombres' | 'apellidos' | 'dni' | 'fecha_nacimiento' | 'sexo'
+  'id_paciente' | 'id_barrio' | 'id_salita_asignada' | 'nombres' | 'apellidos' | 'dni' | 'fecha_nacimiento' | 'sexo' | 'telefono'
 > & {
   parentesco: string;
   parentesco_representado?: string;

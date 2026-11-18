@@ -6,7 +6,7 @@ import { getPatientAvailableDates, type PatientAvailableDates } from '../../serv
 import type { PatientProfessional } from '../../types/profesional.types';
 
 import PatientBookingSlots from './PatientBookingSlots';
-
+import { useAgendaSocket } from '../../context/AgendaSocketContext';
 import { authError } from '../../utils/auth-errors';
 
 // Formatea las fechas utilizando la zona horaria argentina.
@@ -51,25 +51,33 @@ export default function PatientBookingForm({
   // Permite actualizar la información de la agenda.
   const [revision, setRevision] = useState(0);
 
-  // El servidor determina la semana habilitada en horario argentino.
-  useEffect(() => {
-    if (busy) {
-      return;
-    }
+  // Sincronización en segundo plano con WebSockets
+  const { ultimoEvento, ultimoEventoSalita, resyncTick } = useAgendaSocket();
 
-    // Solicita una actualización de los datos.
+  useEffect(() => {
+    if (busy) return;
+    if (ultimoEvento || ultimoEventoSalita) {
+      setRevision((v) => v + 1);
+    }
+  }, [ultimoEvento, ultimoEventoSalita, busy]);
+
+  useEffect(() => {
+    if (busy) return;
+    if (resyncTick > 0) {
+      setRevision((v) => v + 1);
+    }
+  }, [resyncTick, busy]);
+
+  // Actualiza al recuperar el foco de la ventana como salvaguarda
+  useEffect(() => {
+    if (busy) return;
+
     const refresh = () => {
       setRevision((value) => value + 1);
     };
 
-    // Actualiza la agenda cada 60 segundos.
-    const interval = window.setInterval(refresh, 60_000);
-
-    // Actualiza al recuperar el foco de la ventana.
     window.addEventListener('focus', refresh);
-
     return () => {
-      window.clearInterval(interval);
       window.removeEventListener('focus', refresh);
     };
   }, [busy]);
@@ -219,23 +227,23 @@ export default function PatientBookingForm({
         </p>
       )}
 
-      {/* Muestra los errores y permite actualizar la información. */}
+      {/* Muestra los errores y permite reintentar la operación. */}
       {(error || datesError) && (
         <div
-          className="alert alert-danger"
+          className="alert alert-danger d-flex align-items-center justify-content-between gap-2"
           role="alert"
         >
-          {error || datesError}{' '}
+          <span>{error || datesError}</span>
 
           <button
             type="button"
-            className="btn btn-outline-danger"
+            className="btn btn-sm btn-outline-danger"
             disabled={busy}
             onClick={() =>
               setRevision((value) => value + 1)
             }
           >
-            Actualizar
+            Reintentar
           </button>
         </div>
       )}
@@ -261,10 +269,22 @@ export default function PatientBookingForm({
               className="form-select mt-1"
               value={specialty}
               onChange={(event) => {
-                setSpecialty(event.target.value);
-                setProfessional('');
-                setDate('');
-                setDates([]);
+                const nextSpecialty = event.target.value;
+                setSpecialty(nextSpecialty);
+                const nextEligible = professionals.filter((p) =>
+                  p.especialidades.some((s) => s.id_especialidad === nextSpecialty)
+                );
+                // Si el profesional seleccionado actualmente también atiende esta especialidad, conservarlo
+                const stillEligible = nextEligible.some((p) => p.id_profesional === professional);
+                if (!stillEligible) {
+                  if (nextEligible.length === 1) {
+                    setProfessional(nextEligible[0].id_profesional);
+                  } else {
+                    setProfessional('');
+                    setDate('');
+                    setDates([]);
+                  }
+                }
               }}
             >
               <option value="">
@@ -292,8 +312,7 @@ export default function PatientBookingForm({
                 value={professional}
                 onChange={(event) => {
                   setProfessional(event.target.value);
-                  setDate('');
-                  setDates([]);
+                  // No limpiar date si el nuevo profesional también atiende ese día (el efecto ajustará)
                 }}
               >
                 <option value="">
@@ -348,18 +367,12 @@ export default function PatientBookingForm({
             </label>
           )}
 
-          {professional && !loadingDates && !datesError && calendar.length > 0 && <div className="mt-2" aria-label="Estado de los días de atención">
-            <p className="small text-muted">Los días con cierre completo no se pueden elegir. Si el cierre es parcial, solo se ofrecen horarios fuera de esa franja.</p>
-            <ul className="list-unstyled">
-              {calendar.map(day => <li key={day.fecha} className={`border rounded p-2 mb-2 ${day.cierre ? 'border-danger bg-danger-subtle text-danger' : day.disponible ? 'border-success' : 'text-muted'}`}>
-                <strong>{dateLabel(day.fecha)}</strong><br />
-                {day.cierre ? <>
-                  <span className="badge text-bg-danger me-2">{day.cierre}</span>
-                  {day.franjas_cerradas.join(' / ')} · {day.disponible ? 'Hay horarios disponibles fuera del cierre' : day.estado === 'SIN_HORARIO' ? 'Sin horario de atención' : day.estado === 'SIN_CUPOS' ? 'Sin cupos disponibles fuera del cierre' : 'No disponible para esta atención'}
-                </> : day.disponible ? 'Disponible' : day.estado === 'SIN_HORARIO' ? 'Sin horario de atención' : 'Sin cupos disponibles'}
-              </li>)}
-            </ul>
-          </div>}
+          {professional && !loadingDates && !datesError && calendar.some(d => d.cierre) && (
+            <div className="alert alert-warning py-2 px-3 small mt-2 mb-0" role="status">
+              <i className="bi bi-exclamation-triangle me-1" aria-hidden="true" />
+              Algunos días presentan cierres programados que se detallan en el selector.
+            </div>
+          )}
 
           {/* Informa cuando no quedan fechas disponibles. */}
           {professional &&

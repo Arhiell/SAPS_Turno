@@ -64,6 +64,7 @@ export const getManagedPatients = async (user: AuthenticatedUser) => {
       nombres: patient.nombres,
       apellidos: patient.apellidos,
       dni: patient.dni,
+      telefono: patient.telefono ?? null,
       fecha_nacimiento: patient.fecha_nacimiento,
       sexo: patient.sexo,
       parentesco: parentescoRepresentado,

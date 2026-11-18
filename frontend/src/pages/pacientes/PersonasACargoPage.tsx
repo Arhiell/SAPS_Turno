@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import useManagedPatients from '../../context/useManagedPatients';
 import { useAuth } from '../../context/AuthContext';
+import { useAgendaSocket } from '../../context/AgendaSocketContext';
+import PaginationControls from '../../components/ui/PaginationControls';
 import {
   createTutorRequest,
   getOwnPatientTutors,
@@ -14,6 +16,7 @@ import { authError } from '../../utils/auth-errors';
 import { FloatingFeedbackToast } from '../../components/ui/FormFeedback';
 import { useAutoDismiss } from '../../utils/useAutoDismiss';
 import { formatManagedKinship } from '../../utils/kinship';
+import { formatFechaHora } from '../../utils/agenda-display';
 
 export default function PersonasACargoPage() {
   const { items, loading, error, retry } = useManagedPatients();
@@ -23,40 +26,77 @@ export default function PersonasACargoPage() {
   const [direction, setDirection] = useState<TutorRequestDirection>('GESTIONAR_A_OTRO');
   const [dni, setDni] = useState('');
   const [parentesco, setParentesco] = useState('');
-  const [requestLoading, setRequestLoading] = useState(true);
+
+  // Estados de carga independientes para no bloquear una sección si la otra falla
+  const [requestsLoading, setRequestsLoading] = useState(true);
+  const [requestsError, setRequestsError] = useState('');
+  const [responsiblesLoading, setResponsiblesLoading] = useState(true);
+  const [responsiblesError, setResponsiblesError] = useState('');
+
   const [busy, setBusy] = useState(false);
-  const [requestError, setRequestError] = useState('');
+  const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
   const [revision, setRevision] = useState(0);
+  const [requestsPage, setRequestsPage] = useState(1);
 
   useAutoDismiss(success, () => setSuccess(''), 15000);
-  useAutoDismiss(requestError, () => setRequestError(''), 15000);
+  useAutoDismiss(formError, () => setFormError(''), 15000);
+
+  // Actualización automática por WebSockets
+  const { ultimoEventoPaciente, resyncTick } = useAgendaSocket();
 
   useEffect(() => {
+    if (!ultimoEventoPaciente) return;
+    retry();
+    setRevision((v) => v + 1);
+  }, [ultimoEventoPaciente, retry]);
+
+  useEffect(() => {
+    if (resyncTick > 0) {
+      retry();
+      setRevision((v) => v + 1);
+    }
+  }, [resyncTick, retry]);
+
+  // Carga independiente con Promise.allSettled para evitar que un fallo en tutores bloquee solicitudes
+  useEffect(() => {
     let active = true;
-    void Promise.all([getOwnTutorRequests(), getOwnPatientTutors()])
-      .then(([rows, links]) => {
-        if (active) {
-          setRequests(rows);
-          setResponsibles(links);
-          setRequestError('');
+    setRequestsLoading(true);
+    setRequestsError('');
+    setResponsiblesLoading(true);
+    setResponsiblesError('');
+
+    Promise.allSettled([getOwnTutorRequests(), getOwnPatientTutors()])
+      .then(([reqRes, respRes]) => {
+        if (!active) return;
+        if (reqRes.status === 'fulfilled') {
+          setRequests(reqRes.value);
+        } else {
+          setRequestsError(authError(reqRes.reason));
+        }
+
+        if (respRes.status === 'fulfilled') {
+          setResponsibles(respRes.value);
+        } else {
+          setResponsiblesError(authError(respRes.reason));
         }
       })
-      .catch(cause => { if (active) setRequestError(authError(cause)); })
-      .finally(() => { if (active) setRequestLoading(false); });
-    return () => { active = false; };
-  }, [revision]);
+      .finally(() => {
+        if (active) {
+          setRequestsLoading(false);
+          setResponsiblesLoading(false);
+        }
+      });
 
-  const refresh = () => {
-    retry();
-    setRequestLoading(true);
-    setRevision(value => value + 1);
-  };
+    return () => {
+      active = false;
+    };
+  }, [revision]);
 
   const submitRequest = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setBusy(true);
-    setRequestError('');
+    setFormError('');
     setSuccess('');
     try {
       await createTutorRequest({
@@ -67,10 +107,9 @@ export default function PersonasACargoPage() {
       setDni('');
       setParentesco('');
       setSuccess('Solicitud enviada. La vinculación quedará pendiente hasta que la salita verifique la documentación y la apruebe.');
-      setRequestLoading(true);
-      setRevision(value => value + 1);
+      setRevision((value) => value + 1);
     } catch (cause) {
-      setRequestError(authError(cause));
+      setFormError(authError(cause));
     } finally {
       setBusy(false);
     }
@@ -81,152 +120,410 @@ export default function PersonasACargoPage() {
     const date = new Date(`${birth}T12:00:00`);
     const today = new Date();
     let age = today.getFullYear() - date.getFullYear();
-    if (today.getMonth() < date.getMonth() ||
-      (today.getMonth() === date.getMonth() && today.getDate() < date.getDate())) age -= 1;
+    if (
+      today.getMonth() < date.getMonth() ||
+      (today.getMonth() === date.getMonth() && today.getDate() < date.getDate())
+    ) {
+      age -= 1;
+    }
     return age;
   };
 
   return (
     <section>
-      <h1 className="h3">Personas a cargo</h1>
-      <p className="text-muted">Consultá las personas que podés gestionar y el estado de tus solicitudes de autorización.</p>
+      <div className="mb-4">
+        <h1 className="h3 fw-bold text-dark mb-1">Personas a cargo</h1>
+        <p className="text-muted mb-0">
+          Consultá los familiares o dependientes vinculados a tu cuenta y el estado de tus solicitudes de autorización.
+        </p>
+      </div>
 
-      <div className="patient-section mb-3">
-        <h2 className="h5">Solicitar una vinculación</h2>
-        <p>La solicitud no habilita el acceso ni permite reservar turnos. La persona titular y quien solicita gestionar deben presentar sus DNI y la documentación que acredite la representación o autorización en la salita. Administración verificará la identidad y aprobará o rechazará el pedido.</p>
-        <p>Si la persona todavía no está registrada como paciente, deberá registrarse en la salita con sus propios datos y cobertura. No ingreses datos de salud ni documentos por este formulario.</p>
+      {/* Formulario para solicitar nueva vinculación */}
+      <div className="card border-0 shadow-sm p-4 bg-white rounded-3 mb-4">
+        <h2 className="h5 fw-bold text-dark mb-2">Solicitar una vinculación</h2>
+        <p className="small text-muted mb-3">
+          La solicitud registra el pedido en el sistema. La persona titular y quien solicita gestionar deben presentar sus DNI y la documentación acreditante en su salita asignada para su verificación y aprobación definitiva.
+        </p>
+
         <form onSubmit={submitRequest}>
           <fieldset disabled={busy}>
-            <label className="form-label w-100">¿Qué autorización solicitás?
-              <select className="form-select mt-1" value={direction} onChange={event => setDirection(event.target.value as TutorRequestDirection)}>
-                <option value="GESTIONAR_A_OTRO">Quiero gestionar los turnos de otra persona</option>
-                <option value="DELEGAR_MI_GESTION">Quiero autorizar a otra persona para que gestione mis turnos</option>
-              </select>
-            </label>
+            <div className="mb-3">
+              <label className="form-label fw-semibold small text-secondary w-100">
+                ¿Qué tipo de autorización solicitás?
+                <select
+                  className="form-select mt-1"
+                  value={direction}
+                  onChange={(event) => setDirection(event.target.value as TutorRequestDirection)}
+                >
+                  <option value="GESTIONAR_A_OTRO">Quiero gestionar los turnos de otra persona (familiar o dependiente)</option>
+                  <option value="DELEGAR_MI_GESTION">Quiero autorizar a otra persona para que gestione mis turnos</option>
+                </select>
+              </label>
+            </div>
+
             <div className="row g-3">
               <div className="col-12 col-md-6">
-                <label className="form-label w-100" htmlFor="vinculacion-dni">
+                <label className="form-label fw-semibold small text-secondary w-100" htmlFor="vinculacion-dni">
                   DNI de {direction === 'GESTIONAR_A_OTRO' ? 'la persona a cargo' : 'la persona que autorizás'}
-                  <input id="vinculacion-dni" className="form-control mt-1" inputMode="numeric" autoComplete="off"
-                    minLength={7} maxLength={15} pattern="[0-9. -]{7,20}" required value={dni}
-                    onChange={event => setDni(event.target.value)} />
+                  <input
+                    id="vinculacion-dni"
+                    className="form-control mt-1"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    minLength={7}
+                    maxLength={15}
+                    pattern="[0-9. -]{7,20}"
+                    required
+                    placeholder="Ej. 38521904"
+                    value={dni}
+                    onChange={(event) => setDni(event.target.value)}
+                  />
                 </label>
               </div>
+
               <div className="col-12 col-md-6">
-                <label className="form-label w-100" htmlFor="vinculacion-relacion">Tipo de vínculo o autorización
-                  <input id="vinculacion-relacion" className="form-control mt-1" placeholder="Madre, padre, tutor/a, persona autorizada…" required maxLength={50}
-                    value={parentesco} onChange={event => setParentesco(event.target.value)} />
+                <label className="form-label fw-semibold small text-secondary w-100" htmlFor="vinculacion-relacion">
+                  Tipo de vínculo o autorización
+                  <input
+                    id="vinculacion-relacion"
+                    className="form-control mt-1"
+                    placeholder="Madre, padre, hijo/a, tutor/a, persona autorizada…"
+                    required
+                    maxLength={50}
+                    value={parentesco}
+                    onChange={(event) => setParentesco(event.target.value)}
+                  />
                 </label>
               </div>
             </div>
-            <button type="submit" className="btn btn-saps mt-2" disabled={busy}>
-              {busy ? 'Enviando…' : 'Enviar solicitud'}
+
+            <button type="submit" className="btn btn-saps mt-3 d-inline-flex align-items-center gap-2" disabled={busy}>
+              {busy ? (
+                <>
+                  <span className="spinner-border spinner-border-sm" aria-hidden="true" />
+                  <span>Enviando solicitud…</span>
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-send" aria-hidden="true" />
+                  <span>Enviar solicitud</span>
+                </>
+              )}
             </button>
           </fieldset>
         </form>
-        {requestError && !success && (
-          <FloatingFeedbackToast
-            variant="error"
-            message={requestError}
-            onDismiss={() => setRequestError('')}
-          />
+
+        {formError && !success && (
+          <FloatingFeedbackToast variant="error" message={formError} onDismiss={() => setFormError('')} />
         )}
-        {success && (
-          <FloatingFeedbackToast
-            variant="success"
-            message={success}
-            onDismiss={() => setSuccess('')}
-          />
-        )}
+        {success && <FloatingFeedbackToast variant="success" message={success} onDismiss={() => setSuccess('')} />}
       </div>
 
-      <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-        <button className="btn btn-outline-success" disabled={loading || requestLoading} onClick={refresh}>Actualizar lista</button>
-      </div>
+      {/* Sección 1: Personas a cargo habilitadas */}
+      <div className="mb-4">
+        <h2 className="h5 fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+          <i className="bi bi-people text-success" aria-hidden="true" />
+          <span>Personas a cargo habilitadas</span>
+        </h2>
 
-      {loading && <p role="status">Cargando personas a cargo…</p>}
-      {error && <p className="alert alert-danger" role="alert">{error}</p>}
-      {!loading && !error && !items.length && <p>No tenés personas a cargo habilitadas para gestionar turnos. Las solicitudes pendientes se muestran abajo.</p>}
-
-      <div className="row g-3">
-        {items.map((person) => {
-          const age = ageInYears(person.fecha_nacimiento);
-          return (
-          <div key={person.id_paciente} className="col-12 col-md-6">
-            <article className="person-card h-100">
-              <div className="person-card-header">
-                <div>
-                  <span className="patient-selector-kicker">
-                    Persona a cargo de {titular ? `${titular.apellidos}, ${titular.nombres}` : 'tu cuenta titular'}
-                  </span>
-                  <h2 className="h5 mb-0">{person.apellidos}, {person.nombres}</h2>
-                </div>
-                <span className="person-card-badge">{formatManagedKinship(person, titular)}</span>
-              </div>
-
-              <div className="person-card-info">
-                <div><span>DNI</span><strong>{person.dni}</strong></div>
-                <div><span>Paciente atendido</span><strong>{age === null ? 'Edad no registrada' : age < 18 ? 'Menor de edad' : 'Adulto'}</strong></div>
-                <div><span>Autorización</span><strong>Activa · Solicitar, consultar y cancelar turnos</strong></div>
-                {person.fecha_hasta && (
-                  <div><span>Autorización hasta</span><strong>{person.fecha_hasta.split('-').reverse().join('/')}</strong></div>
-                )}
-              </div>
-
-              <div className="d-flex flex-wrap gap-2">
-                <Link className="btn btn-saps" to={`/solicitar-turno?paciente=${person.id_paciente}`}>Solicitar turno</Link>
-                <Link className="btn btn-outline-success" to={`/mis-turnos?paciente=${person.id_paciente}`}>Ver turnos</Link>
-                <Link className="btn btn-outline-primary" to={`/mi-historia?paciente=${person.id_paciente}`}>
-                  <i className="bi bi-journal-medical me-1" />
-                  Ver historia clínica
-                </Link>
-              </div>
-            </article>
+        {loading && (
+          <div className="card border-0 shadow-sm p-4 text-center text-muted mb-3" role="status">
+            <div className="spinner-border spinner-border-sm text-success me-2" />
+            <span>Consultando personas a cargo habilitadas…</span>
           </div>
-          );
-        })}
+        )}
+
+        {error && !loading && (
+          <div className="alert alert-danger d-flex align-items-center justify-content-between gap-2 mb-3" role="alert">
+            <span>{error}</span>
+            <button type="button" className="btn btn-sm btn-outline-danger" onClick={retry}>
+              Reintentar
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && !items.length && (
+          <div className="card border-0 shadow-sm p-4 text-center text-muted mb-3">
+            <i className="bi bi-people fs-2 d-block mb-2 text-secondary" />
+            <p className="mb-0">
+              No tenés personas a cargo habilitadas para gestionar turnos. Cuando la salita apruebe tu solicitud, aparecerán aquí.
+            </p>
+          </div>
+        )}
+
+        {!loading && !error && items.length > 0 && (
+          <div className="row g-3">
+            {items.map((person) => {
+              const age = ageInYears(person.fecha_nacimiento);
+              return (
+                <div key={person.id_paciente} className="col-12 col-md-6">
+                  <article className="person-card h-100 bg-white">
+                    <div className="person-card-header mb-3">
+                      <div>
+                        <span className="patient-selector-kicker">
+                          Persona vinculada a tu cuenta
+                        </span>
+                        <h3 className="h5 fw-bold text-dark mb-0">
+                          {person.apellidos}, {person.nombres}
+                        </h3>
+                      </div>
+                      <span className="person-card-badge text-capitalize">
+                        {formatManagedKinship(person, titular)}
+                      </span>
+                    </div>
+
+                    <div className="person-card-info">
+                      <div>
+                        <span>DNI</span>
+                        <strong className="text-nowrap">{person.dni}</strong>
+                      </div>
+                      <div>
+                        <span>Teléfono</span>
+                        <strong className="text-nowrap">{person.telefono || 'Sin registrar'}</strong>
+                      </div>
+                      <div>
+                        <span>Condición</span>
+                        <strong>
+                          {age === null ? 'Edad no registrada' : age < 18 ? 'Menor de edad' : 'Adulto'}
+                        </strong>
+                      </div>
+                      <div>
+                        <span>Autorización</span>
+                        <strong className="text-success">
+                          <i className="bi bi-shield-check me-1" />
+                          Activa · Habilitada
+                        </strong>
+                      </div>
+                      {person.fecha_hasta && (
+                        <div>
+                          <span>Válida hasta</span>
+                          <strong className="text-nowrap">
+                            {person.fecha_hasta.split('-').reverse().join('/')}
+                          </strong>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="d-flex flex-wrap gap-2 pt-2 border-top">
+                      <Link
+                        className="btn btn-sm btn-saps d-inline-flex align-items-center justify-content-center gap-1 text-nowrap flex-grow-1 flex-sm-grow-0"
+                        style={{ minHeight: '38px' }}
+                        to={`/solicitar-turno?paciente=${person.id_paciente}`}
+                      >
+                        <i className="bi bi-calendar-plus" aria-hidden="true" />
+                        <span>Solicitar turno</span>
+                      </Link>
+                      <Link
+                        className="btn btn-sm btn-outline-success d-inline-flex align-items-center justify-content-center gap-1 text-nowrap flex-grow-1 flex-sm-grow-0"
+                        style={{ minHeight: '38px' }}
+                        to={`/mis-turnos?paciente=${person.id_paciente}`}
+                      >
+                        <i className="bi bi-calendar-check" aria-hidden="true" />
+                        <span>Ver turnos</span>
+                      </Link>
+                      <Link
+                        className="btn btn-sm btn-outline-primary d-inline-flex align-items-center justify-content-center gap-1 text-nowrap flex-grow-1 flex-sm-grow-0"
+                        style={{ minHeight: '38px' }}
+                        to={`/mi-historia?paciente=${person.id_paciente}`}
+                      >
+                        <i className="bi bi-journal-medical" aria-hidden="true" />
+                        <span>Historia clínica</span>
+                      </Link>
+                    </div>
+                  </article>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      <div className="mt-4">
-        <h2 className="h5">Personas autorizadas sobre tu perfil titular</h2>
-        {requestLoading ? <p role="status">Cargando autorizaciones…</p> : responsibles.length === 0
-          ? <p>No hay personas autorizadas para gestionar tus turnos.</p>
-          : <ul className="list-group mb-4">{responsibles.map(tutor => {
-            const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
-            const active = tutor.puede_gestionar_turnos && tutor.fecha_desde <= today &&
-              (!tutor.fecha_hasta || tutor.fecha_hasta >= today);
-            const status = !tutor.puede_gestionar_turnos ? 'Revocada' :
-              tutor.fecha_hasta && tutor.fecha_hasta < today ? 'Vencida' :
-                tutor.fecha_desde > today ? 'Programada' : 'Activa';
-            return <li key={tutor.id_tutor} className="list-group-item">
-              <strong>{tutor.apellidos}, {tutor.nombres}</strong>
-              <div className="small">DNI {tutor.dni} · {tutor.parentesco} · {status}
-                {active ? ' · Puede solicitar, consultar y cancelar turnos' : ''}
-              </div>
-              {tutor.fecha_modificacion && <div className="small text-muted">
-                Última modificación: {new Date(tutor.fecha_modificacion).toLocaleString('es-AR')}
-                {tutor.modificado_por?.nombre_usuario ? ` · ${tutor.modificado_por.nombre_usuario}` : ''}
-              </div>}
-            </li>;
-          })}</ul>}
+      {/* Sección 2: Personas autorizadas sobre tu perfil titular */}
+      <div className="mb-4">
+        <h2 className="h5 fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+          <i className="bi bi-person-check text-success" aria-hidden="true" />
+          <span>Personas autorizadas sobre tu perfil titular</span>
+        </h2>
 
-        <h2 className="h5">Estado de tus solicitudes</h2>
-        {requestLoading ? <p role="status">Cargando solicitudes…</p> : requests.length === 0
-          ? <p>No tenés solicitudes registradas.</p>
-          : <div className="table-responsive">
-            <table className="table table-striped align-middle">
-              <thead><tr><th>Tipo de solicitud</th><th>DNI</th><th>Vínculo declarado</th><th>Estado</th><th>Fecha</th></tr></thead>
-              <tbody>{requests.map(request => <tr key={request.id_solicitud}>
-                <td>{request.direccion === 'GESTIONAR_A_OTRO' ? 'Gestionar a otra persona' : 'Delegar mis turnos'}</td>
-                <td>{request.dni_persona_destino}</td>
-                <td>{request.parentesco}</td>
-                <td>{request.estado === 'PENDIENTE' ? 'Pendiente de revisión' : request.estado === 'APROBADA' ? 'Aprobada' : 'Rechazada'}
-                  {request.motivo_rechazo && <div className="small text-muted">Motivo: {request.motivo_rechazo}</div>}
-                </td>
-                <td>{new Date(request.fecha_creacion).toLocaleDateString('es-AR')}</td>
-              </tr>)}</tbody>
-            </table>
-          </div>}
+        {responsiblesLoading ? (
+          <div className="card border-0 shadow-sm p-4 text-center text-muted mb-3" role="status">
+            <div className="spinner-border spinner-border-sm text-success me-2" />
+            <span>Consultando autorizaciones…</span>
+          </div>
+        ) : responsiblesError ? (
+          <div className="alert alert-danger d-flex align-items-center justify-content-between gap-2 mb-3" role="alert">
+            <span>{responsiblesError}</span>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-danger"
+              onClick={() => setRevision((v) => v + 1)}
+            >
+              Reintentar
+            </button>
+          </div>
+        ) : responsibles.length === 0 ? (
+          <div className="card border-0 shadow-sm p-4 text-center text-muted mb-3">
+            <i className="bi bi-shield-lock fs-2 d-block mb-2 text-secondary" />
+            <p className="mb-0">No hay otras personas autorizadas para gestionar tus turnos.</p>
+          </div>
+        ) : (
+          <div className="d-grid gap-2 mb-3">
+            {responsibles.map((tutor) => {
+              const today = new Date().toLocaleDateString('en-CA', {
+                timeZone: 'America/Argentina/Buenos_Aires',
+              });
+              const active =
+                tutor.puede_gestionar_turnos &&
+                tutor.fecha_desde <= today &&
+                (!tutor.fecha_hasta || tutor.fecha_hasta >= today);
+              const status = !tutor.puede_gestionar_turnos
+                ? 'Revocada'
+                : tutor.fecha_hasta && tutor.fecha_hasta < today
+                ? 'Vencida'
+                : tutor.fecha_desde > today
+                ? 'Programada'
+                : 'Activa';
+
+              return (
+                <div key={tutor.id_tutor} className="card border-0 shadow-sm p-3 bg-white">
+                  <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">
+                    <strong className="text-dark">
+                      {tutor.apellidos}, {tutor.nombres}
+                    </strong>
+                    <span
+                      className={`badge ${
+                        active
+                          ? 'bg-success-subtle text-success border border-success-subtle'
+                          : 'bg-secondary-subtle text-secondary'
+                      }`}
+                    >
+                      {status}
+                    </span>
+                  </div>
+                  <div className="d-flex flex-wrap gap-3 small text-secondary">
+                    <span>
+                      DNI: <strong className="text-dark text-nowrap">{tutor.dni}</strong>
+                    </span>
+                    <span>
+                      Parentesco: <strong className="text-dark text-capitalize">{tutor.parentesco}</strong>
+                    </span>
+                    {active && (
+                      <span className="text-success">
+                        <i className="bi bi-check-circle me-1" />
+                        Puede solicitar, consultar y cancelar turnos
+                      </span>
+                    )}
+                  </div>
+                  {tutor.fecha_modificacion && (
+                    <small className="text-muted mt-2 d-block pt-1 border-top">
+                      Última modificación: {formatFechaHora(tutor.fecha_modificacion)}
+                      {tutor.modificado_por?.nombre_usuario ? ` · por ${tutor.modificado_por.nombre_usuario}` : ''}
+                    </small>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Sección 3: Estado de tus solicitudes */}
+      <div>
+        <h2 className="h5 fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+          <i className="bi bi-clock-history text-success" aria-hidden="true" />
+          <span>Estado de tus solicitudes</span>
+        </h2>
+
+        {requestsLoading ? (
+          <div className="card border-0 shadow-sm p-4 text-center text-muted" role="status">
+            <div className="spinner-border spinner-border-sm text-success me-2" />
+            <span>Consultando solicitudes…</span>
+          </div>
+        ) : requestsError ? (
+          <div className="alert alert-danger d-flex align-items-center justify-content-between gap-2" role="alert">
+            <span>{requestsError}</span>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-danger"
+              onClick={() => setRevision((v) => v + 1)}
+            >
+              Reintentar
+            </button>
+          </div>
+        ) : requests.length === 0 ? (
+          <div className="card border-0 shadow-sm p-4 text-center text-muted">
+            <i className="bi bi-inbox fs-2 d-block mb-2 text-secondary" />
+            <p className="mb-0">No tenés solicitudes de vinculación registradas.</p>
+          </div>
+        ) : (
+          <>
+            <div className="table-responsive shadow-sm rounded-3 bg-white border">
+              <table className="table align-middle table-hover mb-0">
+                <thead className="table-light">
+                  <tr>
+                    <th>Tipo de solicitud</th>
+                    <th>DNI</th>
+                    <th>Vínculo declarado</th>
+                    <th>Estado</th>
+                    <th>Fecha</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {requests
+                    .slice((requestsPage - 1) * 15, requestsPage * 15)
+                    .map((request) => (
+                      <tr key={request.id_solicitud}>
+                        <td>
+                          {request.direccion === 'GESTIONAR_A_OTRO'
+                            ? 'Gestionar a otra persona'
+                            : 'Delegar mis turnos'}
+                        </td>
+                        <td>
+                          <span className="text-nowrap fw-medium">{request.dni_persona_destino}</span>
+                        </td>
+                        <td>{request.parentesco}</td>
+                        <td>
+                          {request.estado === 'PENDIENTE' ? (
+                            <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle d-inline-flex align-items-center gap-1">
+                              <i className="bi bi-clock" aria-hidden="true" />
+                              <span>Pendiente de revisión</span>
+                            </span>
+                          ) : request.estado === 'APROBADA' ? (
+                            <span className="badge bg-success-subtle text-success-emphasis border border-success-subtle d-inline-flex align-items-center gap-1">
+                              <i className="bi bi-check-circle" aria-hidden="true" />
+                              <span>Aprobada</span>
+                            </span>
+                          ) : (
+                            <span className="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle d-inline-flex align-items-center gap-1">
+                              <i className="bi bi-x-circle" aria-hidden="true" />
+                              <span>Rechazada</span>
+                            </span>
+                          )}
+                          {request.motivo_rechazo && (
+                            <div className="small text-muted mt-1">Motivo: {request.motivo_rechazo}</div>
+                          )}
+                        </td>
+                        <td>
+                          <span className="text-nowrap">{formatFechaHora(request.fecha_creacion)}</span>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+
+            <PaginationControls
+              page={requestsPage}
+              totalPages={Math.ceil(requests.length / 15)}
+              totalItems={requests.length}
+              itemsPerPage={15}
+              onPageChange={setRequestsPage}
+              loading={requestsLoading}
+              itemLabel="solicitudes"
+              className="mt-3"
+            />
+          </>
+        )}
       </div>
     </section>
   );

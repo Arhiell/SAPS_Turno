@@ -19,7 +19,7 @@ export default function ManagedPatientSelector({ selection, disabled = false }: 
     </label>
     {selection.loading && <p role="status">Cargando personas a cargo…</p>}
     {selection.error && <div className="alert alert-danger" role="alert">{selection.error}{' '}
-      <button className="btn btn-sm btn-outline-danger" disabled={disabled} onClick={selection.retry}>Actualizar</button>
+      <button className="btn btn-sm btn-outline-danger" disabled={disabled} onClick={selection.retry}>Reintentar</button>
     </div>}
   </div>;
 }

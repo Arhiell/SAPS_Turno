@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import useManagedPatients from '../../context/useManagedPatients';
 import ManagedPatientSelector from '../../components/ui/ManagedPatientSelector';
 import { FloatingFeedbackToast } from '../../components/ui/FormFeedback';
+import PaginationControls from '../../components/ui/PaginationControls';
 import { getOwnHistoriaClinica } from '../../services/patients.service';
 import { useAuth } from '../../context/AuthContext';
+import { useAgendaSocket } from '../../context/AgendaSocketContext';
 import { formatManagedKinship } from '../../utils/kinship';
 import type {
   PatientClinicalDerivacion,
@@ -23,6 +25,7 @@ export default function MiHistoriaClinicaPage() {
   const [data, setData] = useState<PatientHistoriaClinicaData | null>(null);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'consultas' | 'derivaciones' | 'antecedentes'>('consultas');
+  const [consultasPage, setConsultasPage] = useState(1);
 
   useAutoDismiss(error, setError, 15_000, Boolean(error));
 
@@ -47,8 +50,26 @@ export default function MiHistoriaClinicaPage() {
   useEffect(() => {
     if (selection.loading) return;
     const targetId = selection.selected?.id_paciente;
+    setConsultasPage(1);
     void loadData(targetId);
   }, [selection.id, selection.loading]);
+
+  // Actualización automática en segundo plano por WebSockets
+  const { ultimoEventoClinico, resyncTick } = useAgendaSocket();
+
+  useEffect(() => {
+    if (!ultimoEventoClinico) return;
+    const targetId = selection.selected?.id_paciente;
+    if (!ultimoEventoClinico.id_paciente || ultimoEventoClinico.id_paciente === targetId) {
+      void loadData(targetId);
+    }
+  }, [ultimoEventoClinico, selection.selected?.id_paciente]);
+
+  useEffect(() => {
+    if (resyncTick > 0) {
+      void loadData(selection.selected?.id_paciente);
+    }
+  }, [resyncTick, selection.selected?.id_paciente]);
 
   const handlePrint = () => {
     window.print();
@@ -100,16 +121,6 @@ export default function MiHistoriaClinicaPage() {
               <span>Imprimir resumen</span>
             </button>
           )}
-
-          <button
-            type="button"
-            className="btn btn-outline-success d-flex align-items-center gap-2"
-            disabled={loading}
-            onClick={() => void loadData(selection.selected?.id_paciente)}
-          >
-            <i className={`bi bi-arrow-clockwise ${loading ? 'spin' : ''}`} aria-hidden="true" />
-            <span>Actualizar</span>
-          </button>
         </div>
       </div>
 
@@ -145,7 +156,7 @@ export default function MiHistoriaClinicaPage() {
                     {data.paciente.apellidos}, {data.paciente.nombres}
                   </h2>
                   <div className="d-flex flex-wrap gap-3 text-muted small">
-                    <span>
+                    <span className="text-nowrap">
                       <strong className="text-dark">DNI:</strong> {data.paciente.dni}
                     </span>
                     {data.paciente.fecha_nacimiento && (
@@ -254,12 +265,26 @@ export default function MiHistoriaClinicaPage() {
                   </div>
                 </div>
               ) : (
-                /* LISTADO CRONOLÓGICO DE ATENCIONES FIRMADAS */
-                <div className="d-flex flex-column gap-4">
-                  {data.consultas.map((consulta) => (
-                    <ConsultaMedicaItem key={consulta.id_consulta} consulta={consulta} />
-                  ))}
-                </div>
+                /* LISTADO CRONOLÓGICO DE ATENCIONES FIRMADAS (PAGINACIÓN 15 REGISTROS) */
+                <>
+                  <div className="d-flex flex-column gap-4">
+                    {data.consultas
+                      .slice((consultasPage - 1) * 15, consultasPage * 15)
+                      .map((consulta) => (
+                        <ConsultaMedicaItem key={consulta.id_consulta} consulta={consulta} />
+                      ))}
+                  </div>
+                  <PaginationControls
+                    page={consultasPage}
+                    totalPages={Math.ceil(data.consultas.length / 15)}
+                    totalItems={data.consultas.length}
+                    itemsPerPage={15}
+                    onPageChange={setConsultasPage}
+                    loading={loading}
+                    itemLabel="consultas médicas"
+                    className="mt-4"
+                  />
+                </>
               )}
             </div>
           )}

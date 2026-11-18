@@ -12,6 +12,7 @@ export interface EventoAgenda {
   tipo: TipoEventoAgenda;
   mensaje: string;
   id_turno?: string;
+  id_paciente?: string;
   id_horario?: string;
   dia_semana?: number;
   id_profesional?: string;

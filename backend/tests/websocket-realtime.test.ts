@@ -38,10 +38,18 @@ const USER_SUPER_ADMIN = 'dddddddd-1111-4111-8111-dddddddddddd';
 const PROFESIONAL_ENTIDAD_ID = '99999999-cccc-4999-8999-999999999999';
 const PERSON_PROF_ID = '88888888-cccc-4888-8888-888888888888';
 
+const USER_PACIENTE_1 = 'eeeeeeee-1111-4111-8111-eeeeeeeeeeee';
+const USER_PACIENTE_2 = 'eeeeeeee-2222-4111-8111-eeeeeeeeeeee';
+const PERSON_PACIENTE_1 = '77777777-1111-4777-8777-777777777777';
+const PERSON_PACIENTE_2 = '77777777-2222-4777-8777-777777777777';
+const PACIENTE_ENTIDAD_1 = '66666666-1111-4666-8666-666666666666';
+const PACIENTE_ENTIDAD_2 = '66666666-2222-4666-8666-666666666666';
+
 const ROLE_ADMIN_ID = 'role-admin-uuid';
 const ROLE_RECEPCION_ID = 'role-recepcion-uuid';
 const ROLE_PROF_ID = 'role-prof-uuid';
 const ROLE_SUPER_ADMIN_ID = 'role-superadmin-uuid';
+const ROLE_PACIENTE_ID = 'role-paciente-uuid';
 
 // Simulación de base de datos PostgreSQL/Supabase
 const mockDatabase = {
@@ -51,12 +59,15 @@ const mockDatabase = {
     { id_usuario: USER_RECEPCION_1, id_rol: ROLE_RECEPCION_ID, id_persona: null, nombre_usuario: 'recep1', email: 'recep1@cora.gob.ar', email_verificado: true, activo: true },
     { id_usuario: USER_PROFESIONAL_1, id_rol: ROLE_PROF_ID, id_persona: PERSON_PROF_ID, nombre_usuario: 'prof1', email: 'prof1@cora.gob.ar', email_verificado: true, activo: true },
     { id_usuario: USER_SUPER_ADMIN, id_rol: ROLE_SUPER_ADMIN_ID, id_persona: null, nombre_usuario: 'superadmin', email: 'super@cora.gob.ar', email_verificado: true, activo: true },
+    { id_usuario: USER_PACIENTE_1, id_rol: ROLE_PACIENTE_ID, id_persona: PERSON_PACIENTE_1, nombre_usuario: 'paciente1', email: 'paciente1@gmail.com', email_verificado: true, activo: true },
+    { id_usuario: USER_PACIENTE_2, id_rol: ROLE_PACIENTE_ID, id_persona: PERSON_PACIENTE_2, nombre_usuario: 'paciente2', email: 'paciente2@gmail.com', email_verificado: true, activo: true },
   ],
   roles: [
     { id_rol: ROLE_ADMIN_ID, codigo: 'ADMIN_SALITA', nombre: 'Administrador de Salita', activo: true },
     { id_rol: ROLE_RECEPCION_ID, codigo: 'RECEPCION', nombre: 'Recepción', activo: true },
     { id_rol: ROLE_PROF_ID, codigo: 'PROFESIONAL', nombre: 'Profesional de la Salud', activo: true },
     { id_rol: ROLE_SUPER_ADMIN_ID, codigo: 'SUPER_ADMIN', nombre: 'Super Administrador', activo: true },
+    { id_rol: ROLE_PACIENTE_ID, codigo: 'PACIENTE', nombre: 'Paciente', activo: true },
   ],
   usuario_salita: [
     { id_usuario: USER_ADMIN_1, id_salita: SALITA_1, activo: true, fecha_desde: '2020-01-01', fecha_hasta: null },
@@ -68,6 +79,10 @@ const mockDatabase = {
   ],
   profesional_salita: [
     { id_profesional: PROFESIONAL_ENTIDAD_ID, id_salita: SALITA_1, activo: true, fecha_desde: '2020-01-01', fecha_hasta: null },
+  ],
+  pacientes: [
+    { id_paciente: PACIENTE_ENTIDAD_1, id_persona: PERSON_PACIENTE_1, id_salita_asignada: SALITA_1, activo: true },
+    { id_paciente: PACIENTE_ENTIDAD_2, id_persona: PERSON_PACIENTE_2, id_salita_asignada: SALITA_2, activo: true },
   ],
 };
 
@@ -121,6 +136,17 @@ globalThis.fetch = async (request: any, options: any) => {
     const personId = eqMatch ? eqMatch[1] : null;
     const prof = mockDatabase.profesionales.find((p) => p.id_persona === personId && p.activo);
     return new Response(JSON.stringify(prof || null), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (table === 'pacientes') {
+    const idPersonParam = url.searchParams.get('id_persona');
+    const eqMatch = idPersonParam?.match(/^eq\.(.+)$/);
+    const personId = eqMatch ? eqMatch[1] : null;
+    const pac = mockDatabase.pacientes.find((p) => p.id_persona === personId && p.activo);
+    return new Response(JSON.stringify(pac || null), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -407,6 +433,72 @@ test('Sincronización de Pacientes: Creación y cambios de estado son recibidos 
   assert.equal(patientEvents[1].tipo, 'TUTOR_VINCULACION_ACTUALIZADA');
 
   clientAdmin1.disconnect();
+});
+
+test('Sincronización en tiempo real para PACIENTE: Recibe eventos propios de agenda y clínicos, respetando la privacidad de otros pacientes', async () => {
+  const tokenPac1 = await generateAccessToken({
+    id_usuario: USER_PACIENTE_1,
+    email: 'paciente1@gmail.com',
+    nombre_usuario: 'paciente1',
+    rol: 'PACIENTE',
+    id_persona: PERSON_PACIENTE_1,
+  });
+
+  const tokenPac2 = await generateAccessToken({
+    id_usuario: USER_PACIENTE_2,
+    email: 'paciente2@gmail.com',
+    nombre_usuario: 'paciente2',
+    rol: 'PACIENTE',
+    id_persona: PERSON_PACIENTE_2,
+  });
+
+  const clientPac1 = await connectClient(tokenPac1);
+  const clientPac2 = await connectClient(tokenPac2);
+
+  const pac1AgendaEvents: any[] = [];
+  const pac2AgendaEvents: any[] = [];
+  const pac1ClinicalEvents: any[] = [];
+  const pac2ClinicalEvents: any[] = [];
+
+  clientPac1.on('agenda:cambio', (evt) => pac1AgendaEvents.push(evt));
+  clientPac2.on('agenda:cambio', (evt) => pac2AgendaEvents.push(evt));
+  clientPac1.on('clinica:cambio', (evt) => pac1ClinicalEvents.push(evt));
+  clientPac2.on('clinica:cambio', (evt) => pac2ClinicalEvents.push(evt));
+
+  // 1. Emisión de turno para Paciente 1
+  emitirCambioAgenda({
+    tipo: 'TURNO_CREADO',
+    mensaje: 'Se reservó un nuevo turno',
+    id_turno: 'turno-pac1-001',
+    id_paciente: PACIENTE_ENTIDAD_1,
+    id_profesional: PROFESIONAL_ENTIDAD_ID,
+    id_salita: SALITA_1,
+    paciente: 'Paciente Uno',
+  });
+
+  // 2. Emisión clínica mínima para Paciente 1
+  emitirCambioClinico({
+    tipo: 'CONSULTA_FIRMADA',
+    mensaje: 'Consulta médica firmada',
+    id_paciente: PACIENTE_ENTIDAD_1,
+    id_salita: SALITA_1,
+    id_consulta: 'consulta-pac1-999',
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 80));
+
+  // Paciente 1 debió recibir sus 2 eventos
+  assert.equal(pac1AgendaEvents.length, 1, 'Paciente 1 debe recibir su cambio de agenda');
+  assert.equal(pac1AgendaEvents[0].id_turno, 'turno-pac1-001');
+  assert.equal(pac1ClinicalEvents.length, 1, 'Paciente 1 debe recibir su actualización clínica mínima');
+  assert.equal(pac1ClinicalEvents[0].id_consulta, 'consulta-pac1-999');
+
+  // Paciente 2 NO debió recibir ninguno (privacidad estricta)
+  assert.equal(pac2AgendaEvents.length, 0, 'Paciente 2 no debe recibir eventos del Paciente 1');
+  assert.equal(pac2ClinicalEvents.length, 0, 'Paciente 2 no debe recibir eventos clínicos del Paciente 1');
+
+  clientPac1.disconnect();
+  clientPac2.disconnect();
 });
 
 test('Deduplicación en cliente: Ventana deslizante descarta eventos duplicados con el mismo ID', () => {

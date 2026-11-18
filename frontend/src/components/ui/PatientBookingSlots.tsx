@@ -17,6 +17,7 @@ import type {
   DisponibilidadSlot,
 } from '../../types/turno.types';
 
+import { useAgendaSocket } from '../../context/AgendaSocketContext';
 import {
   authError,
 } from '../../utils/auth-errors';
@@ -59,6 +60,25 @@ export default function PatientBookingSlots({
 
   const navigate = useNavigate();
 
+  // Actualización reactiva en tiempo real por WebSockets
+  const { ultimoEvento, resyncTick } = useAgendaSocket();
+
+  useEffect(() => {
+    if (!ultimoEvento) return;
+    if (
+      (!ultimoEvento.id_profesional || ultimoEvento.id_profesional === professional) &&
+      (!ultimoEvento.id_salita || ultimoEvento.id_salita === clinic)
+    ) {
+      setRevision((v) => v + 1);
+    }
+  }, [ultimoEvento, professional, clinic]);
+
+  useEffect(() => {
+    if (resyncTick > 0) {
+      setRevision((v) => v + 1);
+    }
+  }, [resyncTick]);
+
   // ========================================
   // CARGA DE HORARIOS DISPONIBLES
   // ========================================
@@ -66,13 +86,10 @@ export default function PatientBookingSlots({
   useEffect(() => {
     let active = true;
 
-    // Reinicia los datos de la consulta anterior.
     setLoading(true);
     setError('');
     setSlots([]);
 
-    // Consulta la disponibilidad según
-    // fecha, profesional, especialidad y salita.
     void getDisponibilidad(
       date,
       professional,
@@ -81,22 +98,43 @@ export default function PatientBookingSlots({
       patientId
     )
       .then((response) => {
-        if (active) {
-          // Solo muestra los horarios disponibles.
-          setSlots(
-            response.slots.filter(
-              (s) => s.estado === 'DISPONIBLE'
-            )
-          );
-          setSelected((current) => response.slots.some((slot) =>
-            slot.estado === 'DISPONIBLE' && slot.hora_inicio === current) ? current : '');
-        }
+        if (!active) return;
+
+        // Filtra los horarios que ya pasaron si la fecha seleccionada es hoy
+        const now = new Date();
+        const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
+        const isToday = date === todayStr;
+        const currentMinutes = isToday
+          ? (() => {
+              const arParts = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'America/Argentina/Buenos_Aires',
+                hour: 'numeric',
+                minute: 'numeric',
+                hour12: false,
+              }).formatToParts(now);
+              const hour = Number(arParts.find((p) => p.type === 'hour')?.value ?? '0');
+              const min = Number(arParts.find((p) => p.type === 'minute')?.value ?? '0');
+              return hour * 60 + min;
+            })()
+          : -1;
+
+        const availableSlots = response.slots.filter((s) => {
+          if (s.estado !== 'DISPONIBLE') return false;
+          if (isToday) {
+            const [h, m] = s.hora_inicio.split(':').map(Number);
+            if (h * 60 + m <= currentMinutes) return false;
+          }
+          return true;
+        });
+
+        setSlots(availableSlots);
+        setSelected((current) =>
+          availableSlots.some((slot) => slot.hora_inicio === current) ? current : ''
+        );
       })
       .catch((cause) => {
         if (active) {
-          setError(
-            authError(cause)
-          );
+          setError(authError(cause));
         }
       })
       .finally(() => {
@@ -200,21 +238,25 @@ export default function PatientBookingSlots({
 
       {/* Estado de carga. */}
       {loading && (
-        <p role="status">
-          Consultando disponibilidad…
-        </p>
+        <div className="card border-0 shadow-sm p-3 text-center text-muted" role="status">
+          <div>
+            <div className="spinner-border spinner-border-sm text-success me-2" aria-hidden="true" />
+            <span className="align-middle">Consultando disponibilidad…</span>
+          </div>
+        </div>
       )}
 
       {/* Mensaje de error y opción de reintento. */}
       {error && (
         <div
-          className="alert alert-danger"
+          className="alert alert-danger d-flex align-items-center justify-content-between gap-2"
           role="alert"
         >
-          {error}{' '}
+          <span>{error}</span>
 
           <button
-            className="btn btn-outline-danger"
+            type="button"
+            className="btn btn-sm btn-outline-danger"
             disabled={busy}
             onClick={() =>
               setRevision(
@@ -222,7 +264,7 @@ export default function PatientBookingSlots({
               )
             }
           >
-            Actualizar horarios
+            Reintentar
           </button>
         </div>
       )}
@@ -231,10 +273,10 @@ export default function PatientBookingSlots({
       {!loading &&
         !error &&
         !slots.length && (
-          <p>
-            No hay horarios disponibles para esta
-            fecha. Probá otro día o profesional.
-          </p>
+          <div className="alert alert-info d-flex align-items-center gap-2 mb-0" role="status">
+            <i className="bi bi-info-circle flex-shrink-0" aria-hidden="true" />
+            <span>No hay horarios disponibles para esta fecha. Probá seleccionando otro día o profesional.</span>
+          </div>
         )}
 
       {/* Formulario de reserva. */}
@@ -251,40 +293,27 @@ export default function PatientBookingSlots({
                 Elegí un horario
               </legend>
 
-              {/* Selección del horario. */}
-              <div className="d-flex flex-wrap gap-2 mb-3">
+              {/* Selección del horario en cuadrícula accesible. */}
+              <div className="d-flex flex-wrap gap-2 mb-3" role="radiogroup" aria-label="Horarios disponibles">
                 {slots.map(
-                  (slot) => (
-                    <label
-                      className={`btn ${
-                        selected === slot.hora_inicio
-                          ? 'btn-success'
-                          : 'btn-outline-success'
-                      }`}
-                      key={slot.hora_inicio}
-                    >
-                      <input
-                        className="visually-hidden"
-                        type="radio"
-                        name="slot"
-                        value={slot.hora_inicio}
-                        checked={
-                          selected === slot.hora_inicio
-                        }
-                        onChange={() =>
-                          setSelected(
-                            slot.hora_inicio
-                          )
-                        }
-                        required
-                      />
-
-                      {slot.hora_inicio.slice(
-                        0,
-                        5
-                      )}
-                    </label>
-                  )
+                  (slot) => {
+                    const isSelected = selected === slot.hora_inicio;
+                    return (
+                      <button
+                        key={slot.hora_inicio}
+                        type="button"
+                        className={`btn btn-sm ${
+                          isSelected ? 'btn-success fw-bold' : 'btn-outline-success'
+                        } d-inline-flex align-items-center justify-content-center gap-1 px-3 py-2 text-nowrap`}
+                        style={{ minWidth: '82px', minHeight: '40px' }}
+                        onClick={() => setSelected(slot.hora_inicio)}
+                        aria-pressed={isSelected}
+                      >
+                        <i className={`bi ${isSelected ? 'bi-check2-circle' : 'bi-clock'}`} aria-hidden="true" />
+                        <span>{slot.hora_inicio.slice(0, 5)}</span>
+                      </button>
+                    );
+                  }
                 )}
               </div>
 
@@ -319,8 +348,9 @@ export default function PatientBookingSlots({
 
               {/* Confirmación de la reserva. */}
               <button
-                className="btn btn-saps"
-                disabled={!selected}
+                className="btn btn-saps text-nowrap d-inline-flex align-items-center justify-content-center px-4"
+                style={{ minHeight: '44px' }}
+                disabled={!selected || busy}
               >
                 {busy
                   ? 'Reservando…'

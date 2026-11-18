@@ -79,8 +79,8 @@ export function AgendaSocketProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Conectamos WebSocket para profesionales, administradores de salita, recepción y super admin
-    if (!user || !['PROFESIONAL', 'ADMIN_SALITA', 'RECEPCION', 'SUPER_ADMIN'].includes(user.rol)) {
+    // Conectamos WebSocket para todos los roles autorizados (incluyendo PACIENTE)
+    if (!user || !['PROFESIONAL', 'ADMIN_SALITA', 'RECEPCION', 'SUPER_ADMIN', 'PACIENTE'].includes(user.rol)) {
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;

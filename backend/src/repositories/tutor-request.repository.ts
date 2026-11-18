@@ -66,7 +66,7 @@ export const findTutorRequestsForAdmin = async (scope: string[] | null) => {
 export const findTutorRequestById = async (requestId: string) => {
   const { data, error } = await supabase
     .from('solicitudes_vinculacion')
-    .select('id_solicitud,id_salita_contexto,estado')
+    .select('id_solicitud,id_salita_contexto,estado,id_paciente_solicitante')
     .eq('id_solicitud', requestId)
     .maybeSingle();
 

@@ -19,8 +19,11 @@ import type {
 import TurnoCard from '../../components/ui/TurnoCard';
 import useManagedPatients from '../../context/useManagedPatients';
 import ManagedPatientSelector from '../../components/ui/ManagedPatientSelector';
+import PaginationControls from '../../components/ui/PaginationControls';
 import { useAuth } from '../../context/AuthContext';
+import { useAgendaSocket } from '../../context/AgendaSocketContext';
 import { formatManagedKinship } from '../../utils/kinship';
+import { formatFechaHora } from '../../utils/agenda-display';
 
 import {
   getEstadoClass,
@@ -64,49 +67,46 @@ export default function PatientAppointmentsPage() {
     });
   };
 
-  const [
-    pages,
-    setPages,
-  ] = useState(0);
+  const [pages, setPages] = useState(0);
+  const [totalItems, setTotalItems] = useState<number | null>(null);
 
   // ESTADO DE LA PÁGINA
+  const [items, setItems] = useState<Turno[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const [
-    items,
-    setItems,
-  ] = useState<Turno[]>([]);
+  // Permite volver a cargar los turnos sin reiniciar la página actual.
+  const [revision, setRevision] = useState(0);
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(true);
+  // WebSocket central: actualización reactiva en segundo plano
+  const { ultimoEvento, resyncTick } = useAgendaSocket();
 
-  const [
-    error,
-    setError,
-  ] = useState('');
+  useEffect(() => {
+    if (!ultimoEvento) return;
+    const evtPatientId = (ultimoEvento as any).id_paciente;
+    const isTargetPatient = !evtPatientId || evtPatientId === selection.id;
+    if (isTargetPatient) {
+      setRevision((v) => v + 1);
+    }
+  }, [ultimoEvento, selection.id]);
 
-  // Permite volver a cargar los turnos.
-  const [
-    revision,
-    setRevision,
-  ] = useState(0);
+  useEffect(() => {
+    if (resyncTick > 0) {
+      setRevision((v) => v + 1);
+    }
+  }, [resyncTick]);
 
-  //  CARGA DE TURNOS
-
+  //  CARGA DE TURNOS (15 registros por página)
   useEffect(() => {
     let active = true;
 
     setLoading(true);
     setError('');
-    setItems([]);
     if (selection.loading || selection.error || !selection.selected) {
       setLoading(selection.loading);
       return;
     }
 
-    // La API filtra por la identidad
-    // de sesión antes de paginar.
     void getTurnos({
       id_paciente: selection.id,
       periodo,
@@ -123,24 +123,18 @@ export default function PatientAppointmentsPage() {
       ),
       orden: 'desc',
       page,
-      limit: 10,
+      limit: 15,
     })
       .then((response) => {
         if (active) {
-          setItems(
-            response.data.turnos
-          );
-
-          setPages(
-            response.data.pagination.totalPages
-          );
+          setItems(response.data.turnos);
+          setPages(response.data.pagination.totalPages);
+          setTotalItems(response.data.pagination.total);
         }
       })
       .catch(() => {
         if (active) {
-          setError(
-            'No se pudieron cargar tus turnos.'
-          );
+          setError('No se pudieron cargar tus turnos.');
         }
       })
       .finally(() => {
@@ -149,8 +143,6 @@ export default function PatientAppointmentsPage() {
         }
       });
 
-    // Evita actualizar el estado después
-    // de desmontar el componente.
     return () => {
       active = false;
     };
@@ -301,9 +293,12 @@ export default function PatientAppointmentsPage() {
       {/* LISTADO DE TURNOS */}
 
       {loading ? (
-        <p role="status">
-          Cargando turnos…
-        </p>
+        <div className="card border-0 shadow-sm p-4 text-center text-muted" role="status">
+          <div>
+            <div className="spinner-border spinner-border-sm text-success me-2" aria-hidden="true" />
+            <span className="align-middle">Cargando turnos…</span>
+          </div>
+        </div>
       ) : !error && (
         <>
           {!items.length ? (
@@ -337,28 +332,17 @@ export default function PatientAppointmentsPage() {
 
               {/* VISTA ESCRITORIO*/}
 
-              <div className="table-responsive d-none d-md-block">
-                <table className="table align-middle table-striped">
-                  <thead>
+              <div className="table-responsive d-none d-md-block shadow-sm rounded-3 bg-white border">
+                <table className="table align-middle table-hover mb-0">
+                  <thead className="table-light">
                     <tr>
-                      {[
-                        'Fecha y hora',
-                        'Profesional / Especialidad',
-                        'Salita',
-                        'Estado',
-                        'Motivo / Código',
-                        'Solicitado por',
-                        'Detalle',
-                      ].map(
-                        (label) => (
-                          <th
-                            scope="col"
-                            key={label}
-                          >
-                            {label}
-                          </th>
-                        )
-                      )}
+                      <th scope="col" style={{ minWidth: '160px' }}>Fecha y hora</th>
+                      <th scope="col" style={{ minWidth: '180px' }}>Profesional / Especialidad</th>
+                      <th scope="col" style={{ minWidth: '160px' }}>Salita</th>
+                      <th scope="col" style={{ minWidth: '120px' }}>Estado</th>
+                      <th scope="col" style={{ minWidth: '160px' }}>Motivo</th>
+                      <th scope="col" style={{ minWidth: '140px' }}>Solicitado por</th>
+                      <th scope="col" style={{ width: '130px', minWidth: '130px', textAlign: 'center' }}>Acciones</th>
                     </tr>
                   </thead>
 
@@ -366,81 +350,65 @@ export default function PatientAppointmentsPage() {
                     {items.map(
                       (t) => (
                         <tr key={t.id_turno}>
-                          {/* Fecha y hora del turno. */}
+                          {/* Fecha y hora uniforme del turno. */}
                           <td>
-                            {new Date(
-                              t.fecha_hora_inicio
-                            ).toLocaleString(
-                              'es-AR',
-                              {
-                                timeZone:
-                                  'America/Argentina/Buenos_Aires',
-                              }
-                            )}
+                            <span className="fw-semibold text-nowrap">
+                              {formatFechaHora(t.fecha_hora_inicio)}
+                            </span>
                           </td>
 
                           {/* Profesional y especialidad. */}
                           <td>
-                            {
-                              t.profesional?.persona
-                                ?.apellidos
-                            }{' '}
-                            {
-                              t.profesional?.persona
-                                ?.nombres
-                            }
-
-                            <br />
-
-                            <small>
-                              {
-                                t.especialidad
-                                  ?.nombre
-                              }
+                            <span className="d-block text-dark fw-medium">
+                              {t.profesional?.persona
+                                ? `${t.profesional.persona.apellidos}, ${t.profesional.persona.nombres}`
+                                : 'Profesional asignado'}
+                            </span>
+                            <small className="text-muted">
+                              {t.especialidad?.nombre || 'Consulta General'}
                             </small>
                           </td>
 
                           {/* Salita asignada. */}
                           <td>
-                            {t.salita?.nombre}
+                            <span className="text-secondary">
+                              {t.salita?.nombre || 'Salita asignada'}
+                            </span>
                           </td>
 
                           {/* Estado actual del turno. */}
                           <td>
-                            <span
-                              className={getEstadoClass(
-                                t.estado.codigo
-                              )}
-                            >
+                            <span className={getEstadoClass(t.estado.codigo)}>
                               {t.estado.nombre}
                             </span>
                           </td>
 
-                          {/* Motivo y código del turno. */}
+                          {/* Motivo legible (sin UUIDs técnicos). */}
                           <td>
-                            {t.motivo_consulta ||
-                              'Sin informar'}
-
-                            <br />
-
-                            <small>
-                              {t.codigo_turno}
-                            </small>
+                            <span className="text-dark">
+                              {t.motivo_consulta || 'Consulta general'}
+                            </span>
                           </td>
 
+                          {/* Solicitado por */}
                           <td>
-                            {t.solicitante?.persona
-                              ? `${t.solicitante.persona.apellidos}, ${t.solicitante.persona.nombres}`
-                              : t.solicitante?.nombre_usuario || 'Cuenta no disponible'}
+                            <span className="text-secondary small">
+                              {t.solicitante?.persona
+                                ? `${t.solicitante.persona.apellidos}, ${t.solicitante.persona.nombres}`
+                                : t.solicitante?.nombre_usuario || 'Cuenta no disponible'}
+                            </span>
                           </td>
 
                           {/* Acceso al detalle. */}
-                          <td>
+                          <td className="text-center" style={{ width: '130px', minWidth: '130px' }}>
                             <Link
-                              className="btn btn-sm btn-outline-success"
+                              className="btn btn-sm btn-outline-success d-inline-flex align-items-center justify-content-center gap-1 text-nowrap"
+                              style={{ minHeight: '36px', whiteSpace: 'nowrap' }}
                               to={`/mis-turnos/${t.id_turno}`}
+                              title="Ver detalle completo del turno"
                             >
-                              Ver detalle
+                              <i className="bi bi-eye" aria-hidden="true" />
+                              <span>Ver detalle</span>
                             </Link>
                           </td>
                         </tr>
@@ -454,45 +422,17 @@ export default function PatientAppointmentsPage() {
         </>
       )}
 
-      {/*  PAGINACIÓN */}
-
-      {pages > 1 && (
-        <div className="d-flex flex-wrap gap-3 align-items-center mt-4">
-          <button
-            className="btn btn-outline-secondary"
-            disabled={
-              loading ||
-              page <= 1
-            }
-            onClick={() =>
-              setPage(
-                (v) => v - 1
-              )
-            }
-          >
-            Anterior
-          </button>
-
-          <span>
-            Página {page} de {pages}
-          </span>
-
-          <button
-            className="btn btn-outline-secondary"
-            disabled={
-              loading ||
-              page >= pages
-            }
-            onClick={() =>
-              setPage(
-                (v) => v + 1
-              )
-            }
-          >
-            Siguiente
-          </button>
-        </div>
-      )}
+      {/*  PAGINACIÓN REUTILIZABLE (15 REGISTROS POR PÁGINA) */}
+      <PaginationControls
+        page={page}
+        totalPages={pages}
+        totalItems={totalItems}
+        itemsPerPage={15}
+        onPageChange={(newPage) => setPage(newPage)}
+        loading={loading}
+        itemLabel="turnos"
+        className="mt-4"
+      />
     </section>
   );
 }

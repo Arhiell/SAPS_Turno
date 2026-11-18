@@ -60,8 +60,8 @@ export default function MobileBottomNav() {
     user?.rol === 'PACIENTE'
       ? [
           '/panel',
+          '/solicitar-turno',
           '/mis-turnos',
-          '/mis-notificaciones',
         ]
       : user?.rol ===
           'PROFESIONAL'

@@ -97,6 +97,7 @@ export const createTurno = async (
       tipo: 'TURNO_CREADO',
       mensaje: 'Se agregó un nuevo turno a tu agenda',
       id_turno: turno.id_turno,
+      id_paciente: turno.id_paciente,
       id_profesional: turno.id_profesional,
       id_salita: turno.id_salita,
       paciente: pacienteNombre,

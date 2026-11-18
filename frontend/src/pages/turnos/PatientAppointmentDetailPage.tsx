@@ -20,25 +20,11 @@ import type {
 } from '../../types/turno.types';
 
 import TurnoCard from '../../components/ui/TurnoCard';
+import { useAgendaSocket } from '../../context/AgendaSocketContext';
+import { formatFechaHora } from '../../utils/agenda-display';
 
-// ========================================
-// FORMATO DE FECHA Y HORA
-// ========================================
-
-// Convierte las fechas del turno al formato
-// local utilizado por el sistema.
-const format = (
-  value: string
-) =>
-  new Date(
-    value
-  ).toLocaleString(
-    'es-AR',
-    {
-      timeZone:
-        'America/Argentina/Buenos_Aires',
-    }
-  );
+// Utiliza el formato uniforme del paciente
+const format = (value: string) => formatFechaHora(value);
 
 // ========================================
 // NOMBRES DE ACCIONES DEL HISTORIAL
@@ -109,6 +95,22 @@ export default function PatientAppointmentDetailPage() {
     revision,
     setRevision,
   ] = useState(0);
+
+  // Sincronización automática en segundo plano ante cambios del turno
+  const { ultimoEvento, resyncTick } = useAgendaSocket();
+
+  useEffect(() => {
+    if (!ultimoEvento || !id) return;
+    if (ultimoEvento.id_turno === id) {
+      setRevision((v) => v + 1);
+    }
+  }, [ultimoEvento, id]);
+
+  useEffect(() => {
+    if (resyncTick > 0) {
+      setRevision((v) => v + 1);
+    }
+  }, [resyncTick]);
 
   // ========================================
   // CARGA DEL TURNO
@@ -205,10 +207,29 @@ export default function PatientAppointmentDetailPage() {
       <h1 className="h3 mb-4">
         Detalle del turno
       </h1>
-      {turno && <p className="alert alert-info">
-        Paciente: {turno.paciente?.persona?.apellidos}, {turno.paciente?.persona?.nombres}
-        {' · '}DNI: {turno.paciente?.persona?.dni}
-      </p>}
+      {turno && (
+        <div className="card border-0 shadow-sm mb-4 bg-light p-3">
+          <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+              <span className="text-muted small d-block">Paciente:</span>
+              <strong className="text-dark">
+                {turno.paciente?.persona?.apellidos}, {turno.paciente?.persona?.nombres}
+              </strong>
+              {turno.paciente?.persona?.dni && (
+                <span className="text-muted small ms-2">· DNI {turno.paciente.persona.dni}</span>
+              )}
+            </div>
+            {turno.codigo_turno && (
+              <div className="text-sm-end">
+                <span className="text-muted small d-block">Código de identificación:</span>
+                <span className="badge bg-white text-dark border font-monospace px-2 py-1">
+                  {turno.codigo_turno}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Confirma que el turno acaba de crearse. */}
       {location.state?.created && (
@@ -222,9 +243,12 @@ export default function PatientAppointmentDetailPage() {
 
       {/* Estado de carga. */}
       {loading && (
-        <p role="status">
-          Cargando turno…
-        </p>
+        <div className="card border-0 shadow-sm p-4 text-center text-muted mb-4" role="status">
+          <div>
+            <div className="spinner-border spinner-border-sm text-success me-2" aria-hidden="true" />
+            <span className="align-middle">Cargando turno…</span>
+          </div>
+        </div>
       )}
 
       {/* Error al cargar el turno. */}

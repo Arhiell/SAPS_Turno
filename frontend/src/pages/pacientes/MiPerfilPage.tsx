@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useState,
 } from 'react';
 
@@ -11,6 +12,7 @@ import {
 } from '../../context/AuthContext';
 
 import usePatientCoverage from '../../context/usePatientCoverage';
+import { useAgendaSocket } from '../../context/AgendaSocketContext';
 
 import PatientCoverageCard from '../../components/ui/PatientCoverageCard';
 import PatientProfileForm from '../../components/ui/PatientProfileForm';
@@ -39,43 +41,26 @@ function PatientProfile() {
     setEditing,
   ] = useState(false);
 
-  // Estado de actualización.
-  const [
-    busy,
-    setBusy,
-  ] = useState(false);
-
-  // Mensajes de respuesta.
-  const [
-    error,
-    setError,
-  ] = useState('');
-
   const [
     message,
     setMessage,
   ] = useState('');
 
-  // ACTUALIZAR PERFIL
+  // Sincronización automática por WebSockets
+  const { ultimoEventoPaciente, resyncTick } = useAgendaSocket();
 
-  const refresh = async () => {
-    setBusy(true);
-    setError('');
+  useEffect(() => {
+    if (!ultimoEventoPaciente) return;
+    void reloadProfile();
+    coverage.retry();
+  }, [ultimoEventoPaciente, reloadProfile, coverage]);
 
-    try {
-      // Recarga los datos del perfil.
-      await reloadProfile();
-
-      // Actualiza también la cobertura.
+  useEffect(() => {
+    if (resyncTick > 0) {
+      void reloadProfile();
       coverage.retry();
-    } catch {
-      setError(
-        'No se pudo cargar tu perfil. Volvé a intentar.'
-      );
-    } finally {
-      setBusy(false);
     }
-  };
+  }, [resyncTick, reloadProfile, coverage]);
 
   // PERFIL INCOMPLETO
 
@@ -108,6 +93,7 @@ function PatientProfile() {
   const sections = [
     {
       title: 'Información personal',
+      icon: 'bi-person-badge',
       fields: {
         Nombres: patient.nombres,
         Apellidos: patient.apellidos,
@@ -118,6 +104,7 @@ function PatientProfile() {
     },
     {
       title: 'Datos de contacto',
+      icon: 'bi-telephone',
       fields: {
         Teléfono: patient.telefono,
         'Correo electrónico': user?.email,
@@ -125,7 +112,8 @@ function PatientProfile() {
       },
     },
     {
-      title: 'Cobertura y salud',
+      title: 'Cobertura médica y emergencia',
+      icon: 'bi-heart-pulse',
       fields: {
         'Obra social': patient.obra_social,
         'Número de afiliado': patient.numero_afiliado,
@@ -150,60 +138,33 @@ function PatientProfile() {
   return (
     <div>
       {/* Encabezado y acciones principales. */}
-      <div className="d-flex flex-wrap justify-content-between gap-3 mb-4">
+      <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
-          <h1 className="h3">
+          <h1 className="h3 fw-bold text-dark mb-1">
             Mi perfil
           </h1>
 
           <p className="text-muted mb-0">
-            Tus datos y tu lugar de atención.
+            Tus datos personales, contacto y lugar de atención asignado.
           </p>
         </div>
 
         <div className="d-flex flex-wrap gap-2">
-          {/* Recarga los datos del perfil. */}
+          {/* Activa la edición del perfil */}
           <button
-            className="btn btn-outline-secondary"
-            disabled={
-              busy ||
-              editing
-            }
-            onClick={() =>
-              void refresh()
-            }
-          >
-            {busy
-              ? 'Actualizando…'
-              : 'Actualizar'}
-          </button>
-
-          {/* Activa la edición del perfil. */}
-          <button
-            className="btn btn-saps"
-            disabled={
-              busy ||
-              editing
-            }
+            type="button"
+            className="btn btn-saps d-inline-flex align-items-center gap-1"
+            disabled={editing}
             onClick={() => {
               setEditing(true);
               setMessage('');
             }}
           >
-            Editar perfil
+            <i className="bi bi-pencil-square" aria-hidden="true" />
+            <span>Editar información</span>
           </button>
         </div>
       </div>
-
-      {/* Mensaje de error. */}
-      {error && (
-        <div
-          className="alert alert-danger"
-          role="alert"
-        >
-          {error}
-        </div>
-      )}
 
       {/* Mensaje de éxito. */}
       {message && (
@@ -246,36 +207,26 @@ function PatientProfile() {
       <div className="row g-4">
         {/* Datos personales. */}
         <div className="col-12 col-lg-6">
-          <section className="patient-section h-100">
-            <h2 className="h5 mb-3">
-              {sections[0].title}
+          <div className="card border-0 shadow-sm p-4 bg-white rounded-3 h-100">
+            <h2 className="h5 fw-bold mb-3 d-flex align-items-center gap-2 text-dark">
+              <i className={`bi ${sections[0].icon} text-success`} aria-hidden="true" />
+              <span>{sections[0].title}</span>
             </h2>
 
-            <dl className="row mb-0">
-              {Object.entries(
-                sections[0].fields
-              ).map(
-                ([
-                  label,
-                  value,
-                ]) => (
-                  <div
-                    className="col-12 col-sm-6"
-                    key={label}
-                  >
-                    <dt>
-                      {label}
-                    </dt>
-
-                    <dd>
-                      {value ||
-                        'Sin informar'}
+            <dl className="row g-3 mb-0">
+              {Object.entries(sections[0].fields).map(([label, value]) => {
+                const isNumeric = ['DNI', 'Fecha de nacimiento'].includes(label);
+                return (
+                  <div className="col-12 col-sm-6" key={label}>
+                    <dt className="text-muted small fw-semibold">{label}</dt>
+                    <dd className={`fw-medium text-dark mb-0 ${isNumeric ? 'text-nowrap' : 'text-break'}`}>
+                      {value || <span className="text-muted fst-italic">Sin informar</span>}
                     </dd>
                   </div>
-                )
-              )}
+                );
+              })}
             </dl>
-          </section>
+          </div>
         </div>
 
         {/* Cobertura y salita asignada. */}
@@ -286,45 +237,31 @@ function PatientProfile() {
           />
         </div>
 
-        {/* Obra social y contacto de emergencia. */}
-        {sections
-          .slice(1)
-          .map(
-            (section) => (
-              <div
-                className="col-12 col-lg-6"
-                key={section.title}
-              >
-                <section className="patient-section h-100">
-                  <h2 className="h5 mb-3">
-                    {section.title}
-                  </h2>
+        {/* Obra social, contacto y emergencia */}
+        {sections.slice(1).map((section) => (
+          <div className="col-12 col-lg-6" key={section.title}>
+            <div className="card border-0 shadow-sm p-4 bg-white rounded-3 h-100">
+              <h2 className="h5 fw-bold mb-3 d-flex align-items-center gap-2 text-dark">
+                <i className={`bi ${section.icon} text-success`} aria-hidden="true" />
+                <span>{section.title}</span>
+              </h2>
 
-                  <dl className="mb-0">
-                    {Object.entries(
-                      section.fields
-                    ).map(
-                      ([
-                        label,
-                        value,
-                      ]) => (
-                        <div key={label}>
-                          <dt>
-                            {label}
-                          </dt>
-
-                          <dd>
-                            {value ||
-                              'Sin informar'}
-                          </dd>
-                        </div>
-                      )
-                    )}
-                  </dl>
-                </section>
-              </div>
-            )
-          )}
+              <dl className="row g-3 mb-0">
+                {Object.entries(section.fields).map(([label, value]) => {
+                  const isNumeric = ['Teléfono', 'Teléfono de emergencia', 'Número de afiliado'].includes(label);
+                  return (
+                    <div className="col-12 col-sm-6" key={label}>
+                      <dt className="text-muted small fw-semibold">{label}</dt>
+                      <dd className={`fw-medium text-dark mb-0 ${isNumeric ? 'text-nowrap' : 'text-break'}`}>
+                        {value || <span className="text-muted fst-italic">Sin informar</span>}
+                      </dd>
+                    </div>
+                  );
+                })}
+              </dl>
+            </div>
+          </div>
+        ))}
       </div>
 
       <AccountSecuritySection />

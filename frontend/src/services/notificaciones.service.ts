@@ -16,7 +16,7 @@ import type {
 export const getNotificaciones = async (
   page = 1,
   leida?: boolean,
-  limit = 5
+  limit = 15
 ) =>
   (
     await api.get<NotificacionesResponse>(

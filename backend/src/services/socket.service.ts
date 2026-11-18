@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { verifyAccessToken } from './jwt.service.js';
 import { findUserById, findRoleById } from '../repositories/user.repository.js';
 import { getOwnEntity } from './auth-profile.service.js';
+import { supabase } from '../config/supabase.js';
 import {
   findTurnoSalitasForUser,
   findTurnoSalitasForProfesional,
@@ -22,6 +23,7 @@ export interface EventoAgenda {
     | 'HORARIO_ATENCION_ACTUALIZADO';
   mensaje: string;
   id_turno?: string | undefined;
+  id_paciente?: string | undefined;
   id_horario?: string | undefined;
   dia_semana?: number | undefined;
   id_profesional?: string | undefined;
@@ -205,6 +207,55 @@ export const initSocketServer = (server: HttpServer) => {
       }
     }
 
+    // Si es paciente, se une a su canal privado de paciente y al de las personas a su cargo
+    if (user.rol === 'PACIENTE') {
+      try {
+        const own = await getOwnEntity(user);
+        if (own && own.key === 'id_paciente' && own.id) {
+          socket.join(`paciente:${own.id}`);
+          socket.data.idPaciente = own.id;
+        }
+      } catch {
+        // El usuario puede no tener aún perfil de paciente vinculado
+      }
+
+      // Si es tutor de personas a cargo con permiso para gestionar turnos, unirse a sus canales
+      try {
+        if (user.id_persona) {
+          const { data: tutor } = await supabase
+            .from('tutores')
+            .select('id_tutor')
+            .eq('id_persona', user.id_persona)
+            .eq('activo', true)
+            .maybeSingle();
+
+          if (tutor) {
+            const todayDate = today;
+            const { data: relations } = await supabase
+              .from('paciente_tutores')
+              .select('id_paciente, fecha_desde, fecha_hasta')
+              .eq('id_tutor', tutor.id_tutor)
+              .eq('puede_gestionar_turnos', true)
+              .eq('identidad_verificada', true)
+              .eq('documentacion_verificada', true)
+              .eq('autorizacion_verificada', true)
+              .lte('fecha_desde', todayDate)
+              .or(`fecha_hasta.is.null,fecha_hasta.gte.${todayDate}`);
+
+            if (relations && Array.isArray(relations)) {
+              for (const rel of relations) {
+                if (rel.id_paciente) {
+                  socket.join(`paciente:${rel.id_paciente}`);
+                }
+              }
+            }
+          }
+        }
+      } catch {
+        // Conexión continúa si falla la búsqueda de dependientes
+      }
+    }
+
     // Super admin se une al canal global de supervisión
     if (user.rol === 'SUPER_ADMIN') {
       socket.join('super_admin');
@@ -240,6 +291,9 @@ export const emitirCambioAgenda = (
   }
   if (evento.id_salita) {
     rooms.push(`salita:${evento.id_salita}`);
+  }
+  if (evento.id_paciente) {
+    rooms.push(`paciente:${evento.id_paciente}`);
   }
 
   io.to(rooms).emit('agenda:cambio', payload);
@@ -290,6 +344,9 @@ export const emitirCambioPaciente = (
   const rooms: string[] = ['super_admin'];
   if (evento.id_salita) {
     rooms.push(`salita:${evento.id_salita}`);
+  }
+  if (evento.id_paciente) {
+    rooms.push(`paciente:${evento.id_paciente}`);
   }
 
   io.to(rooms).emit('paciente:cambio', payload);
@@ -363,6 +420,9 @@ export const emitirCambioClinico = (
   }
   if (evento.id_profesional) {
     rooms.push(`profesional:${evento.id_profesional}`);
+  }
+  if (evento.id_paciente) {
+    rooms.push(`paciente:${evento.id_paciente}`);
   }
 
   io.to(rooms).emit('clinica:cambio', payload);

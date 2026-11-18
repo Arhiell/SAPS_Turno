@@ -6,7 +6,7 @@
 .patient-welcome h1 {
   font-size: clamp(1.35rem, 2.5vw, 2rem);
   line-height: 1.3;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   margin-bottom: 6px;
 }
 
@@ -20,7 +20,7 @@
 
 /* Nombre de usuario del paciente. */
 .patient-username {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   font-weight: 600;
   color: var(--saps-azul);
 }
@@ -56,7 +56,7 @@
   max-height: min(70dvh, 650px);
 
   overflow-y: auto;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 
   padding: 16px;
 
@@ -86,7 +86,7 @@
   background: var(--saps-superficie);
   color: var(--saps-texto);
 
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .notification-message-backdrop {
@@ -134,7 +134,7 @@
 .notification-message-header h2 {
   margin: 0;
   font-size: 1.15rem;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .notification-message-full {
@@ -142,7 +142,7 @@
   padding: 1.25rem;
   overflow-y: auto;
   white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   border-left: 4px solid var(--saps-verde);
 }
 
@@ -153,7 +153,7 @@
 
 .notification-message-footer small {
   color: var(--saps-texto-secundario);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 /* Notificación todavía no leída. */
@@ -364,7 +364,7 @@
 
 .patient-coverage-list dd {
   margin: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .booking-form-shell {
@@ -541,21 +541,24 @@
 }
 
 .person-card {
-  padding: 18px;
+  padding: 20px;
 }
 
 .person-card-info {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 10px;
   margin: 14px 0 18px;
 }
 
 .person-card-info div {
-  padding: 12px 14px;
+  padding: 10px 12px;
   border: 1px solid var(--saps-borde);
   border-radius: var(--saps-radio-pequeno);
   background: #f8faf9;
+  min-width: 0;
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 
 .person-card-info span,
@@ -566,7 +569,17 @@
 .person-card-info span {
   color: var(--saps-texto-secundario);
   font-size: 0.72rem;
-  margin-bottom: 6px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.person-card-info strong {
+  font-size: 0.92rem;
+  color: var(--saps-texto);
+  word-break: normal;
+  overflow-wrap: normal;
 }
 
 .patient-quick-grid {
@@ -643,7 +656,8 @@
 
 /* Valores mostrados en listas de descripción. */
 .patient-section dd {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
   margin-bottom: 16px;
 }
 
@@ -845,7 +859,7 @@
   .patient-coverage-summary-text > span {
     font-size: 0.875rem;
     font-weight: 600;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
   }
 
   .patient-coverage-summary-text small {
@@ -882,4 +896,15 @@
   .patient-coverage-chevron {
     transition: none;
   }
+}
+
+
+/* Optimización de rendimiento para tarjetas del inicio */
+.patient-dashboard .hover-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  contain: layout;
+}
+.patient-dashboard .hover-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08) !important;
 }

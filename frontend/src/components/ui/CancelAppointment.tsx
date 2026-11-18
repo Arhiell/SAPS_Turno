@@ -140,7 +140,8 @@ export default function CancelAppointment({
         // Muestra inicialmente el botón de cancelación.
         <button
           type="button"
-          className="btn btn-outline-danger"
+          className="btn btn-outline-danger d-inline-flex align-items-center justify-content-center text-nowrap"
+          style={{ minHeight: '40px', whiteSpace: 'nowrap' }}
           onClick={() =>
             setOpen(true)
           }

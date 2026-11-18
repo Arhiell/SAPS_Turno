@@ -3,6 +3,7 @@ import { authError } from '../../utils/auth-errors';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
 import { FloatingFeedbackToast } from '../../components/ui/FormFeedback';
 import { useAutoDismiss } from '../../utils/useAutoDismiss';
+import { useAgendaSocket } from '../../context/AgendaSocketContext';
 import {
   getAdminTutorRequests,
   resolveTutorRequest,
@@ -41,6 +42,19 @@ export default function SolicitudesVinculacionPage() {
 
   useAutoDismiss(success, () => setSuccess(''), 15000);
   useAutoDismiss(error, () => setError(''), 15000);
+
+  const { ultimoEventoPaciente, resyncTick } = useAgendaSocket();
+
+  useEffect(() => {
+    if (!ultimoEventoPaciente) return;
+    setRevision((v) => v + 1);
+  }, [ultimoEventoPaciente]);
+
+  useEffect(() => {
+    if (resyncTick > 0) {
+      setRevision((v) => v + 1);
+    }
+  }, [resyncTick]);
 
   useEffect(() => {
     let active = true;
@@ -88,12 +102,6 @@ export default function SolicitudesVinculacionPage() {
   return <section>
     <h1 className="h3">Solicitudes de vinculación</h1>
     <p className="text-muted">Verificá presencialmente la identidad y la documentación. Si el paciente titular es adulto, confirmá su consentimiento expreso; para un menor, verificá la representación de su padre, madre o tutor. Una solicitud pendiente no permite gestionar turnos.</p>
-    <div className="d-flex flex-wrap gap-2 mb-3">
-      <button className="btn btn-outline-success" disabled={loading} onClick={() => {
-        setLoading(true);
-        setRevision(value => value + 1);
-      }}>Actualizar lista</button>
-    </div>
     {error && !success && (
       <FloatingFeedbackToast
         variant="error"

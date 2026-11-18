@@ -1,4 +1,5 @@
 import { getOwnPatient } from './patient-coverage.service.js';
+import { emitirCambioPaciente } from './socket.service.js';
 import {
   approveTutorRequest,
   createTutorRequest,
@@ -102,7 +103,20 @@ export const resolveTutorRequest = async (
 
   if (input.accion === 'APROBAR') {
     try {
-      return await approveTutorRequest(requestId, user.id_usuario, input);
+      const res = await approveTutorRequest(requestId, user.id_usuario, input);
+      try {
+        if (request.id_paciente_solicitante) {
+          emitirCambioPaciente({
+            tipo: 'TUTOR_VINCULACION_ACTUALIZADA',
+            mensaje: 'Se aprobó la solicitud de vinculación familiar',
+            id_paciente: request.id_paciente_solicitante,
+            id_salita: request.id_salita_contexto,
+          });
+        }
+      } catch {
+        // La notificación websocket es secundaria
+      }
+      return res;
     } catch (error) {
       const message = typeof error === 'object' && error !== null && 'message' in error
         ? String(error.message) : '';
@@ -122,5 +136,17 @@ export const resolveTutorRequest = async (
 
   const updated = await rejectTutorRequest(requestId, user.id_usuario, input.motivo_rechazo);
   if (!updated) throw new AppError('La solicitud cambió; actualizá la lista antes de continuar.', 409);
+  try {
+    if (request.id_paciente_solicitante) {
+      emitirCambioPaciente({
+        tipo: 'TUTOR_VINCULACION_ACTUALIZADA',
+        mensaje: 'Se rechazó la solicitud de vinculación familiar',
+        id_paciente: request.id_paciente_solicitante,
+        id_salita: request.id_salita_contexto,
+      });
+    }
+  } catch {
+    // La notificación websocket es secundaria
+  }
   return updated;
 };

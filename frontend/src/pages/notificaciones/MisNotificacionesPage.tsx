@@ -23,6 +23,8 @@ import {
   fechaNotificacion,
 } from '../../components/notificaciones/NotificacionesNav';
 import { useAuth } from '../../context/AuthContext';
+import { useAgendaSocket } from '../../context/AgendaSocketContext';
+import PaginationControls from '../../components/ui/PaginationControls';
 import { PROFESSIONAL_MESSAGE_TIMEOUT_MS, useAutoDismiss } from '../../utils/useAutoDismiss';
 
 export default function MisNotificacionesPage() {
@@ -100,6 +102,7 @@ export default function MisNotificacionesPage() {
         filter === 'todas'
           ? undefined
           : filter === 'leidas',
+        15,
       );
 
       if (currentRequest !== requestId.current) {
@@ -135,6 +138,15 @@ export default function MisNotificacionesPage() {
       requestId.current += 1;
     };
   }, [loadNotifications]);
+
+  // Sincronización automática con WebSockets
+  const { resyncTick } = useAgendaSocket();
+
+  useEffect(() => {
+    if (resyncTick > 0) {
+      void loadNotifications(false);
+    }
+  }, [resyncTick, loadNotifications]);
 
   // Actualiza solo ante eventos relevantes o cuando el usuario vuelve a la pestaña.
   useEffect(() => {
@@ -228,13 +240,6 @@ export default function MisNotificacionesPage() {
     }
   };
 
-  // Actualiza manualmente sin vaciar la lista ni mostrar un bloqueo innecesario.
-  const refresh = () => {
-    setError('');
-    setSuccess('');
-    void loadNotifications(false);
-  };
-
   const unreadCount = data?.notificaciones.filter((item) => !item.leida).length ?? 0;
 
   return (
@@ -258,11 +263,12 @@ export default function MisNotificacionesPage() {
         </div>
       </div>
 
-      <div className="d-flex flex-wrap gap-2 align-items-end mb-4">
-        <div>
+      <div className="row g-2 align-items-end mb-4">
+        {/* Selector de filtro */}
+        <div className="col-12 col-sm-auto" style={{ minWidth: '180px' }}>
           <label
             htmlFor="notificacion-filtro"
-            className="form-label"
+            className="form-label mb-1 small fw-semibold text-secondary"
           >
             Mostrar
           </label>
@@ -270,6 +276,7 @@ export default function MisNotificacionesPage() {
           <select
             id="notificacion-filtro"
             className="form-select"
+            style={{ height: '42px', fontSize: '0.95rem' }}
             value={filter}
             onChange={(event) => {
               setFilter(event.target.value);
@@ -292,25 +299,24 @@ export default function MisNotificacionesPage() {
           </select>
         </div>
 
-        <button
-          type="button"
-          className="btn btn-outline-success"
-          disabled={busy || loading}
-          onClick={() => void read()}
-        >
-          {busy
-            ? 'Actualizando…'
-            : 'Marcar todas como leídas'}
-        </button>
-
-        <button
-          type="button"
-          className="btn btn-outline-secondary"
-          disabled={loading}
-          onClick={refresh}
-        >
-          Actualizar
-        </button>
+        {/* Botón uniforme de marcar todas como leídas */}
+        <div className="col-12 col-sm-auto">
+          <button
+            type="button"
+            className="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2 w-100 text-nowrap px-3"
+            style={{ height: '42px', fontSize: '0.95rem' }}
+            disabled={busy || loading || unreadCount === 0}
+            onClick={() => void read()}
+            title="Marcar todas las notificaciones como leídas"
+          >
+            <i className="bi bi-check2-all fs-5" aria-hidden="true" />
+            <span>
+              {busy
+                ? 'Actualizando…'
+                : 'Marcar todas como leídas'}
+            </span>
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -332,20 +338,22 @@ export default function MisNotificacionesPage() {
         </div>
       )}
 
-      {loading && (
-        <p role="status">
-          {data
-            ? 'Actualizando notificaciones…'
-            : 'Cargando notificaciones…'}
-        </p>
+      {loading && !data && (
+        <div className="card border-0 shadow-sm p-4 text-center text-muted mb-4" role="status">
+          <div>
+            <div className="spinner-border spinner-border-sm text-success me-2" aria-hidden="true" />
+            <span className="align-middle">Cargando notificaciones…</span>
+          </div>
+        </div>
       )}
 
       {!loading &&
         !error &&
         !data?.notificaciones.length && (
-          <p>
-            No hay notificaciones para mostrar.
-          </p>
+          <div className="card border-0 shadow-sm p-4 text-center text-muted mb-4" role="status">
+            <i className="bi bi-bell-slash fs-2 text-muted mb-2 d-block" aria-hidden="true" />
+            <p className="mb-0">No tenés notificaciones en este momento.</p>
+          </div>
         )}
 
       {!error && (
@@ -365,7 +373,7 @@ export default function MisNotificacionesPage() {
                 </h2>
 
                 <span
-                  className={`badge align-self-start ${
+                  className={`badge align-self-start flex-shrink-0 ${
                     item.leida
                       ? 'bg-secondary'
                       : 'bg-success'
@@ -410,42 +418,17 @@ export default function MisNotificacionesPage() {
         </div>
       )}
 
-      {!!data && data.totalPages > 1 && (
-        <nav
-          className="d-flex justify-content-between align-items-center gap-2 mt-3"
-          aria-label="Paginación de notificaciones"
-        >
-          <button
-            type="button"
-            className="btn btn-outline-secondary"
-            disabled={loading || page <= 1}
-            onClick={() =>
-              setPage((value) => value - 1)
-            }
-          >
-            Anterior
-          </button>
-
-          <span>
-            {page}
-            {' / '}
-            {data.totalPages}
-          </span>
-
-          <button
-            type="button"
-            className="btn btn-outline-secondary"
-            disabled={
-              loading ||
-              page >= data.totalPages
-            }
-            onClick={() =>
-              setPage((value) => value + 1)
-            }
-          >
-            Siguiente
-          </button>
-        </nav>
+      {!!data && (
+        <PaginationControls
+          page={page}
+          totalPages={data.totalPages}
+          totalItems={data.total}
+          itemsPerPage={15}
+          onPageChange={setPage}
+          loading={loading}
+          itemLabel="notificaciones"
+          className="mt-4"
+        />
       )}
     </section>
   );

@@ -33,6 +33,7 @@ const AdminProfilePage = lazy(() => import('../pages/auth/AdminProfilePage'));
 const PrivacyPolicyPage = lazy(() => import('../pages/auth/PrivacyPolicyPage'));
 
 const Dashboard = lazy(() => import('../pages/dashboard/Dashboard'));
+const PatientOverview = lazy(() => import('../pages/dashboard/PatientOverview'));
 const ConfiguracionPage = lazy(() => import('../pages/dashboard/ConfiguracionPage'));
 
 const PacientesPage = lazy(() => import('../pages/pacientes/PacientesPage'));
@@ -94,12 +95,17 @@ const PublicNewsDetailPage = lazy(() => import('../pages/public/PublicNewsDetail
 const RoleHome = () => {
   const { user } = useAuth();
 
+  // Optimización de rendimiento LCP: el rol PACIENTE carga directamente su vista
+  // sin descargar el bundle administrativo completo de Dashboard (85 kB ahorrados)
+  if (user?.rol === 'PACIENTE') {
+    return <PatientOverview />;
+  }
+
   return [
     'SUPER_ADMIN',
     'ADMIN_SALITA',
     'RECEPCION',
     'PROFESIONAL',
-    'PACIENTE',
   ].includes(user?.rol ?? '') ? (
     <Dashboard />
   ) : (
@@ -265,6 +271,10 @@ const AppRoutes = () => {
                 <Route
                   path="/mi-historia-clinica"
                   element={<MiHistoriaClinicaPage />}
+                />
+                <Route
+                  path="/mi-informacion"
+                  element={<Navigate to="/mi-perfil" replace />}
                 />
               </Route>
 

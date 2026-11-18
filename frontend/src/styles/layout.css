@@ -37,7 +37,7 @@
 .app-main {
   max-width: 1680px;
   margin-inline: auto;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 /* Evita desbordamientos en filas, flexbox y formularios. */
@@ -60,7 +60,7 @@
 /* Nombre del usuario en el navbar. */
 .navbar-user strong {
   max-width: 240px;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 
@@ -272,10 +272,6 @@
     gap: 4px;
   }
 
-  .app-main .text-nowrap {
-    white-space: normal !important;
-  }
-
   .dashboard-header h1 {
     font-size: 25px;
   }
@@ -351,7 +347,9 @@
 
   .mobile-bottom-nav__link span {
     max-width: 100%;
-    overflow-wrap: anywhere;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
   }
 
   .mobile-bottom-nav__link i {
@@ -510,7 +508,7 @@
 
     border: 0;
     white-space: normal;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
     box-shadow: none;
     background: transparent;
   }

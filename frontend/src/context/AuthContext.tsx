@@ -30,6 +30,10 @@ import {
   getAccessToken,
   getRefreshToken,
   getStoredUser,
+  getStoredPatient,
+  getStoredPerson,
+  saveStoredProfile,
+  isTokenValid,
   saveAuthSession,
   updateAuthTokens,
   saveStoredUser,
@@ -58,18 +62,20 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 // Administra la sesión y los datos del usuario autenticado.
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  // Almacena el usuario y su token de acceso.
-  const [user, setUser] = useState<AuthUser | null>(getStoredUser());
-  const [accessToken, setAccessToken] = useState<string | null>(
-    getAccessToken()
-  );
+  const initialToken = getAccessToken();
+  const initialUser = getStoredUser();
+  const tokenValid = isTokenValid(initialToken);
 
-  // Controla la carga inicial de la sesión.
-  const [isLoading, setIsLoading] = useState(true);
+  // Almacena el usuario y su token de acceso.
+  const [user, setUser] = useState<AuthUser | null>(initialUser);
+  const [accessToken, setAccessToken] = useState<string | null>(initialToken);
+
+  // Si tenemos token válido y usuario almacenado, no bloqueamos la sesión con spinner
+  const [isLoading, setIsLoading] = useState(!tokenValid && Boolean(getRefreshToken()));
 
   // Almacena los datos del perfil y su información asociada.
-  const [patient, setPatient] = useState<Patient | null>(null);
-  const [person, setPerson] = useState<PersonProfile | null>(null);
+  const [patient, setPatient] = useState<Patient | null>(getStoredPatient());
+  const [person, setPerson] = useState<PersonProfile | null>(getStoredPerson());
   const [roleInfo, setRoleInfo] = useState<
     ProfileResponse['data']['roleInfo'] | null
   >(null);
@@ -86,6 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setPatient(profile.patient);
     setPerson(profile.person);
     setRoleInfo(profile.roleInfo);
+    saveStoredProfile(profile.patient, profile.person);
   };
 
   // Consulta el perfil actualizado del usuario autenticado.
@@ -115,6 +122,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!refreshToken) {
         reset();
         setIsLoading(false);
+        return;
+      }
+
+      // Si el access token ya es válido en localStorage, la sesión está activa de inmediato.
+      // Solo actualizamos el perfil en segundo plano sin retrasar el primer render.
+      if (tokenValid && initialUser) {
+        setIsLoading(false);
+        void reloadProfile().catch(() => {});
         return;
       }
 

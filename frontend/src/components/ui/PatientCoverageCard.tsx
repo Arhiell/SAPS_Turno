@@ -128,9 +128,10 @@ export default function PatientCoverageCard({
         </div>
 
         {loading ? (
-          <p role="status">
-            Cargando cobertura…
-          </p>
+          <div className="p-3 text-center text-muted" role="status">
+            <div className="spinner-border spinner-border-sm text-success me-2" aria-hidden="true" />
+            <span className="align-middle">Cargando cobertura…</span>
+          </div>
         ) : error ? (
           <div
             className="alert alert-danger"
@@ -163,6 +164,7 @@ export default function PatientCoverageCard({
                         /[^+\d]/g,
                         ''
                       )}`}
+                      className="text-nowrap"
                     >
                       {clinic.telefono}
                     </a>

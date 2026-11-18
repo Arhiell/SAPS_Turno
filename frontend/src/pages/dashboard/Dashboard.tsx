@@ -22,6 +22,7 @@ import {
 import SuperAdminOverview from './SuperAdminOverview';
 import AdminSalitaOverview from './AdminSalitaOverview';
 import RecepcionOverview from './RecepcionOverview';
+import PatientOverview from './PatientOverview';
 
 import type {
   Turno,
@@ -114,9 +115,9 @@ export default function Dashboard() {
   useEffect(() => {
     let active = true;
 
-    // Los roles ADMIN_SALITA, RECEPCION y SUPER_ADMIN tienen vistas dedicadas que gestionan
-    // sus propias consultas con alcance de salita, evitando peticiones duplicadas e innecesarias.
-    if (adminSalita || recepcion || global) {
+    // Los roles ADMIN_SALITA, RECEPCION, SUPER_ADMIN y PACIENTE tienen vistas dedicadas que gestionan
+    // sus propias consultas con alcance correspondiente, evitando peticiones duplicadas e innecesarias.
+    if (adminSalita || recepcion || global || patient) {
       setLoading(false);
       return;
     }
@@ -553,6 +554,10 @@ export default function Dashboard() {
 
   if (recepcion) {
     return <RecepcionOverview revision={revision} onRefresh={() => setRevision((v) => v + 1)} />;
+  }
+
+  if (patient) {
+    return <PatientOverview revision={revision} onRefresh={() => setRevision((v) => v + 1)} />;
   }
 
   return (
