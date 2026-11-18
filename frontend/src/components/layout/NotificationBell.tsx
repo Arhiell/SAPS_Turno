@@ -14,6 +14,7 @@ import {
   leerNotificacion,
   leerTodasNotificaciones,
 } from '../../services/notificaciones.service';
+import { useAgendaSocket } from '../../context/AgendaSocketContext';
 
 import type {
   Notificacion,
@@ -54,6 +55,14 @@ export default function NotificationBell() {
   const trigger = useRef<HTMLButtonElement>(null);
 
   const navigate = useNavigate();
+  const { ultimoEvento, resyncTick } = useAgendaSocket();
+
+  // Sincroniza inmediatamente ante eventos WebSocket
+  useEffect(() => {
+    if (ultimoEvento || resyncTick > 0) {
+      setRevision((v) => v + 1);
+    }
+  }, [ultimoEvento, resyncTick]);
 
   // Sincroniza el badge cuando se lee desde la página de la bandeja.
   useEffect(() => {

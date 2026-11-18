@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { getMisHorarios } from '../../services/profesionales.service';
 import type { MisHorariosData } from '../../services/profesionales.service';
 import { authError } from '../../utils/auth-errors';
@@ -17,18 +17,36 @@ export default function MisHorariosPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
   const [revision, setRevision] = useState<number>(0);
-  const { ultimoEvento } = useAgendaSocket();
+
+  // Filtros interactivos por salita y especialidad
+  const [filtroSalita, setFiltroSalita] = useState<string>('');
+  const [filtroEspecialidad, setFiltroEspecialidad] = useState<string>('');
+
+  const { ultimoEvento, ultimoEventoProfesional, resyncTick } = useAgendaSocket();
   const lastEventIdRef = useRef<string | null>(ultimoEvento?.id ?? null);
   const requestIdRef = useRef(0);
 
   useAutoDismiss(error, setError);
 
+  // Actualización en tiempo real ante eventos de agenda, turnos o cambios de profesional
   useEffect(() => {
     if (ultimoEvento && ultimoEvento.id !== lastEventIdRef.current) {
       lastEventIdRef.current = ultimoEvento.id;
       setRevision((r) => r + 1);
     }
   }, [ultimoEvento]);
+
+  useEffect(() => {
+    if (ultimoEventoProfesional) {
+      setRevision((r) => r + 1);
+    }
+  }, [ultimoEventoProfesional]);
+
+  useEffect(() => {
+    if (resyncTick > 0) {
+      setRevision((r) => r + 1);
+    }
+  }, [resyncTick]);
 
   useEffect(() => {
     const currentRequestId = ++requestIdRef.current;
@@ -86,6 +104,27 @@ export default function MisHorariosPage() {
     }
   };
 
+  // Franjas de la fecha consultada filtradas por salita y especialidad seleccionadas
+  const franjasFiltradas = useMemo(() => {
+    if (!data?.disponibilidad_fecha?.franjas) return [];
+    return data.disponibilidad_fecha.franjas.filter((f) => {
+      const matchSalita = !filtroSalita || f.salita === filtroSalita;
+      const matchEsp = !filtroEspecialidad || f.especialidad === filtroEspecialidad;
+      return matchSalita && matchEsp;
+    });
+  }, [data?.disponibilidad_fecha?.franjas, filtroSalita, filtroEspecialidad]);
+
+  // Salitas y especialidades únicas presentes en la fecha actual
+  const salitasDeHoy = useMemo(() => {
+    if (!data?.disponibilidad_fecha?.franjas) return [];
+    return Array.from(new Set(data.disponibilidad_fecha.franjas.map((f) => f.salita)));
+  }, [data?.disponibilidad_fecha?.franjas]);
+
+  const especialidadesDeHoy = useMemo(() => {
+    if (!data?.disponibilidad_fecha?.franjas) return [];
+    return Array.from(new Set(data.disponibilidad_fecha.franjas.map((f) => f.especialidad)));
+  }, [data?.disponibilidad_fecha?.franjas]);
+
   return (
     <div className="horarios-page-wrapper pb-5">
       {/* 1. Header principal */}
@@ -96,42 +135,23 @@ export default function MisHorariosPage() {
               Módulo Profesional
             </span>
             {data?.profesional.matricula && (
-              <span className="badge bg-light text-secondary border px-2 py-1">
+              <span className="badge bg-light text-secondary border px-2 py-1 font-monospace">
                 Matrícula: {data.profesional.matricula}
               </span>
             )}
           </div>
           <h1>Mis horarios y disponibilidad</h1>
           <p className="horarios-header-subtitle">
-            Consulta integral de tu cronograma laboral, franjas horarias y disponibilidad de agenda en tiempo real.
+            Cronograma laboral, franjas horarias y disponibilidad en tiempo real por salita y especialidad.
           </p>
-        </div>
-
-        <div className="horarios-header-actions">
-          <span className="badge-readonly-pill">
-            <i className="bi bi-shield-lock text-muted" aria-hidden="true" />
-            Solo consulta
-          </span>
-          <button
-            className="btn btn-outline-secondary btn-refresh-agenda"
-            disabled={loading}
-            onClick={() => setRevision((r) => r + 1)}
-            title="Sincronizar horarios con el servidor"
-          >
-            <i
-              className={`bi bi-arrow-clockwise ${loading ? 'spin' : ''}`}
-              aria-hidden="true"
-            />
-            Actualizar
-          </button>
         </div>
       </section>
 
-      {/* Aviso informativo de solo lectura */}
+      {/* Aviso informativo de reglas del servicio */}
       <div className="notice-banner">
         <i className="bi bi-info-circle-fill text-success fs-5" aria-hidden="true" />
         <span>
-          Esta sección es exclusivamente informativa. Si necesitás modificar tus franjas, agregar salitas o solicitar un bloqueo por ausencia o licencia, por favor contactá a la administración o recepción de tu salita.
+          Para solicitar modificaciones en tus días u horarios habituales, sumar salitas o registrar licencias, comunicate con la administración de tu salita.
         </span>
       </div>
 
@@ -181,27 +201,18 @@ export default function MisHorariosPage() {
                     <span className="kpi-label">Horario de atención</span>
                     {data.informacion_general.es_horario_uniforme === false && (
                       <span className="badge bg-light text-secondary border px-1 py-0" style={{ fontSize: '0.68rem' }}>
-                        Por día
+                        Diferenciado
                       </span>
                     )}
                   </div>
-                  {data.informacion_general.es_horario_uniforme !== false ? (
-                    <div className="kpi-value-highlight">
-                      {data.informacion_general.horario_atencion}
-                    </div>
-                  ) : (
-                    <div className="kpi-schedule-list">
-                      {(data.informacion_general.horarios_por_dia || []).map((h) => (
-                        <div key={h.dia} className="kpi-schedule-item">
-                          <span className="kpi-schedule-day">{h.dia.slice(0, 3)}</span>
-                          <span className="kpi-schedule-time">{h.franjas}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <div className="kpi-value-highlight">
+                    {data.informacion_general.horario_atencion}
+                  </div>
                   <span className="kpi-subtext">
                     <i className="bi bi-stopwatch me-1" aria-hidden="true" />
-                    Turnos de {data.informacion_general.duracion_turno_minutos} minutos
+                    {data.informacion_general.es_duracion_uniforme === false && data.informacion_general.duracion_descripcion
+                      ? `Turnos de ${data.informacion_general.duracion_descripcion} (según especialidad)`
+                      : `Turnos de ${data.informacion_general.duracion_turno_minutos} minutos`}
                   </span>
                 </div>
               </div>
@@ -358,7 +369,7 @@ export default function MisHorariosPage() {
                 </span>
                 <span className="legend-item">
                   <span className="legend-indicator gray" />
-                  No laborable
+                  Finalizado
                 </span>
               </div>
             </div>
@@ -415,6 +426,71 @@ export default function MisHorariosPage() {
               </div>
             </div>
 
+            {/* Filtros segmentados si atiende en varias salitas o especialidades en la fecha */}
+            {(salitasDeHoy.length > 1 || especialidadesDeHoy.length > 1) && (
+              <div className="d-flex flex-wrap gap-2 p-2 bg-light rounded-3 border mb-3">
+                {salitasDeHoy.length > 1 && (
+                  <div className="d-flex align-items-center gap-1">
+                    <label htmlFor="horarios-filtro-salita" className="small text-muted fw-semibold mb-0">
+                      <i className="bi bi-hospital me-1 text-success" />
+                      Filtrar por salita:
+                    </label>
+                    <select
+                      id="horarios-filtro-salita"
+                      className="form-select form-select-sm"
+                      style={{ width: 'auto', minWidth: '160px' }}
+                      value={filtroSalita}
+                      onChange={(e) => setFiltroSalita(e.target.value)}
+                    >
+                      <option value="">Todas las salitas ({salitasDeHoy.length})</option>
+                      {salitasDeHoy.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {especialidadesDeHoy.length > 1 && (
+                  <div className="d-flex align-items-center gap-1">
+                    <label htmlFor="horarios-filtro-esp" className="small text-muted fw-semibold mb-0">
+                      <i className="bi bi-heart-pulse me-1 text-primary" />
+                      Especialidad:
+                    </label>
+                    <select
+                      id="horarios-filtro-esp"
+                      className="form-select form-select-sm"
+                      style={{ width: 'auto', minWidth: '160px' }}
+                      value={filtroEspecialidad}
+                      onChange={(e) => setFiltroEspecialidad(e.target.value)}
+                    >
+                      <option value="">Todas las especialidades ({especialidadesDeHoy.length})</option>
+                      {especialidadesDeHoy.map((esp) => (
+                        <option key={esp} value={esp}>
+                          {esp}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {(filtroSalita || filtroEspecialidad) && (
+                  <button
+                    type="button"
+                    className="btn btn-link btn-sm text-secondary p-0 ms-auto text-decoration-none"
+                    onClick={() => {
+                      setFiltroSalita('');
+                      setFiltroEspecialidad('');
+                    }}
+                  >
+                    <i className="bi bi-x-circle me-1" />
+                    Limpiar filtros
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Métricas y resumen de turnos del día */}
             {data.disponibilidad_fecha.trabaja && (
               <div className="metrics-pills-row">
@@ -435,6 +511,12 @@ export default function MisHorariosPage() {
                     <span className="stat-pill bloqueados">
                       <span className="legend-indicator red" />
                       Bloqueados: <strong>{data.disponibilidad_fecha.resumen_slots.bloqueados}</strong>
+                    </span>
+                  )}
+                  {(data.disponibilidad_fecha.resumen_slots.finalizados ?? 0) > 0 && (
+                    <span className="stat-pill finalizados">
+                      <span className="legend-indicator gray" />
+                      Finalizados: <strong>{data.disponibilidad_fecha.resumen_slots.finalizados}</strong>
                     </span>
                   )}
                 </div>
@@ -462,80 +544,102 @@ export default function MisHorariosPage() {
               </div>
             ) : (
               <div>
-                {data.disponibilidad_fecha.franjas.map((franja) => (
-                  <div key={franja.id_horario} className="franja-block">
-                    <div className="franja-block-header">
-                      <div className="franja-block-title">
-                        <i className="bi bi-clock text-primary" aria-hidden="true" />
-                        Franja horaria: {franja.hora_inicio} a {franja.hora_fin} hs
-                      </div>
-
-                      <div className="franja-badges">
-                        <span className="franja-clinic-pill">
-                          <i className="bi bi-hospital me-1" aria-hidden="true" />
-                          {franja.salita}
-                        </span>
-                        <span className="franja-specialty-pill">
-                          <i className="bi bi-heart-pulse me-1" aria-hidden="true" />
-                          {franja.especialidad}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="slots-grid-modern">
-                      {franja.slots.map((slot, idx) => (
-                        <div
-                          key={`${slot.hora_inicio}-${idx}`}
-                          className={`slot-card-interactive state-${slot.estado.toLowerCase()}`}
-                          title={
-                            slot.estado === 'OCUPADO'
-                              ? `Turno Ocupado: ${slot.paciente || 'Paciente'} (${slot.estado_turno || ''})`
-                              : slot.estado === 'BLOQUEADO'
-                                ? `Bloqueado: ${slot.motivo || 'No disponible'}`
-                                : 'Horario disponible para asignación'
-                          }
-                        >
-                          <span className="slot-time-text">
-                            {slot.hora_inicio} - {slot.hora_fin}
-                          </span>
-
-                          <span className="slot-badge-status">
-                            {slot.estado === 'DISPONIBLE' && (
-                              <>
-                                <i className="bi bi-check-circle-fill text-success" aria-hidden="true" />
-                                Libre
-                              </>
-                            )}
-                            {slot.estado === 'OCUPADO' && (
-                              <>
-                                <i className="bi bi-person-fill text-primary" aria-hidden="true" />
-                                Ocupado
-                              </>
-                            )}
-                            {slot.estado === 'BLOQUEADO' && (
-                              <>
-                                <i className="bi bi-dash-circle-fill text-danger" aria-hidden="true" />
-                                Bloqueado
-                              </>
-                            )}
-                          </span>
-
-                          {slot.estado === 'OCUPADO' && slot.paciente && (
-                            <span className="slot-patient-label" title={slot.paciente}>
-                              {slot.paciente}
-                            </span>
-                          )}
-
-                          {slot.estado === 'BLOQUEADO' && slot.motivo && (
-                            <span className="slot-reason-label" title={slot.motivo}>
-                              {slot.motivo}
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                {franjasFiltradas.length === 0 ? (
+                  <div className="text-center py-4 text-muted bg-white border rounded-3 p-3">
+                    <i className="bi bi-funnel fs-3 d-block mb-2 text-secondary" />
+                    <p className="fw-semibold mb-1">No hay franjas con los filtros seleccionados</p>
+                    <p className="small mb-0">Probá limpiando el filtro de salita o especialidad.</p>
                   </div>
-                ))}
+                ) : (
+                  franjasFiltradas.map((franja) => (
+                    <div key={franja.id_horario} className="franja-block">
+                      <div className="franja-block-header">
+                        <div className="franja-block-title">
+                          <i className="bi bi-clock text-primary" aria-hidden="true" />
+                          Franja horaria: {franja.hora_inicio} a {franja.hora_fin} hs
+                        </div>
+
+                        <div className="franja-badges">
+                          <span className="franja-clinic-pill">
+                            <i className="bi bi-hospital me-1" aria-hidden="true" />
+                            {franja.salita}
+                          </span>
+                          <span className="franja-specialty-pill">
+                            <i className="bi bi-heart-pulse me-1" aria-hidden="true" />
+                            {franja.especialidad}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="slots-grid-modern">
+                        {franja.slots.map((slot, idx) => (
+                          <div
+                            key={`${slot.hora_inicio}-${idx}`}
+                            className={`slot-card-interactive state-${slot.estado.toLowerCase()}`}
+                            title={
+                              slot.estado === 'OCUPADO'
+                                ? `Turno Ocupado: ${slot.paciente || 'Paciente'} (${slot.estado_turno || ''})`
+                                : slot.estado === 'BLOQUEADO'
+                                  ? `Bloqueado: ${slot.motivo || 'No disponible'}`
+                                  : slot.estado === 'FINALIZADO' || slot.estado === 'NO_DISPONIBLE'
+                                    ? `Horario finalizado (${slot.motivo || 'No disponible para reserva'})`
+                                    : 'Horario disponible para asignación'
+                            }
+                          >
+                            <span className="slot-time-text">
+                              {slot.hora_inicio} - {slot.hora_fin}
+                            </span>
+
+                            <span className="slot-badge-status">
+                              {slot.estado === 'DISPONIBLE' && (
+                                <>
+                                  <i className="bi bi-check-circle-fill text-success" aria-hidden="true" />
+                                  Libre
+                                </>
+                              )}
+                              {slot.estado === 'OCUPADO' && (
+                                <>
+                                  <i className="bi bi-person-fill text-primary" aria-hidden="true" />
+                                  Ocupado
+                                </>
+                              )}
+                              {slot.estado === 'BLOQUEADO' && (
+                                <>
+                                  <i className="bi bi-dash-circle-fill text-danger" aria-hidden="true" />
+                                  Bloqueado
+                                </>
+                              )}
+                              {(slot.estado === 'FINALIZADO' || slot.estado === 'NO_DISPONIBLE') && (
+                                <>
+                                  <i className="bi bi-clock-history text-muted" aria-hidden="true" />
+                                  Finalizado
+                                </>
+                              )}
+                            </span>
+
+                            {slot.estado === 'OCUPADO' && slot.paciente && (
+                              <span className="slot-patient-label" title={slot.paciente}>
+                                {slot.paciente}
+                              </span>
+                            )}
+
+                            {slot.estado === 'BLOQUEADO' && slot.motivo && (
+                              <span className="slot-reason-label" title={slot.motivo}>
+                                {slot.motivo}
+                              </span>
+                            )}
+
+                            {(slot.estado === 'FINALIZADO' || slot.estado === 'NO_DISPONIBLE') && slot.motivo && (
+                              <span className="slot-reason-label text-muted" title={slot.motivo}>
+                                {slot.motivo}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             )}
           </section>

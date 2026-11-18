@@ -230,7 +230,7 @@ export const getPatientProfessionals = async (
 export interface SlotDisponibilidad {
   hora_inicio: string;
   hora_fin: string;
-  estado: 'DISPONIBLE' | 'OCUPADO' | 'BLOQUEADO';
+  estado: 'DISPONIBLE' | 'OCUPADO' | 'BLOQUEADO' | 'FINALIZADO' | 'NO_DISPONIBLE';
   motivo?: string;
   id_turno?: string;
   codigo_turno?: string;
@@ -246,7 +246,9 @@ export interface FranjaHorario {
   duracion_turno_minutos: number;
   cupo_maximo_diario?: number | null;
   salita: string;
+  id_salita?: string;
   especialidad: string;
+  id_especialidad?: string;
 }
 
 export interface CronogramaDia {
@@ -270,14 +272,19 @@ export interface DisponibilidadFecha {
     disponibles: number;
     ocupados: number;
     bloqueados: number;
+    finalizados?: number;
   };
+  duracion_dia_minutos?: number;
+  duracion_dia_descripcion?: string;
   franjas: {
     id_horario: string;
     hora_inicio: string;
     hora_fin: string;
     duracion_turno_minutos: number;
     salita: string;
+    id_salita?: string;
     especialidad: string;
+    id_especialidad?: string;
     slots: SlotDisponibilidad[];
   }[];
 }
@@ -294,8 +301,13 @@ export interface MisHorariosData {
     es_horario_uniforme?: boolean;
     horarios_por_dia?: { dia: string; franjas: string }[];
     duracion_turno_minutos: number;
+    es_duracion_uniforme?: boolean;
+    duraciones_disponibles?: number[];
+    duracion_descripcion?: string;
     salitas: string[];
     especialidades: string[];
+    salitas_detalle?: { id: string; nombre: string }[];
+    especialidades_detalle?: { id: string; nombre: string }[];
   };
   cronograma_semanal: CronogramaDia[];
   disponibilidad_fecha: DisponibilidadFecha;

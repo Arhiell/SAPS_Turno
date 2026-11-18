@@ -34,6 +34,7 @@ const PrivacyPolicyPage = lazy(() => import('../pages/auth/PrivacyPolicyPage'));
 
 const Dashboard = lazy(() => import('../pages/dashboard/Dashboard'));
 const PatientOverview = lazy(() => import('../pages/dashboard/PatientOverview'));
+const ProfessionalOverview = lazy(() => import('../pages/dashboard/ProfessionalOverview'));
 const ConfiguracionPage = lazy(() => import('../pages/dashboard/ConfiguracionPage'));
 
 const PacientesPage = lazy(() => import('../pages/pacientes/PacientesPage'));
@@ -95,17 +96,20 @@ const PublicNewsDetailPage = lazy(() => import('../pages/public/PublicNewsDetail
 const RoleHome = () => {
   const { user } = useAuth();
 
-  // Optimización de rendimiento LCP: el rol PACIENTE carga directamente su vista
+  // Optimización de rendimiento LCP: roles PACIENTE y PROFESIONAL cargan directamente su vista
   // sin descargar el bundle administrativo completo de Dashboard (85 kB ahorrados)
   if (user?.rol === 'PACIENTE') {
     return <PatientOverview />;
+  }
+
+  if (user?.rol === 'PROFESIONAL') {
+    return <ProfessionalOverview />;
   }
 
   return [
     'SUPER_ADMIN',
     'ADMIN_SALITA',
     'RECEPCION',
-    'PROFESIONAL',
   ].includes(user?.rol ?? '') ? (
     <Dashboard />
   ) : (

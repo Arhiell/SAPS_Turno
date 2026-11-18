@@ -610,9 +610,9 @@ export default function HistoriaClinicaPacientePage() {
       )}
 
       {loading ? (
-        <div className="hc-card p-5 text-center text-muted">
-          <div className="spinner-border text-success mb-2" role="status" />
-          <div>Cargando historia clínica auditada...</div>
+        <div className="hc-card py-4 px-3 text-center text-muted small" role="status">
+          <div className="spinner-border spinner-border-sm text-success me-2" aria-hidden="true" />
+          <span>Cargando historia clínica auditada...</span>
         </div>
       ) : !dossier ? null : !dossier.historia_clinica && dossier.consultas.length === 0 ? (
         <div className="hc-empty-state">

@@ -194,6 +194,26 @@ export const getMenuForRole = (role?: string, permissions: string[] = []) => {
     });
   }
 
+  if (role === 'PROFESIONAL') {
+    const profOrder: Record<string, number> = {
+      '/panel': 1,
+      '/mis-pacientes': 2,
+      '/mi-agenda': 3,
+      '/mis-horarios': 4,
+      '/historia-clinica': 5,
+      '/historia-clinica/derivaciones': 6,
+      '/mis-notificaciones': 7,
+      '/mi-perfil': 8,
+      '/asistente': 9,
+    };
+
+    return filtered.sort((a, b) => {
+      const orderA = profOrder[a.path] ?? 99;
+      const orderB = profOrder[b.path] ?? 99;
+      return orderA - orderB;
+    });
+  }
+
   return filtered.sort((a, b) =>
     a.path === '/panel'
       ? -1

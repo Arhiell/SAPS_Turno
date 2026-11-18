@@ -14,6 +14,7 @@ import {
 
 import { hasDatabaseCode } from "../utils/profile-error.js";
 import { AppError } from "../utils/app-error.js";
+import { emitirCambioProfesional, emitirCambioSalita } from "./socket.service.js";
 
 export const getSalitasProfesional = async (
   idProfesional: string, scope: string[] | null = null
@@ -59,7 +60,23 @@ export const agregarSalitaProfesional = async (
   }
 
   try {
-    return await createProfesionalSalita(relacion);
+    const created = await createProfesionalSalita(relacion);
+    try {
+      emitirCambioProfesional({
+        tipo: 'PROFESIONAL_ACTUALIZADO',
+        mensaje: 'Salita asignada a profesional',
+        id_profesional: idProfesional,
+        id_salita: validated.id_salita,
+      });
+      emitirCambioSalita({
+        tipo: 'DISPONIBILIDAD_ACTUALIZADA',
+        mensaje: 'Profesional asignado a salita',
+        id_salita: validated.id_salita,
+      });
+    } catch {
+      // Notificación complementaria
+    }
+    return created;
   } catch (error) {
     if (hasDatabaseCode(error, "23505")) {
       throw new AppError(
@@ -117,19 +134,51 @@ export const actualizarSalitaProfesional = async (
     relacion.activo = validated.activo;
   }
 
-  return await updateProfesionalSalita(
+  const updated = await updateProfesionalSalita(
     idProfesional,
     idSalita,
     relacion
   );
+  try {
+    emitirCambioProfesional({
+      tipo: 'PROFESIONAL_ACTUALIZADO',
+      mensaje: 'Asignación de salita actualizada',
+      id_profesional: idProfesional,
+      id_salita: idSalita,
+    });
+    emitirCambioSalita({
+      tipo: 'DISPONIBILIDAD_ACTUALIZADA',
+      mensaje: 'Asignación de profesional actualizada',
+      id_salita: idSalita,
+    });
+  } catch {
+    // Notificación complementaria
+  }
+  return updated;
 };
 
 export const eliminarSalitaProfesional = async (
   idProfesional: string,
   idSalita: string
 ) => {
-  return await deleteProfesionalSalita(
+  const deleted = await deleteProfesionalSalita(
     idProfesional,
     idSalita
   );
+  try {
+    emitirCambioProfesional({
+      tipo: 'PROFESIONAL_ACTUALIZADO',
+      mensaje: 'Salita desvinculada de profesional',
+      id_profesional: idProfesional,
+      id_salita: idSalita,
+    });
+    emitirCambioSalita({
+      tipo: 'DISPONIBILIDAD_ACTUALIZADA',
+      mensaje: 'Profesional desvinculado de salita',
+      id_salita: idSalita,
+    });
+  } catch {
+    // Notificación complementaria
+  }
+  return deleted;
 };

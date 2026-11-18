@@ -1,4 +1,4 @@
-/* --------------------------------------------------------------------------
+﻿/* --------------------------------------------------------------------------
    CALENDARIO PROFESIONAL REFINADO
    -------------------------------------------------------------------------- */
 
@@ -112,10 +112,10 @@
   background: var(--saps-superficie, #ffffff);
   border: 1px solid var(--saps-borde, #e2e8f0);
   border-radius: var(--saps-radio, 12px);
-  padding: 1rem 1.15rem;
+  padding: 0.75rem 0.95rem;
   display: flex;
   align-items: center;
-  gap: 0.9rem;
+  gap: 0.75rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
@@ -126,9 +126,9 @@
 }
 
 .prof-kpi-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -238,7 +238,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   TARJETA HERO DE PRÓXIMO PACIENTE (VISTA DIARIA)
+   TARJETA HERO DE PRÃ“XIMO PACIENTE (VISTA DIARIA)
    -------------------------------------------------------------------------- */
 
 .prof-next-hero {
@@ -312,7 +312,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   COLUMNA Y BOTONES DE ACCIÓN (TABLA DE TURNOS)
+   COLUMNA Y BOTONES DE ACCIÃ“N (TABLA DE TURNOS)
    -------------------------------------------------------------------------- */
 
 .prof-actions-cell {
@@ -323,7 +323,7 @@
   white-space: nowrap;
 }
 
-/* Botón "Ver ficha" */
+/* BotÃ³n "Ver ficha" */
 .prof-btn-view-card {
   display: inline-flex;
   align-items: center;
@@ -359,7 +359,7 @@
   flex-shrink: 0;
 }
 
-/* Botones cuadrados de acción rápida (Atendido / No asistió) */
+/* Botones cuadrados de acciÃ³n rÃ¡pida (Atendido / No asistiÃ³) */
 .prof-btn-action-icon {
   display: inline-flex;
   align-items: center;
@@ -388,7 +388,7 @@
   flex-shrink: 0;
 }
 
-/* Botón Marcar Atendido (Verde) */
+/* BotÃ³n Marcar Atendido (Verde) */
 .prof-btn-action-icon.btn-attended {
   border-color: #86efac;
   background: #f0fdf4;
@@ -402,7 +402,7 @@
   box-shadow: 0 2px 4px rgba(25, 135, 84, 0.25);
 }
 
-/* Botón Marcar No asistió (Rojo) */
+/* BotÃ³n Marcar No asistiÃ³ (Rojo) */
 .prof-btn-action-icon.btn-absent {
   border-color: #fca5a5;
   background: #fef2f2;
@@ -583,7 +583,7 @@
   flex-shrink: 0;
 }
 
-/* Adaptación responsive */
+/* AdaptaciÃ³n responsive */
 @media (max-width: 1024px) {
   .agenda-layout-grid {
     grid-template-columns: 1fr;
@@ -613,7 +613,7 @@
   }
 }
 
-/* Refinamiento compacto de tabla y tarjetas móviles en Mi agenda */
+/* Refinamiento compacto de tabla y tarjetas mÃ³viles en Mi agenda */
 .prof-actions-cell {
   justify-content: flex-end;
   gap: 0.35rem;

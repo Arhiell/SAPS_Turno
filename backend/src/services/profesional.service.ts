@@ -260,7 +260,16 @@ export const actualizarProfesional = async (
 export const eliminarProfesional = async (
   id: string
 ) => {
-  return await deleteProfesional(
-    id
-  );
+  const result = await deleteProfesional(id);
+  try {
+    emitirCambioProfesional({
+      tipo: 'PROFESIONAL_ACTUALIZADO',
+      mensaje: 'Profesional desactivado',
+      id_profesional: id,
+      activo: false,
+    });
+  } catch {
+    // Notificación en tiempo real es complementaria
+  }
+  return result;
 };

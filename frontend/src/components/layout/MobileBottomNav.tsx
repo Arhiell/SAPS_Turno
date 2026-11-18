@@ -185,10 +185,11 @@ export default function MobileBottomNav() {
       />
 
       <span>
-        {item.path ===
-        '/mis-notificaciones'
+        {item.path === '/mis-notificaciones'
           ? 'Notificaciones'
-          : item.label}
+          : item.path === '/mis-pacientes'
+            ? 'Pacientes'
+            : item.label}
       </span>
     </NavLink>
   );

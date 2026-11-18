@@ -23,6 +23,7 @@ import SuperAdminOverview from './SuperAdminOverview';
 import AdminSalitaOverview from './AdminSalitaOverview';
 import RecepcionOverview from './RecepcionOverview';
 import PatientOverview from './PatientOverview';
+import ProfessionalOverview from './ProfessionalOverview';
 
 import type {
   Turno,
@@ -115,9 +116,9 @@ export default function Dashboard() {
   useEffect(() => {
     let active = true;
 
-    // Los roles ADMIN_SALITA, RECEPCION, SUPER_ADMIN y PACIENTE tienen vistas dedicadas que gestionan
+    // Los roles ADMIN_SALITA, RECEPCION, SUPER_ADMIN, PACIENTE y PROFESIONAL tienen vistas dedicadas que gestionan
     // sus propias consultas con alcance correspondiente, evitando peticiones duplicadas e innecesarias.
-    if (adminSalita || recepcion || global || patient) {
+    if (adminSalita || recepcion || global || patient || professional) {
       setLoading(false);
       return;
     }
@@ -322,230 +323,8 @@ export default function Dashboard() {
   // INTERFAZ
   // ========================================
 
-  const formatJornadaHeader = () => {
-    const now = new Date();
-    const weekday = new Intl.DateTimeFormat('es-AR', {
-      timeZone: 'America/Argentina/Buenos_Aires',
-      weekday: 'long',
-    }).format(now);
-    const day = new Intl.DateTimeFormat('es-AR', {
-      timeZone: 'America/Argentina/Buenos_Aires',
-      day: '2-digit',
-    }).format(now);
-    const month = new Intl.DateTimeFormat('es-AR', {
-      timeZone: 'America/Argentina/Buenos_Aires',
-      month: 'long',
-    }).format(now);
-    return `${weekday} ${day} de ${month}`;
-  };
-
-  const greetingFirstName = person?.nombres
-    ? person.nombres.split(' ')[0]
-    : user?.nombre_usuario || 'Profesional';
-
-  const turnosPendientes = turnos.filter((t) => !t.estado.es_estado_final).length;
-  const turnosAtendidos = turnos.filter((t) => t.estado.codigo === 'ATENDIDO').length;
-  const turnosAusentes = turnos.filter((t) => t.estado.codigo === 'NO_ASISTIO').length;
-  const nextTurno = upcoming.length > 0 ? upcoming[0] : null;
-
   if (professional) {
-    return (
-      <div className="professional-dashboard">
-        {/* Encabezado: Saludo y jornada */}
-        <div className="prof-dash-header mb-4">
-          <h1 className="h2 fw-bold text-dark mb-1">
-            ¡Hola, {greetingFirstName}!
-          </h1>
-          <p className="text-muted mb-0">
-            Resumen de tu jornada de hoy, {formatJornadaHeader()}.
-          </p>
-        </div>
-
-        {/* Error si ocurre */}
-        {error && (
-          <div className="alert alert-danger d-flex align-items-center justify-content-between gap-2 mb-4" role="alert">
-            <div>
-              {error}{' '}
-              <button
-                className="btn btn-sm btn-outline-danger ms-2"
-                onClick={() => setRevision((v) => v + 1)}
-              >
-                Reintentar
-              </button>
-            </div>
-            <button
-              type="button"
-              className="btn-close flex-shrink-0"
-              aria-label="Cerrar aviso"
-              onClick={() => setError('')}
-            />
-          </div>
-        )}
-
-        {/* Resumen de la jornada: 4 Indicadores en una fila */}
-        <div className="prof-kpi-grid mb-4">
-          <div className="prof-kpi-card">
-            <div className="prof-kpi-icon pending">
-              <i className="bi bi-calendar-event" aria-hidden="true" />
-            </div>
-            <div className="prof-kpi-info">
-              <span className="prof-kpi-label">Pendientes</span>
-              <span className="prof-kpi-val">{loading && turnos.length === 0 ? '…' : turnosPendientes}</span>
-              <span className="prof-kpi-sub">Por atender hoy</span>
-            </div>
-          </div>
-
-          <div className="prof-kpi-card">
-            <div className="prof-kpi-icon attended">
-              <i className="bi bi-check2-circle" aria-hidden="true" />
-            </div>
-            <div className="prof-kpi-info">
-              <span className="prof-kpi-label">Atendidos</span>
-              <span className="prof-kpi-val">{loading && turnos.length === 0 ? '…' : turnosAtendidos}</span>
-              <span className="prof-kpi-sub">Completados hoy</span>
-            </div>
-          </div>
-
-          <div className="prof-kpi-card">
-            <div className="prof-kpi-icon absent">
-              <i className="bi bi-person-x" aria-hidden="true" />
-            </div>
-            <div className="prof-kpi-info">
-              <span className="prof-kpi-label">Ausentes</span>
-              <span className="prof-kpi-val">{loading && turnos.length === 0 ? '…' : turnosAusentes}</span>
-              <span className="prof-kpi-sub">Inasistencias de hoy</span>
-            </div>
-          </div>
-
-          <div className="prof-kpi-card">
-            <div className="prof-kpi-icon upcoming">
-              <i className="bi bi-clock" aria-hidden="true" />
-            </div>
-            <div className="prof-kpi-info">
-              <span className="prof-kpi-label">Próximos turnos</span>
-              <span className="prof-kpi-val">{loading && turnos.length === 0 ? '…' : upcoming.length}</span>
-              <span className="prof-kpi-sub">Restantes hoy</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Fila inferior: Próximo paciente a la izquierda, Accesos rápidos a la derecha */}
-        <div className="row g-3">
-          {/* Próximo turno */}
-          <div className="col-12 col-lg-7 col-xl-8">
-            <div className="prof-dash-card h-100 p-3 p-md-4">
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="prof-next-pill">
-                  <i className="bi bi-clock me-1 text-success" />
-                  Próximo turno
-                </span>
-                {nextTurno && (
-                  <span className="badge bg-light text-secondary border px-2 py-1 small">
-                    {nextTurno.estado.nombre}
-                  </span>
-                )}
-              </div>
-
-              {loading && turnos.length === 0 ? (
-                <div className="text-center py-4 text-muted">
-                  <div className="spinner-border spinner-border-sm text-success me-2" role="status" />
-                  Cargando próximo turno…
-                </div>
-              ) : nextTurno ? (
-                <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
-                  <div className="d-flex align-items-center gap-3">
-                    <div className="prof-dash-time">
-                      {new Date(nextTurno.fecha_hora_inicio).toLocaleTimeString('es-AR', {
-                        timeZone: 'America/Argentina/Buenos_Aires',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </div>
-                    <div>
-                      <h2 className="h5 fw-bold text-dark mb-1">
-                        <i className="bi bi-person text-success me-1" />
-                        {nextTurno.paciente?.persona?.apellidos} {nextTurno.paciente?.persona?.nombres}
-                      </h2>
-                      <div className="text-secondary small mb-1">
-                        <strong>DNI:</strong> {nextTurno.paciente?.persona?.dni || 'Sin DNI'}
-                      </div>
-                      <div className="d-flex flex-wrap gap-2 text-muted small">
-                        <span>
-                          <i className="bi bi-heart-pulse text-success me-1" />
-                          {nextTurno.especialidad?.nombre || 'General'}
-                        </span>
-                        <span>•</span>
-                        <span>
-                          <i className="bi bi-geo-alt text-primary me-1" />
-                          {nextTurno.salita?.nombre}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <button
-                      type="button"
-                      className="btn btn-success rounded-pill px-4 shadow-sm"
-                      onClick={() => setSelectedTurno(nextTurno)}
-                    >
-                      Ver ficha
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-4 text-muted">
-                  <i className="bi bi-calendar-check fs-2 text-success d-block mb-2" />
-                  <p className="fw-semibold mb-1 text-dark">No hay turnos pendientes para hoy</p>
-                  <p className="small mb-0">Podés revisar el historial o próximas fechas desde Mi agenda.</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Accesos rápidos */}
-          <div className="col-12 col-lg-5 col-xl-4">
-            <div className="prof-dash-card h-100 p-3 p-md-4">
-              <h2 className="h6 fw-bold text-dark mb-3">Accesos rápidos</h2>
-              <div className="d-grid gap-2">
-                <Link to="/mi-agenda" className="prof-quick-btn">
-                  <div className="prof-quick-btn-icon bg-success-subtle text-success">
-                    <i className="bi bi-calendar2-week" />
-                  </div>
-                  <span className="fw-semibold text-dark">Mi agenda</span>
-                  <i className="bi bi-chevron-right ms-auto text-muted small" />
-                </Link>
-
-                <Link to="/mis-pacientes" className="prof-quick-btn">
-                  <div className="prof-quick-btn-icon bg-success-subtle text-success">
-                    <i className="bi bi-people-fill" />
-                  </div>
-                  <span className="fw-semibold text-dark">Pacientes del día</span>
-                  <span className="badge bg-success-subtle text-success border border-success-subtle ms-auto">
-                    {turnos.length}
-                  </span>
-                </Link>
-
-                <Link to="/mis-horarios" className="prof-quick-btn">
-                  <div className="prof-quick-btn-icon bg-primary-subtle text-primary">
-                    <i className="bi bi-clock-history" />
-                  </div>
-                  <span className="fw-semibold text-dark">Mis horarios</span>
-                  <i className="bi bi-chevron-right ms-auto text-muted small" />
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Modal accesible de ficha del paciente */}
-        <PatientTurnoDetailModal
-          turno={selectedTurno}
-          onClose={() => setSelectedTurno(null)}
-          onStatusChanged={() => setRevision((v) => v + 1)}
-        />
-      </div>
-    );
+    return <ProfessionalOverview revision={revision} onRefresh={() => setRevision((v) => v + 1)} />;
   }
 
   if (adminSalita) {

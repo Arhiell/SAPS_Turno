@@ -1,8 +1,9 @@
 import AccountSummary from '../../components/ui/AccountSummary';
 import ProfessionalAccessAccount from '../../components/profesionales/ProfessionalAccessAccount';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
 import { FloatingFeedbackToast } from '../../components/ui/FormFeedback';
+import { useAgendaSocket } from '../../context/AgendaSocketContext';
 import {
   RECOVERABLE_ERROR_TIMEOUT_MS,
   SUCCESS_MESSAGE_TIMEOUT_MS,
@@ -107,6 +108,9 @@ const ProfesionalDetallePage = () => {
   const [removing, setRemoving] =
     useState(false);
 
+  const { ultimoEventoProfesional, resyncTick } = useAgendaSocket();
+  const requestIdRef = useRef(0);
+
   const loadData = async (
     showLoading = true,
     professionalOverride?: Professional | null,
@@ -114,6 +118,8 @@ const ProfesionalDetallePage = () => {
     if (!id) {
       return;
     }
+
+    const currentRequestId = ++requestIdRef.current;
 
     try {
       if (showLoading) {
@@ -130,12 +136,12 @@ const ProfesionalDetallePage = () => {
           : getProfessionalById(id);
 
       const [
-        professionalResponse,
-        specialtiesResponse,
-        clinicsResponse,
-        allSpecialtiesResponse,
-        allClinicsResponse,
-      ] = await Promise.all([
+        professionalResult,
+        specialtiesResult,
+        clinicsResult,
+        allSpecialtiesResult,
+        allClinicsResult,
+      ] = await Promise.allSettled([
         professionalRequest,
         getProfessionalSpecialties(id),
         getProfessionalClinics(id),
@@ -143,43 +149,52 @@ const ProfesionalDetallePage = () => {
         getAdminSalitas(),
       ]);
 
-      setProfessional(
-        professionalResponse.data,
-      );
+      if (currentRequestId !== requestIdRef.current) return;
 
-      setSpecialties(
-        specialtiesResponse.data,
-      );
+      if (professionalResult.status === 'fulfilled') {
+        setProfessional(professionalResult.value.data);
+      } else {
+        setError('No se pudo cargar la información del profesional.');
+      }
 
-      setClinics(
-        clinicsResponse.data,
-      );
+      if (specialtiesResult.status === 'fulfilled') {
+        setSpecialties(specialtiesResult.value.data);
+      }
 
-      setAvailableSpecialties(
-        allSpecialtiesResponse.data.filter(
-          (specialty) =>
-            specialty.activo &&
-            specialty.requiere_profesional,
-        ),
-      );
+      if (clinicsResult.status === 'fulfilled') {
+        setClinics(clinicsResult.value.data);
+      }
 
-      setAvailableClinics(
-        allClinicsResponse.data.filter(
-          (clinic) => clinic.activo,
-        ),
-      );
+      if (allSpecialtiesResult.status === 'fulfilled') {
+        setAvailableSpecialties(
+          allSpecialtiesResult.value.data.filter(
+            (specialty) => specialty.activo && specialty.requiere_profesional
+          )
+        );
+      }
+
+      if (allClinicsResult.status === 'fulfilled') {
+        setAvailableClinics(
+          allClinicsResult.value.data.filter((clinic) => clinic.activo)
+        );
+      }
     } catch (cause) {
-      console.error(cause);
-
-      setError(
-        'No se pudo cargar la información del profesional.',
-      );
+      if (currentRequestId === requestIdRef.current) {
+        console.error(cause);
+        setError('No se pudo cargar la información del profesional.');
+      }
     } finally {
-      if (showLoading) {
+      if (showLoading && currentRequestId === requestIdRef.current) {
         setLoading(false);
       }
     }
   };
+
+  useEffect(() => {
+    if (ultimoEventoProfesional || resyncTick > 0) {
+      void loadData(false);
+    }
+  }, [ultimoEventoProfesional, resyncTick]);
 
   useEffect(() => {
     const state =

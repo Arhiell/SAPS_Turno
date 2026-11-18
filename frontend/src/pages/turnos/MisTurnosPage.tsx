@@ -1,5 +1,5 @@
 import { getEstadoClass } from '../../utils/turno-status';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   buildAgendaReturnUrl,
@@ -11,6 +11,7 @@ import {
   getTurnos,
   changeTurnoStatus,
 } from '../../services/turnos.service';
+import { getMisHorarios } from '../../services/profesionales.service';
 import {
   descargarAgendaDiaria,
   reporteDownloadError,
@@ -20,6 +21,7 @@ import type { Turno } from '../../types/turno.types';
 import type { ReporteFormato } from '../../types/reporte.types';
 import ProfessionalCalendar from '../../components/turnos/ProfessionalCalendar';
 import PatientTurnoDetailModal from '../../components/turnos/PatientTurnoDetailModal';
+import PaginationControls from '../../components/ui/PaginationControls';
 import { FloatingFeedbackToast } from '../../components/ui/FormFeedback';
 import { useAgendaSocket } from '../../context/AgendaSocketContext';
 import { PROFESSIONAL_MESSAGE_TIMEOUT_MS, useAutoDismiss } from '../../utils/useAutoDismiss';
@@ -29,11 +31,15 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
   const { user, hasPermission } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const validEstados = ['TODOS', 'PENDIENTES', 'CONFIRMADOS', 'ATENDIDOS', 'AUSENTES', 'CANCELADOS'] as const;
+
   const paramFecha = searchParams.get('fecha');
   const paramHasta = searchParams.get('hasta');
   const paramRango = searchParams.get('rango');
   const paramEstado = searchParams.get('estado');
+  const paramSalita = searchParams.get('salita') || '';
+  const paramEspecialidad = searchParams.get('especialidad') || '';
   const paramPage = Number(searchParams.get('page') || '1');
+
   const hasValidParamFecha = !!paramFecha && /^\d{4}-\d{2}-\d{2}$/.test(paramFecha);
   const hasValidParamHasta = !!paramHasta && /^\d{4}-\d{2}-\d{2}$/.test(paramHasta);
   const canViewHC = hasPermission(CLINICAL_PERMISSIONS.VER_HISTORIA_CLINICA);
@@ -55,28 +61,39 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
     }
     return fecha;
   });
+
   const [filterRange, setFilterRange] = useState(() =>
     professional && mode === 'history' && (paramRango === '1' || hasValidParamFecha || hasValidParamHasta)
   );
+
   const [today, setToday] = useState(() =>
     new Intl.DateTimeFormat('en-CA', {
       timeZone: 'America/Argentina/Buenos_Aires',
     }).format(new Date())
   );
+
   const daily = professional && mode === 'today';
-  const validRange = !!fecha && !!fechaHasta && fecha <= fechaHasta;
+  const validRange = !filterRange || (!fecha || !fechaHasta ? true : fecha <= fechaHasta);
+
+  // Catálogos del profesional para filtros segmentados
+  const [salitasList, setSalitasList] = useState<{ id: string; nombre: string }[]>([]);
+  const [especialidadesList, setEspecialidadesList] = useState<{ id: string; nombre: string }[]>([]);
+  const [selectedSalita, setSelectedSalita] = useState<string>(paramSalita);
+  const [selectedEspecialidad, setSelectedEspecialidad] = useState<string>(paramEspecialidad);
 
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [page, setPage] = useState(() =>
     professional && Number.isFinite(paramPage) && paramPage >= 1 ? Math.floor(paramPage) : 1
   );
   const [totalPages, setTotalPages] = useState(0);
+  const [totalRecords, setTotalRecords] = useState(0);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [revision, setRevision] = useState(0);
-  const { ultimoEvento } = useAgendaSocket();
+
+  const { ultimoEvento, resyncTick } = useAgendaSocket();
 
   type EstadoFilter = 'TODOS' | 'PENDIENTES' | 'CONFIRMADOS' | 'ATENDIDOS' | 'AUSENTES' | 'CANCELADOS';
   const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>(() =>
@@ -84,9 +101,11 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
       ? (paramEstado as EstadoFilter)
       : 'TODOS'
   );
+
   const [selectedTurnoModal, setSelectedTurnoModal] = useState<Turno | null>(null);
   const [openMenuTurnoId, setOpenMenuTurnoId] = useState<string | null>(null);
 
+  // Cerrar menú de tres puntos al hacer click afuera
   useEffect(() => {
     if (!openMenuTurnoId) return;
     const closeMenu = () => setOpenMenuTurnoId(null);
@@ -95,6 +114,54 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
       document.removeEventListener('click', closeMenu);
     };
   }, [openMenuTurnoId]);
+
+  // Cargar salitas y especialidades del profesional para los selectores
+  useEffect(() => {
+    if (!professional) return;
+    let active = true;
+
+    void getMisHorarios(today).then((res) => {
+      if (!active || !res.success) return;
+
+      if (res.data.informacion_general.salitas_detalle?.length) {
+        setSalitasList(res.data.informacion_general.salitas_detalle);
+      } else {
+        const salitasMap = new Map<string, string>();
+        for (const dia of res.data.cronograma_semanal) {
+          for (const franja of dia.franjas) {
+            if (franja.id_salita && franja.salita) {
+              salitasMap.set(franja.id_salita, franja.salita);
+            } else if (franja.salita) {
+              salitasMap.set(franja.salita, franja.salita);
+            }
+          }
+        }
+        setSalitasList(Array.from(salitasMap.entries()).map(([id, nombre]) => ({ id, nombre })));
+      }
+
+      if (res.data.informacion_general.especialidades_detalle?.length) {
+        setEspecialidadesList(res.data.informacion_general.especialidades_detalle);
+      } else {
+        const espMap = new Map<string, string>();
+        for (const dia of res.data.cronograma_semanal) {
+          for (const franja of dia.franjas) {
+            if (franja.id_especialidad && franja.especialidad) {
+              espMap.set(franja.id_especialidad, franja.especialidad);
+            } else if (franja.especialidad) {
+              espMap.set(franja.especialidad, franja.especialidad);
+            }
+          }
+        }
+        setEspecialidadesList(Array.from(espMap.entries()).map(([id, nombre]) => ({ id, nombre })));
+      }
+    }).catch(() => {
+      // Complementario
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [professional, today]);
 
   const buildTurnoClinicalState = (turnoItem: Turno): ClinicalNavState => ({
     origin: daily ? 'mis-pacientes' : 'mi-agenda',
@@ -120,6 +187,7 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
       : {}),
   });
 
+  // Sincronizar URL searchParams limpiamente
   useEffect(() => {
     if (!professional) return;
     const nextUrl = buildAgendaReturnUrl({
@@ -130,43 +198,29 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
       estadoFilter,
       page,
     });
-    const nextQuery = nextUrl.includes('?') ? nextUrl.split('?')[1] : '';
+    const nextQs = new URLSearchParams(nextUrl.includes('?') ? nextUrl.split('?')[1] : '');
+    if (selectedSalita) nextQs.set('salita', selectedSalita);
+    if (selectedEspecialidad) nextQs.set('especialidad', selectedEspecialidad);
+
+    const nextQuery = nextQs.toString();
     if (nextQuery !== searchParams.toString()) {
-      setSearchParams(new URLSearchParams(nextQuery), { replace: true });
+      setSearchParams(nextQs, { replace: true });
     }
-  }, [professional, mode, fecha, fechaHasta, filterRange, estadoFilter, page, searchParams, setSearchParams]);
+  }, [
+    professional,
+    mode,
+    fecha,
+    fechaHasta,
+    filterRange,
+    estadoFilter,
+    selectedSalita,
+    selectedEspecialidad,
+    page,
+    searchParams,
+    setSearchParams,
+  ]);
 
-  const turnosPendientes = turnos.filter((t) => !t.estado.es_estado_final).length;
-  const turnosAtendidos = turnos.filter((t) => t.estado.codigo === 'ATENDIDO').length;
-  const pacientesAusentes = turnos.filter((t) => t.estado.codigo === 'NO_ASISTIO').length;
-  const turnosConfirmados = turnos.filter(
-    (t) => t.estado.codigo === 'CONFIRMADO' || t.estado.codigo === 'EN_ESPERA'
-  ).length;
-  const turnosCancelados = turnos.filter((t) => t.estado.codigo === 'CANCELADO').length;
-
-  const upcomingTurnos = turnos
-    .filter((t) => !t.estado.es_estado_final && new Date(t.fecha_hora_inicio).getTime() >= Date.now())
-    .sort((a, b) => Date.parse(a.fecha_hora_inicio) - Date.parse(b.fecha_hora_inicio));
-
-  const nextTurno = upcomingTurnos.length > 0 ? upcomingTurnos[0] : null;
-
-  const filteredTurnos = turnos.filter((t) => {
-    switch (estadoFilter) {
-      case 'PENDIENTES':
-        return !t.estado.es_estado_final;
-      case 'CONFIRMADOS':
-        return t.estado.codigo === 'CONFIRMADO' || t.estado.codigo === 'EN_ESPERA';
-      case 'ATENDIDOS':
-        return t.estado.codigo === 'ATENDIDO';
-      case 'AUSENTES':
-        return t.estado.codigo === 'NO_ASISTIO';
-      case 'CANCELADOS':
-        return t.estado.codigo === 'CANCELADO';
-      default:
-        return true;
-    }
-  });
-
+  // Suscripción automática a WebSockets sin botones manuales
   const lastEventIdRef = useRef<string | null>(ultimoEvento?.id ?? null);
   const requestIdRef = useRef(0);
 
@@ -181,14 +235,25 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
   }, [ultimoEvento]);
 
   useEffect(() => {
+    if (resyncTick > 0) {
+      setRevision((prev) => prev + 1);
+    }
+  }, [resyncTick]);
+
+  // Actualización de cambio de día a medianoche
+  useEffect(() => {
     if (!daily) return;
     const timer = window.setInterval(() => {
       const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date());
-      if (date !== today) { setToday(date); setPage(1); }
+      if (date !== today) {
+        setToday(date);
+        setPage(1);
+      }
     }, 30_000);
     return () => window.clearInterval(timer);
   }, [daily, today]);
 
+  // Carga de turnos con paginación de 15 registros y filtros de backend
   useEffect(() => {
     const currentRequestId = ++requestIdRef.current;
 
@@ -203,17 +268,32 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
       return;
     }
 
+    // Traducir filtro de estado para backend
+    let backendEstado: string | undefined = undefined;
+    if (estadoFilter === 'CONFIRMADOS') backendEstado = 'CONFIRMADO';
+    else if (estadoFilter === 'ATENDIDOS') backendEstado = 'ATENDIDO';
+    else if (estadoFilter === 'AUSENTES') backendEstado = 'NO_ASISTIO';
+    else if (estadoFilter === 'CANCELADOS') backendEstado = 'CANCELADO';
+
     void getTurnos({
-      ...(professional ? daily ? { fecha: today } : filterRange
-        ? { fecha_desde: fecha, fecha_hasta: fechaHasta, orden: 'desc' as const }
-        : { orden: 'desc' as const } : {}),
+      ...(professional
+        ? daily
+          ? { fecha: today }
+          : filterRange
+          ? { fecha_desde: fecha, fecha_hasta: fechaHasta, orden: 'desc' as const }
+          : { orden: 'desc' as const }
+        : {}),
+      ...(backendEstado ? { estado: backendEstado } : {}),
+      ...(selectedSalita ? { id_salita: selectedSalita } : {}),
+      ...(selectedEspecialidad ? { id_especialidad: selectedEspecialidad } : {}),
       page,
-      limit: 20,
+      limit: 15,
     })
       .then((response) => {
         if (currentRequestId === requestIdRef.current) {
           setTurnos(response.data.turnos);
           setTotalPages(response.data.pagination.totalPages);
+          setTotalRecords(response.data.pagination.total);
         }
       })
       .catch((cause) => {
@@ -226,7 +306,60 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
           setLoading(false);
         }
       });
-  }, [professional, daily, today, filterRange, fecha, fechaHasta, validRange, page, revision]);
+  }, [
+    professional,
+    daily,
+    today,
+    filterRange,
+    fecha,
+    fechaHasta,
+    validRange,
+    estadoFilter,
+    selectedSalita,
+    selectedEspecialidad,
+    page,
+    revision,
+  ]);
+
+  // Si el filtro es PENDIENTES, filtramos turnos no finales
+  const displayTurnos = useMemo(() => {
+    if (estadoFilter === 'PENDIENTES') {
+      return turnos.filter((t) => !t.estado.es_estado_final);
+    }
+    return turnos;
+  }, [turnos, estadoFilter]);
+
+  // Contadores para métricas
+  const turnosPendientes = useMemo(
+    () => turnos.filter((t) => !t.estado.es_estado_final).length,
+    [turnos]
+  );
+  const turnosAtendidos = useMemo(
+    () => turnos.filter((t) => t.estado.codigo === 'ATENDIDO').length,
+    [turnos]
+  );
+  const pacientesAusentes = useMemo(
+    () => turnos.filter((t) => t.estado.codigo === 'NO_ASISTIO').length,
+    [turnos]
+  );
+  const turnosConfirmados = useMemo(
+    () => turnos.filter((t) => t.estado.codigo === 'CONFIRMADO' || t.estado.codigo === 'EN_ESPERA').length,
+    [turnos]
+  );
+  const turnosCancelados = useMemo(
+    () => turnos.filter((t) => t.estado.codigo === 'CANCELADO').length,
+    [turnos]
+  );
+
+  const upcomingTurnos = useMemo(
+    () =>
+      turnos
+        .filter((t) => !t.estado.es_estado_final && new Date(t.fecha_hora_inicio).getTime() >= Date.now())
+        .sort((a, b) => Date.parse(a.fecha_hora_inicio) - Date.parse(b.fecha_hora_inicio)),
+    [turnos]
+  );
+
+  const nextTurno = upcomingTurnos.length > 0 ? upcomingTurnos[0] : null;
 
   const mark = async (turno: Turno, estado: string) => {
     if (busy) return;
@@ -309,40 +442,118 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
         </div>
         <div className="prof-kpi-info">
           <span className="prof-kpi-label">
-            {daily || (filterRange && fecha === fechaHasta) ? 'Total del día' : 'Total del período'}
+            {daily || (filterRange && fecha === fechaHasta) ? 'Total del día' : 'Total agendados'}
           </span>
-          <span className="prof-kpi-val">{turnos.length}</span>
-          <span className="prof-kpi-sub">Turnos agendados</span>
+          <span className="prof-kpi-val">{totalRecords || turnos.length}</span>
+          <span className="prof-kpi-sub">En el período</span>
         </div>
       </div>
     </div>
   );
 
   const renderFilterToolbar = () => (
-    <div className="prof-filter-toolbar">
-      <span className="text-secondary small fw-bold me-1">
-        Estado:
-      </span>
-      {[
-        { id: 'TODOS', label: 'Todos', count: turnos.length },
-        { id: 'PENDIENTES', label: 'Pendientes', count: turnosPendientes },
-        { id: 'CONFIRMADOS', label: 'Confirmados', count: turnosConfirmados },
-        { id: 'ATENDIDOS', label: 'Atendidos', count: turnosAtendidos },
-        { id: 'AUSENTES', label: 'Ausentes', count: pacientesAusentes },
-        { id: 'CANCELADOS', label: 'Cancelados', count: turnosCancelados },
-      ].map((f) => (
-        <button
-          key={f.id}
-          type="button"
-          className={`prof-filter-btn ${estadoFilter === f.id ? 'active' : ''}`}
-          onClick={() => setEstadoFilter(f.id as EstadoFilter)}
-        >
-          <span>{f.label}</span>
-          <span className="badge rounded-pill px-2 py-0">
-            {f.count}
-          </span>
-        </button>
-      ))}
+    <div className="d-flex flex-column gap-2 mb-3">
+      {/* Filtros de Salita y Especialidad si tiene más de una */}
+      {(salitasList.length > 1 || especialidadesList.length > 1) && (
+        <div className="d-flex flex-wrap gap-2 p-2 bg-light rounded-3 border">
+          {salitasList.length > 1 && (
+            <div className="d-flex align-items-center gap-1">
+              <label htmlFor="agenda-salita-select" className="small text-muted fw-semibold mb-0">
+                <i className="bi bi-hospital me-1 text-success" />
+                Salita:
+              </label>
+              <select
+                id="agenda-salita-select"
+                className="form-select form-select-sm"
+                style={{ width: 'auto', minWidth: '160px' }}
+                value={selectedSalita}
+                onChange={(e) => {
+                  setSelectedSalita(e.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="">Todas las salitas</option>
+                {salitasList.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {especialidadesList.length > 1 && (
+            <div className="d-flex align-items-center gap-1">
+              <label htmlFor="agenda-esp-select" className="small text-muted fw-semibold mb-0">
+                <i className="bi bi-heart-pulse me-1 text-primary" />
+                Especialidad:
+              </label>
+              <select
+                id="agenda-esp-select"
+                className="form-select form-select-sm"
+                style={{ width: 'auto', minWidth: '160px' }}
+                value={selectedEspecialidad}
+                onChange={(e) => {
+                  setSelectedEspecialidad(e.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="">Todas las especialidades</option>
+                {especialidadesList.map((esp) => (
+                  <option key={esp.id} value={esp.id}>
+                    {esp.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {(selectedSalita || selectedEspecialidad) && (
+            <button
+              type="button"
+              className="btn btn-link btn-sm text-secondary p-0 ms-auto text-decoration-none"
+              onClick={() => {
+                setSelectedSalita('');
+                setSelectedEspecialidad('');
+                setPage(1);
+              }}
+            >
+              <i className="bi bi-x-circle me-1" />
+              Limpiar filtros de salita/esp.
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Píldoras de estado */}
+      <div className="prof-filter-toolbar">
+        <span className="text-secondary small fw-bold me-1">
+          Estado:
+        </span>
+        {[
+          { id: 'TODOS', label: 'Todos', count: totalRecords || turnos.length },
+          { id: 'PENDIENTES', label: 'Pendientes', count: turnosPendientes },
+          { id: 'CONFIRMADOS', label: 'Confirmados', count: turnosConfirmados },
+          { id: 'ATENDIDOS', label: 'Atendidos', count: turnosAtendidos },
+          { id: 'AUSENTES', label: 'Ausentes', count: pacientesAusentes },
+          { id: 'CANCELADOS', label: 'Cancelados', count: turnosCancelados },
+        ].map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            className={`prof-filter-btn ${estadoFilter === f.id ? 'active' : ''}`}
+            onClick={() => {
+              setEstadoFilter(f.id as EstadoFilter);
+              setPage(1);
+            }}
+          >
+            <span>{f.label}</span>
+            <span className="badge rounded-pill px-2 py-0">
+              {f.count}
+            </span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 
@@ -456,13 +667,13 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
 
   const renderMobileCards = () => (
     <div className="prof-mobile-agenda-cards d-md-none">
-      {!filteredTurnos.length ? (
+      {!displayTurnos.length ? (
         <div className="text-center py-4 text-muted small">
           <i className="bi bi-funnel fs-4 d-block mb-2" aria-hidden="true" />
           No hay turnos para mostrar con el filtro seleccionado (<strong>{estadoFilter.toLowerCase()}</strong>).
         </div>
       ) : (
-        filteredTurnos.map((t) => (
+        displayTurnos.map((t) => (
           <article key={t.id_turno} className="prof-mobile-agenda-card">
             <div className="d-flex justify-content-between align-items-center gap-2">
               <div className="fw-bold text-dark">
@@ -574,11 +785,9 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
   const renderTurnosTable = () => {
     if (loading && turnos.length === 0) {
       return (
-        <div className="text-center py-5">
-          <div className="spinner-border text-success" role="status">
-            <span className="visually-hidden">Cargando...</span>
-          </div>
-          <p className="text-muted mt-2 mb-0">Cargando turnos…</p>
+        <div className="text-center py-4 text-muted small" role="status">
+          <div className="spinner-border spinner-border-sm text-success me-2" aria-hidden="true" />
+          <span>Cargando turnos…</span>
         </div>
       );
     }
@@ -630,7 +839,7 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
               </tr>
             </thead>
             <tbody>
-              {!filteredTurnos.length ? (
+              {!displayTurnos.length ? (
                 <tr>
                   <td colSpan={professional ? 5 : 6} className="text-center py-5">
                     <div className="text-muted">
@@ -640,7 +849,7 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
                   </td>
                 </tr>
               ) : (
-                filteredTurnos.map((t) => (
+                displayTurnos.map((t) => (
                   <tr key={t.id_turno} className={professional ? `professional-turno--${t.estado.codigo}` : undefined}>
                     <td data-label="Hora" className="fw-semibold text-dark text-nowrap">
                       {!daily ? (
@@ -824,33 +1033,6 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
     );
   };
 
-  const renderPagination = () => {
-    if (totalPages <= 1) return null;
-    return (
-      <div className="d-flex flex-wrap gap-3 align-items-center justify-content-between pt-2">
-        <button
-          className="btn btn-outline-secondary btn-sm"
-          disabled={loading || busy || page <= 1}
-          onClick={() => setPage((p) => p - 1)}
-        >
-          <i className="bi bi-chevron-left me-1" />
-          Anterior
-        </button>
-        <span className="text-muted small">
-          Página <strong>{page}</strong> de <strong>{Math.max(1, totalPages)}</strong>
-        </span>
-        <button
-          className="btn btn-outline-secondary btn-sm"
-          disabled={loading || busy || page >= totalPages}
-          onClick={() => setPage((p) => p + 1)}
-        >
-          Siguiente
-          <i className="bi bi-chevron-right ms-1" />
-        </button>
-      </div>
-    );
-  };
-
   return (
     <div>
       {/* Encabezado de página */}
@@ -865,24 +1047,11 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
           <p className="text-muted small mb-0">
             {professional
               ? daily
-                ? `Atención de hoy (${today.split('-').reverse().join('/')}) con actualización continua.`
-                : 'Consultá y gestioná tus turnos.'
+                ? `Atención de hoy (${today.split('-').reverse().join('/')}) con actualización continua en tiempo real.`
+                : 'Consultá y gestioná tus turnos asignados por período o fecha.'
               : 'Para solicitar, cancelar o reprogramar un turno, contactá a tu salita.'}
           </p>
         </div>
-        {professional && (
-          <div className="d-flex align-items-center gap-2">
-            <button
-              className="btn btn-outline-secondary btn-sm"
-              disabled={loading || busy}
-              onClick={() => setRevision((r) => r + 1)}
-              title="Actualizar agenda manualmente"
-            >
-              <i className={`bi bi-arrow-clockwise me-1 ${loading ? 'spin' : ''}`} aria-hidden="true" />
-              Actualizar
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Disposición según rol y modo */}
@@ -1019,7 +1188,7 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
                 </div>
                 {turnos.length > 0 && (
                   <span className="text-muted small">
-                    Página {page} de {Math.max(1, totalPages)} ({filteredTurnos.length} visibles)
+                    Página {page} de {Math.max(1, totalPages)} ({totalRecords} turnos)
                   </span>
                 )}
               </div>
@@ -1029,7 +1198,15 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
               {renderKpiCards()}
               {renderFilterToolbar()}
               {renderTurnosTable()}
-              {renderPagination()}
+              <PaginationControls
+                page={page}
+                totalPages={totalPages}
+                totalItems={totalRecords}
+                itemsPerPage={15}
+                itemLabel="turnos"
+                onPageChange={(p) => setPage(p)}
+                loading={loading || busy}
+              />
             </main>
           </div>
         ) : (
@@ -1071,7 +1248,15 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
             {renderNextHero()}
             {renderFilterToolbar()}
             {renderTurnosTable()}
-            {renderPagination()}
+            <PaginationControls
+              page={page}
+              totalPages={totalPages}
+              totalItems={totalRecords}
+              itemsPerPage={15}
+              itemLabel="turnos de hoy"
+              onPageChange={(p) => setPage(p)}
+              loading={loading || busy}
+            />
           </div>
         )
       ) : (
@@ -1083,7 +1268,15 @@ export default function MisTurnosPage({ mode = 'history' }: { mode?: 'history' |
             </div>
           )}
           {renderTurnosTable()}
-          {renderPagination()}
+          <PaginationControls
+            page={page}
+            totalPages={totalPages}
+            totalItems={totalRecords}
+            itemsPerPage={15}
+            itemLabel="turnos"
+            onPageChange={(p) => setPage(p)}
+            loading={loading || busy}
+          />
         </div>
       )}
 

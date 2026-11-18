@@ -25,6 +25,15 @@ export const createTurno = async (
   input: CreateTurnoInput,
   user: AuthenticatedUser
 ) => {
+  // Impide crear reservas en horarios vencidos para cualquier rol
+  const inicioTimestamp = new Date(input.fecha_hora_inicio).getTime();
+  if (Number.isFinite(inicioTimestamp) && inicioTimestamp <= Date.now()) {
+    throw new AppError(
+      'No se pueden reservar turnos en fechas u horarios que ya han pasado',
+      400
+    );
+  }
+
   // Valida la cobertura y la identidad del paciente.
   if (user.rol === 'PACIENTE') {
     assertBookingDate(

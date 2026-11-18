@@ -14,6 +14,7 @@ import {
 
 import { hasDatabaseCode } from "../utils/profile-error.js";
 import { AppError } from "../utils/app-error.js";
+import { emitirCambioProfesional } from "./socket.service.js";
 
 export const getEspecialidadesProfesional = async (
   idProfesional: string
@@ -59,7 +60,17 @@ export const agregarEspecialidadProfesional = async (
   }
 
   try {
-    return await createProfesionalEspecialidad(relacion);
+    const created = await createProfesionalEspecialidad(relacion);
+    try {
+      emitirCambioProfesional({
+        tipo: 'PROFESIONAL_ACTUALIZADO',
+        mensaje: 'Especialidad asociada al profesional',
+        id_profesional: idProfesional,
+      });
+    } catch {
+      // Notificación complementaria
+    }
+    return created;
   } catch (error) {
     if (hasDatabaseCode(error, "23505")) {
       throw new AppError(
@@ -117,19 +128,39 @@ export const actualizarEspecialidadProfesional = async (
     relacion.activo = validated.activo;
   }
 
-  return await updateProfesionalEspecialidad(
+  const updated = await updateProfesionalEspecialidad(
     idProfesional,
     idEspecialidad,
     relacion
   );
+  try {
+    emitirCambioProfesional({
+      tipo: 'PROFESIONAL_ACTUALIZADO',
+      mensaje: 'Especialidad de profesional actualizada',
+      id_profesional: idProfesional,
+    });
+  } catch {
+    // Notificación complementaria
+  }
+  return updated;
 };
 
 export const eliminarEspecialidadProfesional = async (
   idProfesional: string,
   idEspecialidad: string
 ) => {
-  return await deleteProfesionalEspecialidad(
+  const deleted = await deleteProfesionalEspecialidad(
     idProfesional,
     idEspecialidad
   );
+  try {
+    emitirCambioProfesional({
+      tipo: 'PROFESIONAL_ACTUALIZADO',
+      mensaje: 'Especialidad desvinculada de profesional',
+      id_profesional: idProfesional,
+    });
+  } catch {
+    // Notificación complementaria
+  }
+  return deleted;
 };

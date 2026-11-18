@@ -39,6 +39,18 @@ export default function PatientTurnoDetailModal({
   useAutoDismiss(success, setSuccess);
   useAutoDismiss(error, setError);
 
+  // Soporte accesible para tecla Escape
+  useEffect(() => {
+    if (!turno) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !busy) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [turno, busy, onClose]);
+
   if (!turno) return null;
 
   const pacientePersona = turno.paciente?.persona;
@@ -91,6 +103,7 @@ export default function PatientTurnoDetailModal({
       tabIndex={-1}
       role="dialog"
       aria-modal="true"
+      aria-labelledby="turno-detail-modal-title"
       style={{ backgroundColor: 'rgba(15, 23, 42, 0.55)', backdropFilter: 'blur(3px)', zIndex: 1055 }}
       onClick={(e) => {
         if (e.target === e.currentTarget && !busy) onClose();
@@ -101,7 +114,6 @@ export default function PatientTurnoDetailModal({
           {/* Header del Modal */}
           <div className="modal-header bg-light border-bottom px-4 py-3 align-items-center">
             <div className="d-flex align-items-center flex-wrap gap-2">
-
               <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
                 Ficha del Turno y Paciente
               </span>
@@ -112,18 +124,17 @@ export default function PatientTurnoDetailModal({
             <button
               type="button"
               className="btn-close"
-              aria-label="Cerrar"
+              aria-label="Cerrar ventana"
               disabled={busy}
               onClick={onClose}
             />
           </div>
 
           {/* Cuerpo del Modal */}
-          <div className="modal-body p-4">
+          <div className="modal-body p-3 p-md-4">
             {error && (
               <div className="alert alert-danger d-flex align-items-center justify-content-between gap-2 mb-3" role="alert">
                 <div className="d-flex align-items-center flex-wrap gap-2">
-
                   <i className="bi bi-exclamation-triangle-fill" aria-hidden="true" />
                   <div>{error}</div>
                 </div>
@@ -139,7 +150,6 @@ export default function PatientTurnoDetailModal({
             {success && (
               <div className="alert alert-success d-flex align-items-center justify-content-between gap-2 mb-3" role="status">
                 <div className="d-flex align-items-center flex-wrap gap-2">
-
                   <i className="bi bi-check-circle-fill" aria-hidden="true" />
                   <div>{success}</div>
                 </div>
@@ -155,19 +165,21 @@ export default function PatientTurnoDetailModal({
             {/* Ficha Paciente */}
             <div className="d-flex flex-wrap align-items-center gap-3 p-3 bg-light rounded-3 border mb-4">
               <div
-                className="d-flex align-items-center justify-content-center bg-white rounded-circle border shadow-sm text-success"
+                className="d-flex align-items-center justify-content-center bg-white rounded-circle border shadow-sm text-success flex-shrink-0"
                 style={{ width: '56px', height: '56px', fontSize: '1.75rem' }}
               >
                 <i className="bi bi-person-fill" aria-hidden="true" />
               </div>
               <div className="flex-grow-1 min-w-0">
-                <h3 className="h5 mb-1 text-dark fw-bold">{nombreCompleto}</h3>
+                <h3 id="turno-detail-modal-title" className="h5 mb-1 text-dark fw-bold text-truncate">
+                  {nombreCompleto}
+                </h3>
                 <div className="d-flex flex-wrap gap-3 text-secondary small">
                   <span>
                     <strong className="text-dark">DNI:</strong> {pacientePersona?.dni || 'Sin informar'}
                   </span>
                   <span>
-                    <strong className="text-dark">Código de turno:</strong>{' '}
+                    <strong className="text-dark">Código:</strong>{' '}
                     <span className="badge bg-white text-secondary border font-monospace">
                       {turno.codigo_turno}
                     </span>
@@ -189,11 +201,13 @@ export default function PatientTurnoDetailModal({
                   </div>
                   {turno.fecha_hora_fin && (
                     <small className="text-muted">
-                      Hasta las {new Date(turno.fecha_hora_fin).toLocaleTimeString('es-AR', {
+                      Hasta las{' '}
+                      {new Date(turno.fecha_hora_fin).toLocaleTimeString('es-AR', {
                         timeZone: 'America/Argentina/Buenos_Aires',
                         hour: '2-digit',
                         minute: '2-digit',
-                      })} hs
+                      })}{' '}
+                      hs
                     </small>
                   )}
                 </div>
@@ -234,7 +248,7 @@ export default function PatientTurnoDetailModal({
                   <div className="p-3 border rounded-3 bg-white">
                     <span className="text-muted small text-uppercase fw-bold d-block mb-1">
                       <i className="bi bi-clipboard2-pulse me-1 text-warning" aria-hidden="true" />
-                      Observaciones del Turno
+                      Observaciones
                     </span>
                     <p className="mb-0 text-dark">{turno.observaciones}</p>
                   </div>
@@ -279,17 +293,8 @@ export default function PatientTurnoDetailModal({
                 </Link>
               )}
             </div>
-            <div>
-              {!turno.estado.es_estado_final && (
-                <span className="small text-muted">
-                  <i className="bi bi-info-circle me-1" aria-hidden="true" />
-                  Turno en curso: podés registrar el resultado de la atención directamente.
-                </span>
-              )}
-            </div>
 
-            <div className="d-flex align-items-center flex-wrap gap-2">
-
+            <div className="d-flex align-items-center flex-wrap gap-2 ms-auto">
               {!turno.estado.es_estado_final && (
                 <>
                   <button

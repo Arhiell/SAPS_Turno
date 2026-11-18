@@ -51,7 +51,7 @@ interface TurnoDb {
 export interface SlotDisponibilidad {
   hora_inicio: string;
   hora_fin: string;
-  estado: 'DISPONIBLE' | 'OCUPADO' | 'BLOQUEADO';
+  estado: 'DISPONIBLE' | 'OCUPADO' | 'BLOQUEADO' | 'FINALIZADO' | 'NO_DISPONIBLE';
   motivo?: string | undefined;
   id_turno?: string | undefined;
   codigo_turno?: string | undefined;
@@ -276,20 +276,27 @@ export const getMisHorariosYDisponibilidad = async (
         duracion_turno_minutos: h.duracion_turno_minutos,
         cupo_maximo_diario: h.cupo_maximo_diario,
         salita: salitasMap.get(h.id_salita) ?? 'Salita',
+        id_salita: h.id_salita,
         especialidad: especialidadesMap.get(h.id_especialidad) ?? 'Especialidad',
+        id_especialidad: h.id_especialidad,
       })),
     };
   });
 
-  // 10. Información general
+  // 10. Información general y duraciones reales
   const diasLaborales = cronogramaSemanal
     .filter(d => d.trabaja)
     .map(d => d.nombre_dia);
 
-  const duraciones = horarios.map(h => h.duracion_turno_minutos);
-  const duracionPromedio = duraciones.length
-    ? Math.round(duraciones.reduce((acc, curr) => acc + curr, 0) / duraciones.length)
-    : 20;
+  const duraciones = horarios.map(h => h.duracion_turno_minutos).filter(Boolean);
+  const duracionesUnicas = Array.from(new Set(duraciones)).sort((a, b) => a - b);
+  const esDuracionUniforme = duracionesUnicas.length <= 1;
+  const duracionPrincipal = duracionesUnicas.length > 0 ? duracionesUnicas[0] : 30;
+  const duracionTexto = duracionesUnicas.length === 1
+    ? `${duracionesUnicas[0]} min`
+    : duracionesUnicas.length > 1
+    ? duracionesUnicas.map(d => `${d} min`).join(' / ')
+    : '30 min';
 
   // Analizar si los horarios son uniformes o varían por día
   const diasConFranjas = cronogramaSemanal.filter(d => d.trabaja);
@@ -323,15 +330,25 @@ export const getMisHorariosYDisponibilidad = async (
 
   const bloqueoDiaCompleto = bloqueos.find(b => b.dia_completo);
 
+  // Fecha y hora actual en zona horaria de Argentina
+  const now = new Date();
+  const todayInArg = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+  }).format(now);
+  const nowTimestamp = now.getTime();
+  const isPastDate = fecha < todayInArg;
+  const isToday = fecha === todayInArg;
+
   let totalSlots = 0;
   let disponiblesSlots = 0;
   let ocupadosSlots = 0;
   let bloqueadosSlots = 0;
+  let finalizadosSlots = 0;
 
   const franjasDisponibilidad = franjasFecha.map(h => {
     const inicioMin = timeToMinutes(h.hora_inicio);
     const finMin = timeToMinutes(h.hora_fin);
-    const duracion = h.duracion_turno_minutos || 20;
+    const duracion = h.duracion_turno_minutos || 30;
 
     const slots: SlotDisponibilidad[] = [];
 
@@ -341,6 +358,7 @@ export const getMisHorariosYDisponibilidad = async (
 
       const slotInicioDate = new Date(`${fecha}T${slotInicioStr}:00-03:00`);
       const slotFinDate = new Date(`${fecha}T${slotFinStr}:00-03:00`);
+      const slotEnded = slotFinDate.getTime() <= nowTimestamp;
 
       totalSlots++;
 
@@ -383,7 +401,7 @@ export const getMisHorariosYDisponibilidad = async (
         continue;
       }
 
-      // Revisar si está ocupado por un turno
+      // Revisar si está ocupado por un turno (conservando turnos históricos)
       const turnoOcupante = turnos.find(t => {
         if (!t.ocupa_agenda) return false;
         const tInicio = new Date(t.fecha_hora_inicio);
@@ -407,7 +425,20 @@ export const getMisHorariosYDisponibilidad = async (
         continue;
       }
 
-      // Slot libre
+      // Si la fecha ya pasó o el horario del slot ya terminó hoy:
+      // Se muestra como finalizado / no disponible, nunca como libre para reservar
+      if (isPastDate || (isToday && slotEnded)) {
+        finalizadosSlots++;
+        slots.push({
+          hora_inicio: slotInicioStr,
+          hora_fin: slotFinStr,
+          estado: 'FINALIZADO',
+          motivo: isPastDate ? 'Fecha pasada' : 'Horario finalizado',
+        });
+        continue;
+      }
+
+      // Slot futuro libre
       disponiblesSlots++;
       slots.push({
         hora_inicio: slotInicioStr,
@@ -422,10 +453,21 @@ export const getMisHorariosYDisponibilidad = async (
       hora_fin: h.hora_fin.slice(0, 5),
       duracion_turno_minutos: h.duracion_turno_minutos,
       salita: salitasMap.get(h.id_salita) ?? 'Salita',
+      id_salita: h.id_salita,
       especialidad: especialidadesMap.get(h.id_especialidad) ?? 'Especialidad',
+      id_especialidad: h.id_especialidad,
       slots,
     };
   });
+
+  // Duración real para la fecha consultada
+  const duracionesDia = franjasFecha.map(h => h.duracion_turno_minutos).filter(Boolean);
+  const duracionesDiaUnicas = Array.from(new Set(duracionesDia)).sort((a, b) => a - b);
+  const duracionDiaTexto = duracionesDiaUnicas.length === 1
+    ? `${duracionesDiaUnicas[0]} min`
+    : duracionesDiaUnicas.length > 1
+    ? duracionesDiaUnicas.map(d => `${d} min`).join(' / ')
+    : duracionTexto;
 
   return {
     profesional: {
@@ -438,9 +480,14 @@ export const getMisHorariosYDisponibilidad = async (
       horario_atencion: rangoHorarioGeneral,
       es_horario_uniforme: esHorarioUniforme,
       horarios_por_dia: horariosPorDia,
-      duracion_turno_minutos: duracionPromedio,
+      duracion_turno_minutos: duracionPrincipal,
+      es_duracion_uniforme: esDuracionUniforme,
+      duraciones_disponibles: duracionesUnicas,
+      duracion_descripcion: duracionTexto,
       salitas: salitasUnicas,
       especialidades: especialidadesUnicas,
+      salitas_detalle: Array.from(salitasMap.entries()).map(([id, nombre]) => ({ id, nombre })),
+      especialidades_detalle: Array.from(especialidadesMap.entries()).map(([id, nombre]) => ({ id, nombre })),
     },
     cronograma_semanal: cronogramaSemanal,
     disponibilidad_fecha: {
@@ -456,7 +503,10 @@ export const getMisHorariosYDisponibilidad = async (
         disponibles: disponiblesSlots,
         ocupados: ocupadosSlots,
         bloqueados: bloqueadosSlots,
+        finalizados: finalizadosSlots,
       },
+      duracion_dia_minutos: duracionesDiaUnicas.length === 1 ? duracionesDiaUnicas[0] : duracionPrincipal,
+      duracion_dia_descripcion: duracionDiaTexto,
       franjas: franjasDisponibilidad,
     },
   };

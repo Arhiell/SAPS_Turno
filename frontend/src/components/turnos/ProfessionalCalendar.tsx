@@ -34,30 +34,67 @@ export default function ProfessionalCalendar({
     setError('');
 
     void (async () => {
-      const result: typeof days = {};
-      for (let page = 1; ; page++) {
-        const response = await getTurnos({
-          fecha_desde: `${month}-01`,
-          fecha_hasta: `${month}-${count}`,
-          page,
-          limit: 100,
-        });
-        if (currentRequestId !== requestIdRef.current) return;
-        if (!response?.data?.turnos?.length) break;
+      const firstResponse = await getTurnos({
+        fecha_desde: `${month}-01`,
+        fecha_hasta: `${month}-${count}`,
+        page: 1,
+        limit: 100,
+      });
 
-        for (const turno of response.data.turnos) {
-          const key = dateKey(new Date(turno.fecha_hora_inicio));
-          const day = (result[key] ??= {});
-          const status = (day[turno.estado.codigo] ??= {
-            name: turno.estado.nombre,
-            count: 0,
-          });
-          status.count++;
+      if (currentRequestId !== requestIdRef.current) return;
+
+      const allTurnos = [...(firstResponse?.data?.turnos ?? [])];
+      const totalPages = firstResponse?.data?.pagination?.totalPages || 1;
+      let hasPartialError = false;
+
+      if (totalPages > 1) {
+        const remainingPages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
+        // Concurrencia limitada: procesamiento por lotes de a 3 solicitudes en paralelo
+        const CHUNK_SIZE = 3;
+
+        for (let i = 0; i < remainingPages.length; i += CHUNK_SIZE) {
+          if (currentRequestId !== requestIdRef.current) return;
+          const chunk = remainingPages.slice(i, i + CHUNK_SIZE);
+
+          const chunkResponses = await Promise.allSettled(
+            chunk.map((p) =>
+              getTurnos({
+                fecha_desde: `${month}-01`,
+                fecha_hasta: `${month}-${count}`,
+                page: p,
+                limit: 100,
+              })
+            )
+          );
+
+          if (currentRequestId !== requestIdRef.current) return;
+
+          for (const res of chunkResponses) {
+            if (res.status === 'fulfilled' && res.value?.data?.turnos) {
+              allTurnos.push(...res.value.data.turnos);
+            } else {
+              hasPartialError = true;
+            }
+          }
         }
-        if (page >= (response.data.pagination?.totalPages || 1)) break;
       }
+
+      const result: typeof days = {};
+      for (const turno of allTurnos) {
+        const key = dateKey(new Date(turno.fecha_hora_inicio));
+        const day = (result[key] ??= {});
+        const status = (day[turno.estado.codigo] ??= {
+          name: turno.estado.nombre,
+          count: 0,
+        });
+        status.count++;
+      }
+
       if (currentRequestId === requestIdRef.current) {
         setDays(result);
+        if (hasPartialError && allTurnos.length === 0) {
+          setError('No se pudo cargar la totalidad de los turnos del mes.');
+        }
       }
     })()
       .catch((cause) => {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useAuth } from '../../context/AuthContext';
 import { roleLabels } from '../../components/layout/sidebar-menu';
@@ -25,20 +25,18 @@ export default function AdminProfilePage() {
   useAutoDismiss(message, setMessage, PROFESSIONAL_MESSAGE_TIMEOUT_MS, isProfessional);
   useAutoDismiss(error, setError, PROFESSIONAL_MESSAGE_TIMEOUT_MS, isProfessional);
 
-  // Recarga los datos del perfil desde el servidor.
-  const refresh = async () => {
-    setBusy(true);
-    setError('');
-    setMessage('');
-
-    try {
-      await reloadProfile();
-    } catch {
-      setError('No pudimos cargar tu perfil. Volvé a intentar.');
-    } finally {
-      setBusy(false);
-    }
-  };
+  // Carga automáticamente los datos actualizados del perfil al ingresar.
+  useEffect(() => {
+    let active = true;
+    void reloadProfile().catch(() => {
+      if (active) {
+        setError('No pudimos cargar tu perfil. Volvé a intentar.');
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [reloadProfile]);
 
   // Obtiene la información profesional asociada al usuario.
   const professional = roleInfo?.professional;
@@ -63,46 +61,41 @@ export default function AdminProfilePage() {
   return (
     <div>
       {/* Encabezado con los datos principales del usuario. */}
-      <div className="d-flex flex-wrap justify-content-between gap-3 mb-4">
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
         <div className="text-break">
-          <h1 className="h3">
+          <h1 className="h3 mb-1">
             Mi perfil
           </h1>
 
-          <p className="text-muted mb-0">
+          <p className="text-muted mb-2">
             Tus datos personales y tu cuenta de acceso.
           </p>
 
           {person && (
-            <p className="mt-2 mb-0">
-              <i
-                className="bi bi-person-circle me-2"
-                aria-hidden="true"
-              />
-
-              <strong>
+            <div className="d-flex flex-wrap align-items-center gap-2">
+              <span className="badge bg-light text-dark border px-2 py-1 fs-6 fw-semibold d-inline-flex align-items-center">
+                <i
+                  className="bi bi-person-circle text-success me-1"
+                  aria-hidden="true"
+                />
                 {person.nombres} {person.apellidos}
-              </strong>
+              </span>
 
-              <br />
-
-              {roleLabels[user?.rol ?? '']}
-            </p>
+              <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                {roleLabels[user?.rol ?? '']}
+              </span>
+            </div>
           )}
         </div>
 
-        {/* Acciones para actualizar o editar el perfil. */}
-        <div className="d-flex flex-wrap align-items-start gap-2">
-          <button
-            className="btn btn-outline-secondary"
-            disabled={busy || editing}
-            onClick={() => void refresh()}
-          >
-            {busy ? 'Actualizando…' : 'Actualizar'}
-          </button>
+        {/* Acciones para editar el perfil. */}
+        <div className="d-flex flex-wrap align-items-center gap-2">
+          {busy && (
+            <span className="spinner-border spinner-border-sm text-success" role="status" aria-label="Sincronizando perfil…" />
+          )}
 
           <button
-            className="btn btn-saps"
+            className="btn btn-saps d-inline-flex align-items-center gap-2"
             disabled={busy || editing || !person}
             onClick={() => {
               setEditing(true);
@@ -110,7 +103,8 @@ export default function AdminProfilePage() {
               setError('');
             }}
           >
-            Editar perfil
+            <i className="bi bi-pencil-square" aria-hidden="true" />
+            <span>Editar perfil</span>
           </button>
         </div>
       </div>
@@ -141,9 +135,17 @@ export default function AdminProfilePage() {
         <PersonalProfileForm
           person={person}
           onClose={() => setEditing(false)}
-          onSaved={() => {
+          onSaved={async () => {
             setEditing(false);
             setMessage('Tu perfil se actualizó correctamente.');
+            try {
+              setBusy(true);
+              await reloadProfile();
+            } catch {
+              // Silencioso si falla la recarga secundaria tras el guardado
+            } finally {
+              setBusy(false);
+            }
           }}
         />
       )}

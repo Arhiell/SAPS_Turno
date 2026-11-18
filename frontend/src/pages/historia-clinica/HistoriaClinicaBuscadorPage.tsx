@@ -258,9 +258,9 @@ export default function HistoriaClinicaBuscadorPage() {
       </div>
 
       {loadingContext || loadingList ? (
-        <div className="hc-card p-5 text-center text-muted">
-          <div className="spinner-border text-success mb-2" role="status" />
-          <div>Consultando pacientes autorizados...</div>
+        <div className="hc-card py-4 px-3 text-center text-muted small" role="status">
+          <div className="spinner-border spinner-border-sm text-success me-2" aria-hidden="true" />
+          <span>Consultando pacientes autorizados...</span>
         </div>
       ) : context && context.salitas_autorizadas.length === 0 ? (
         <div className="hc-empty-state">
