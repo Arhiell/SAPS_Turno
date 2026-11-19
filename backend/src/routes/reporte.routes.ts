@@ -21,10 +21,10 @@ router.get('/dashboard', authenticate, requireRole('SUPER_ADMIN'), getDashboardC
 import { getAgendaDiariaController, exportAgendaDiariaController, printAgendaDiariaController }
   from "../controllers/reporte-agenda.controller.js";
 
-// La agenda nominal se restringe a administración, a diferencia de las estadísticas.
-router.get("/agenda-diaria", authenticate, requireRole("SUPER_ADMIN", "ADMIN_SALITA", "PROFESIONAL"), getAgendaDiariaController);
-router.get("/agenda-diaria/exportar", authenticate, requireRole("SUPER_ADMIN", "ADMIN_SALITA", "PROFESIONAL"), exportAgendaDiariaController);
-router.get("/agenda-diaria/imprimir", authenticate, requireRole("SUPER_ADMIN", "ADMIN_SALITA", "PROFESIONAL"), printAgendaDiariaController);
+// La agenda nominal se restringe a administración y recepción, a diferencia de las estadísticas.
+router.get("/agenda-diaria", authenticate, requireRole("SUPER_ADMIN", "ADMIN_SALITA", "PROFESIONAL", "RECEPCION"), getAgendaDiariaController);
+router.get("/agenda-diaria/exportar", authenticate, requireRole("SUPER_ADMIN", "ADMIN_SALITA", "PROFESIONAL", "RECEPCION"), exportAgendaDiariaController);
+router.get("/agenda-diaria/imprimir", authenticate, requireRole("SUPER_ADMIN", "ADMIN_SALITA", "PROFESIONAL", "RECEPCION"), printAgendaDiariaController);
 
 const rolesReporte = [
   "SUPER_ADMIN",

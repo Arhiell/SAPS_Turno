@@ -15,10 +15,11 @@ import type {
   AuthenticatedUser,
 } from '../types/auth.types.js';
 
-// Verifica si el rol corresponde a un administrador.
+// Verifica si el rol corresponde a un usuario con funciones administrativas o de salita.
 export const isAdministrativeRole = (role: string) =>
   role === 'SUPER_ADMIN' ||
-  role === 'ADMIN_SALITA';
+  role === 'ADMIN_SALITA' ||
+  role === 'RECEPCION';
 
 // Completa los datos personales del usuario administrativo.
 export const completeAdminProfile = async (

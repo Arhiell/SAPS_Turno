@@ -5,6 +5,7 @@ import { getTurnos } from '../../services/turnos.service';
 import { getProfessionals } from '../../services/profesionales.service';
 import { useAgendaSocket } from '../../context/AgendaSocketContext';
 import ConnectionStatusBadge from '../../components/ui/ConnectionStatusBadge';
+import { useAutoDismiss } from '../../utils/useAutoDismiss';
 import { getEstadoClass } from '../../utils/turno-status';
 import type { Salita } from '../../types/salita.types';
 import type { Turno } from '../../types/turno.types';
@@ -13,12 +14,11 @@ import { authError } from '../../utils/auth-errors';
 
 interface AdminSalitaOverviewProps {
   revision: number;
-  onRefresh: () => void;
+  onRefresh?: () => void;
 }
 
 export default function AdminSalitaOverview({
   revision,
-  onRefresh,
 }: AdminSalitaOverviewProps) {
   const navigate = useNavigate();
   const { ultimoEvento, resyncTick } = useAgendaSocket();
@@ -29,6 +29,8 @@ export default function AdminSalitaOverview({
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  useAutoDismiss(error, () => setError(''), 15_000, Boolean(error));
 
   // Fecha actual en Argentina (YYYY-MM-DD)
   const todayDate = useMemo(() => {
@@ -216,16 +218,6 @@ export default function AdminSalitaOverview({
           )}
 
           <ConnectionStatusBadge />
-
-          <button
-            type="button"
-            className="btn btn-sm btn-outline-success"
-            onClick={onRefresh}
-            title="Sincronizar datos"
-          >
-            <i className="bi bi-arrow-clockwise me-1" aria-hidden="true" />
-            Sincronizar
-          </button>
         </div>
       </div>
 
@@ -236,70 +228,78 @@ export default function AdminSalitaOverview({
         </div>
       )}
 
-      {/* Indicadores Operativos Clave (4 KPIs en una fila) */}
+      {/* Indicadores Operativos Clave (4 KPIs en una fila con línea semántica de 4px) */}
       <div className="row g-3 mb-4">
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="dashboard-stat-card h-100 border-start border-4 border-primary">
+          <div className="dashboard-stat-card dashboard-stat-card--blue h-100">
             <div className="dashboard-stat-top">
-              <i className="dashboard-stat-icon bi bi-calendar-event text-primary" aria-hidden="true" />
+              <div className="dashboard-stat-icon dashboard-stat-icon--blue">
+                <i className="bi bi-calendar-event" aria-hidden="true" />
+              </div>
               <span className="dashboard-stat-label">Turnos del día</span>
             </div>
-            <div className="dashboard-stat-value text-dark">
+            <div className="dashboard-stat-value">
               {loading ? '…' : totalHoy}
             </div>
-            <small className="text-muted">
+            <small>
               {pendientes} por atender · {atendidos} atendidos
             </small>
           </div>
         </div>
 
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="dashboard-stat-card h-100 border-start border-4 border-warning">
+          <div className="dashboard-stat-card dashboard-stat-card--amber h-100">
             <div className="dashboard-stat-top">
-              <i className="dashboard-stat-icon bi bi-hourglass-split text-warning" aria-hidden="true" />
+              <div className="dashboard-stat-icon dashboard-stat-icon--amber">
+                <i className="bi bi-hourglass-split" aria-hidden="true" />
+              </div>
               <span className="dashboard-stat-label">En sala de espera</span>
             </div>
-            <div className="dashboard-stat-value text-warning">
+            <div className="dashboard-stat-value">
               {loading ? '…' : enEspera}
             </div>
-            <small className="text-muted">
+            <small>
               Pacientes con llegada registrada
             </small>
           </div>
         </div>
 
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="dashboard-stat-card h-100 border-start border-4 border-success">
+          <div className="dashboard-stat-card dashboard-stat-card--green h-100">
             <div className="dashboard-stat-top">
-              <i className="dashboard-stat-icon bi bi-check2-circle text-success" aria-hidden="true" />
+              <div className="dashboard-stat-icon dashboard-stat-icon--green">
+                <i className="bi bi-check2-circle" aria-hidden="true" />
+              </div>
               <span className="dashboard-stat-label">Atendidos hoy</span>
             </div>
-            <div className="dashboard-stat-value text-success">
+            <div className="dashboard-stat-value">
               {loading ? '…' : atendidos}
             </div>
-            <small className="text-muted">
+            <small>
               Consultas médicas finalizadas
             </small>
           </div>
         </div>
 
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="dashboard-stat-card h-100 border-start border-4 border-danger">
+          <div className="dashboard-stat-card dashboard-stat-card--coral h-100">
             <div className="dashboard-stat-top">
-              <i className="dashboard-stat-icon bi bi-calendar-x text-danger" aria-hidden="true" />
+              <div className="dashboard-stat-icon dashboard-stat-icon--coral">
+                <i className="bi bi-calendar-x" aria-hidden="true" />
+              </div>
               <span className="dashboard-stat-label">No asistió / Cancelados</span>
             </div>
-            <div className="dashboard-stat-value text-danger">
+            <div className="dashboard-stat-value">
               {loading ? '…' : inasistencias + cancelados}
             </div>
-            <small className="text-muted">
+            <small>
               {inasistencias} inasistencias · {cancelados} cancelados
             </small>
           </div>
         </div>
       </div>
 
-      {/* Accesos rápidos de administración (Grilla 2x3) */}
+      {/* Accesos rápidos de administración (Grilla 2x3 con identidad institucional unificada) */}
       <h2 className="h6 fw-bold text-dark text-uppercase letter-spacing-1 mb-3">
         <i className="bi bi-grid-fill me-2 text-success" aria-hidden="true" />
         Gestión operativa y administrativa
@@ -310,23 +310,23 @@ export default function AdminSalitaOverview({
           <div className="col-12 col-md-6 col-xl-4" key={item.to}>
             <Link
               to={item.to}
-              className="card border-0 shadow-sm h-100 text-decoration-none text-dark hover-lift p-3 transition"
-              style={{ borderRadius: '12px', borderLeft: '4px solid var(--saps-verde, #16a34a)' }}
+              className="card border h-100 text-decoration-none text-dark p-3 transition shadow-xs hover-shadow-sm rounded-3"
+              style={{ borderColor: 'var(--dashboard-card-border, #e2e8f0)' }}
             >
               <div className="d-flex align-items-start justify-content-between mb-2">
                 <div
-                  className={`d-inline-flex p-2 rounded-3 bg-${item.color}-subtle text-${item.color}`}
+                  className="d-inline-flex p-2 rounded-3 bg-success-subtle text-success"
                   style={{ fontSize: '1.25rem' }}
                 >
                   <i className={`bi ${item.icon}`} aria-hidden="true" />
                 </div>
                 {item.badge && (
-                  <span className="badge bg-light text-secondary border px-2 py-1 small">
+                  <span className="badge bg-light text-muted border px-2 py-1 small fw-normal">
                     {item.badge}
                   </span>
                 )}
               </div>
-              <h3 className="h6 fw-bold mb-1">{item.title}</h3>
+              <h3 className="h6 fw-bold mb-1 text-dark">{item.title}</h3>
               <p className="text-muted small mb-0">{item.desc}</p>
             </Link>
           </div>

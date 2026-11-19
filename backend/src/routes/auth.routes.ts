@@ -32,7 +32,7 @@ const router = Router();
 router.patch(
   '/username',
   authenticate,
-  requireRole('PACIENTE', 'SUPER_ADMIN', 'ADMIN_SALITA', 'PROFESIONAL'),
+  requireRole('PACIENTE', 'SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION', 'PROFESIONAL'),
   changeUsername
 );
 
@@ -40,7 +40,7 @@ router.patch(
 router.patch(
   '/password',
   authenticate,
-  requireRole('PACIENTE', 'SUPER_ADMIN', 'ADMIN_SALITA', 'PROFESIONAL'),
+  requireRole('PACIENTE', 'SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION', 'PROFESIONAL'),
   changePassword
 );
 
@@ -55,7 +55,7 @@ router.get(
 router.patch(
   '/profile',
   authenticate,
-  requireRole('PACIENTE', 'SUPER_ADMIN', 'ADMIN_SALITA', 'PROFESIONAL'),
+  requireRole('PACIENTE', 'SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION', 'PROFESIONAL'),
   updateOwnProfile
 );
 
@@ -63,7 +63,7 @@ router.patch(
 router.post(
   '/profile',
   authenticateForProfile,
-  requireRole('PACIENTE', 'SUPER_ADMIN', 'ADMIN_SALITA'),
+  requireRole('PACIENTE', 'SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION'),
   completeProfile
 );
 

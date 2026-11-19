@@ -21,8 +21,8 @@ import type { Salita } from '../../types/salita.types';
 
 import PatientAccountPanel from '../../components/ui/PatientAccountPanel';
 import PatientTutorsPanel from '../../components/ui/PatientTutorsPanel';
+import PatientEditModal from '../../components/ui/PatientEditModal';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
-import ValidatedInput from '../../components/ui/ValidatedInput';
 
 import {
   getPatientById,
@@ -32,7 +32,6 @@ import {
 
 import type {
   Patient,
-  PatientSex,
   UpdatePatientRequest,
 } from '../../types/patient.types';
 
@@ -41,65 +40,61 @@ import {
 } from '../../utils/auth-errors';
 
 import {
-  personFieldsError,
-} from '../../utils/field-validation';
+  calculateAge,
+} from '../../utils/kinship';
+
+const formatSexo = (sexo?: string | null): string => {
+  switch (sexo) {
+    case 'FEMENINO':
+      return 'Femenino';
+    case 'MASCULINO':
+      return 'Masculino';
+    case 'X':
+      return 'X';
+    case 'NO_INFORMA':
+      return 'No informa';
+    default:
+      return 'No informado';
+  }
+};
+
+const formatFecha = (fecha?: string | null): string => {
+  if (!fecha) return 'No informada';
+  const parts = fecha.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return fecha;
+};
 
 const PacienteDetallePage = () => {
-  const { id } =
-    useParams<{ id: string }>();
-
-  const navigate =
-    useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
 
   const { permissions } = useAuth();
   const { ultimoEventoPaciente, resyncTick } = useAgendaSocket();
 
-  // Datos del paciente.
-  const [patient, setPatient] =
-    useState<Patient | null>(null);
-
+  // Datos del paciente y catálogos territoriales.
+  const [patient, setPatient] = useState<Patient | null>(null);
   const [barrios, setBarrios] = useState<Barrio[]>([]);
   const [salitas, setSalitas] = useState<Salita[]>([]);
 
-  const [form, setForm] =
-    useState<UpdatePatientRequest>({});
-
-  // Controla el modo de edición.
-  const [editing, setEditing] =
-    useState(false);
+  // Control del modal de edición.
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   // Estados de carga y guardado.
-  const [loading, setLoading] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
-  const [saving, setSaving] =
-    useState(false);
-
-  const [
-    confirming,
-    setConfirming,
-  ] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   // Mensajes mostrados al usuario.
-  const [error, setError] =
-    useState('');
+  const [error, setError] = useState('');
+  const [modalError, setModalError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const [success, setSuccess] =
-    useState('');
-
-  // Controla las confirmaciones.
-  const [
-    confirmTarget,
-    setConfirmTarget,
-  ] = useState<Patient | null>(
-    null
-  );
-
-  const [
-    saveConfirmOpen,
-    setSaveConfirmOpen,
-  ] = useState(false);
+  // Control de confirmación de activación / desactivación.
+  const [confirmTarget, setConfirmTarget] = useState<Patient | null>(null);
 
   // Feedback unificado de 15 segundos.
   useAutoDismiss(success, setSuccess, 15_000, Boolean(success));
@@ -113,67 +108,37 @@ const PacienteDetallePage = () => {
   }, []);
 
   // Carga los datos del paciente.
-  const loadPatient =
-    async (silent = false) => {
-      if (!id) {
-        setError(
-          'Paciente inválido.'
-        );
+  const loadPatient = async (silent = false) => {
+    if (!id) {
+      setError('Paciente inválido.');
+      setLoading(false);
+      return;
+    }
 
-        setLoading(false);
-        return;
+    try {
+      if (!silent) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
       }
+      setError('');
 
-      try {
-        if (!silent) {
-          setLoading(true);
-        } else {
-          setRefreshing(true);
-        }
-        setError('');
-
-        const response =
-          await getPatientById(
-            id
-          );
-
-        const pat = response.data.patient;
-        setPatient((current) => ({
-          ...pat,
-          cuenta: pat.cuenta ?? current?.cuenta,
-        }));
-
-        if (!editing) {
-          setForm({
-            nombres: pat.nombres,
-            apellidos: pat.apellidos,
-            fecha_nacimiento: pat.fecha_nacimiento,
-            sexo: pat.sexo,
-            telefono: pat.telefono,
-            email: pat.email,
-            direccion: pat.direccion,
-            localidad: pat.localidad ?? '',
-            provincia: pat.provincia ?? '',
-            codigo_postal: pat.codigo_postal,
-            obra_social: pat.obra_social,
-            numero_afiliado: pat.numero_afiliado,
-            contacto_emergencia_nombre: pat.contacto_emergencia_nombre,
-            contacto_emergencia_telefono: pat.contacto_emergencia_telefono,
-          });
-        }
-      } catch (error) {
-        console.error(error);
-
-        if (!silent) {
-          setError(
-            'No se pudo cargar el paciente.'
-          );
-        }
-      } finally {
-        if (!silent) setLoading(false);
-        setRefreshing(false);
+      const response = await getPatientById(id);
+      const pat = response.data.patient;
+      setPatient((current) => ({
+        ...pat,
+        cuenta: pat.cuenta ?? current?.cuenta,
+      }));
+    } catch (err) {
+      console.error(err);
+      if (!silent) {
+        setError('No se pudo cargar el paciente.');
       }
-    };
+    } finally {
+      if (!silent) setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   // Recarga el paciente cuando cambia el identificador.
   useEffect(() => {
@@ -191,224 +156,89 @@ const PacienteDetallePage = () => {
       );
     }
 
-    if (!editing) {
+    if (!editModalOpen) {
       void loadPatient(true);
     }
   }, [ultimoEventoPaciente]);
 
   // Resincronización al reconectar el socket
   useEffect(() => {
-    if (resyncTick > 0 && !editing) {
+    if (resyncTick > 0 && !editModalOpen) {
       void loadPatient(true);
     }
   }, [resyncTick]);
 
-  // Actualiza un campo del formulario.
-  const handleChange = (
-    field:
-      keyof UpdatePatientRequest,
-    value: string | null
-  ) => {
-    setForm(
-      (current) => ({
-        ...current,
-        [field]: value,
-      })
-    );
-  };
+  // Guarda los cambios del paciente enviados desde el modal de edición.
+  const handleSavePatient = async (form: UpdatePatientRequest) => {
+    if (!id) return;
 
-  // Valida y guarda los cambios del paciente.
-  const handleSave =
-    async () => {
-      const validationError =
-        personFieldsError(form);
-
-      if (validationError) {
-        setError(
-          validationError
-        );
-
-        return;
-      }
-
-      if (!id) {
-        return;
-      }
-
-      try {
-        setSaving(true);
-        setError('');
-        setSuccess('');
-
-        const response =
-          await updatePatient(
-            id,
-            form
-          );
-
-        // Conserva los datos de cuenta si la actualización no los devuelve.
-        setPatient(
-          (current) => ({
-            ...response.data
-              .patient,
-            cuenta:
-              response.data
-                .patient.cuenta ??
-              current?.cuenta,
-          })
-        );
-
-        setEditing(false);
-
-        setSuccess(
-          'Los datos del paciente se actualizaron correctamente.'
-        );
-      } catch (error) {
-        console.error(error);
-
-        setError(
-          authError(error)
-        );
-      } finally {
-        setSaving(false);
-      }
-    };
-
-  // Cancela la edición y restaura los datos originales.
-  const handleCancelEdit =
-    () => {
-      if (!patient) {
-        return;
-      }
-
-      setForm({
-        nombres:
-          patient.nombres,
-
-        apellidos:
-          patient.apellidos,
-
-        fecha_nacimiento:
-          patient.fecha_nacimiento,
-
-        sexo:
-          patient.sexo,
-
-        telefono:
-          patient.telefono,
-
-        email:
-          patient.email,
-
-        direccion:
-          patient.direccion,
-
-        localidad:
-          patient.localidad ?? '',
-
-        provincia:
-          patient.provincia ?? '',
-
-        codigo_postal:
-          patient.codigo_postal,
-
-        obra_social:
-          patient.obra_social,
-
-        numero_afiliado:
-          patient.numero_afiliado,
-
-        contacto_emergencia_nombre:
-          patient
-            .contacto_emergencia_nombre,
-
-        contacto_emergencia_telefono:
-          patient
-            .contacto_emergencia_telefono,
-      });
-
-      setEditing(false);
+    try {
+      setSaving(true);
+      setModalError('');
       setError('');
       setSuccess('');
-    };
 
-  // Solicita confirmación antes de cambiar el estado.
-  const handleStatusChange =
-    async () => {
-      if (!patient) {
-        return;
-      }
+      const response = await updatePatient(id, form);
 
-      setConfirmTarget(
-        patient
-      );
-    };
+      // Conserva los datos de cuenta si la actualización no los devuelve.
+      setPatient((current) => ({
+        ...response.data.patient,
+        cuenta: response.data.patient.cuenta ?? current?.cuenta,
+      }));
+
+      setEditModalOpen(false);
+      setSuccess('Los datos del paciente se actualizaron correctamente.');
+    } catch (err) {
+      console.error(err);
+      setModalError(authError(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Solicita confirmación antes de cambiar el estado de activación.
+  const handleStatusChange = () => {
+    if (!patient) return;
+    setConfirmTarget(patient);
+  };
 
   // Activa o desactiva al paciente.
-  const confirmStatusChange =
-    async () => {
-      if (!confirmTarget) {
-        return;
-      }
+  const confirmStatusChange = async () => {
+    if (!confirmTarget) return;
 
-      try {
-        setConfirming(true);
-        setError('');
-        setSuccess('');
+    try {
+      setConfirming(true);
+      setError('');
+      setSuccess('');
 
-        const response =
-          await updatePatientStatus(
-            confirmTarget
-              .id_paciente,
-            !confirmTarget.activo
-          );
+      const response = await updatePatientStatus(
+        confirmTarget.id_paciente,
+        !confirmTarget.activo
+      );
 
-        // Conserva los datos de cuenta si la respuesta no los incluye.
-        setPatient(
-          (current) => ({
-            ...response.data
-              .patient,
-            cuenta:
-              response.data
-                .patient.cuenta ??
-              current?.cuenta,
-          })
-        );
+      // Conserva los datos de cuenta si la respuesta no los incluye.
+      setPatient((current) => ({
+        ...response.data.patient,
+        cuenta: response.data.patient.cuenta ?? current?.cuenta,
+      }));
 
-        setConfirmTarget(
-          null
-        );
-
-        setSuccess(
-          `Paciente ${
-            response.data.patient
-              .activo
-              ? 'activado'
-              : 'desactivado'
-          } correctamente.`
-        );
-      } catch (error) {
-        console.error(error);
-
-        setError(
-          'No se pudo actualizar el estado del paciente.'
-        );
-      } finally {
-        setConfirming(false);
-      }
-    };
+      const isActivo = response.data.patient.activo;
+      setConfirmTarget(null);
+      setSuccess(`Paciente ${isActivo ? 'activado' : 'desactivado'} correctamente.`);
+    } catch (err) {
+      console.error(err);
+      setError('No se pudo actualizar el estado del paciente.');
+    } finally {
+      setConfirming(false);
+    }
+  };
 
   // Muestra un indicador mientras se carga el paciente.
   if (loading && !patient) {
     return (
       <div className="text-center py-5">
-        <div
-          className="spinner-border text-success"
-          role="status"
-        >
-          <span className="visually-hidden">
-            Cargando...
-          </span>
+        <div className="spinner-border text-success" role="status">
+          <span className="visually-hidden">Cargando...</span>
         </div>
       </div>
     );
@@ -417,20 +247,15 @@ const PacienteDetallePage = () => {
   // Muestra el error cuando el paciente no existe.
   if (!patient) {
     return (
-      <div>
-        <div className="alert alert-danger">
-          {error ||
-            'Paciente no encontrado.'}
+      <div className="container py-4">
+        <div className="alert alert-danger" role="alert">
+          {error || 'Paciente no encontrado.'}
         </div>
 
         <button
           type="button"
           className="btn btn-saps"
-          onClick={() =>
-            navigate(
-              '/pacientes'
-            )
-          }
+          onClick={() => navigate('/pacientes')}
         >
           <i className="bi bi-arrow-left me-2" />
           Volver a pacientes
@@ -439,52 +264,32 @@ const PacienteDetallePage = () => {
     );
   }
 
+  const assignedSalita = salitas.find((s) => s.id_salita === patient.id_salita_asignada);
+  const declaredBarrio = barrios.find((b) => b.id_barrio === patient.id_barrio);
+  const age = calculateAge(patient.fecha_nacimiento);
+
   return (
-    <div>
-      <ConfirmationModal
-        open={saveConfirmOpen}
-        title="Guardar cambios"
-        subtitle="Esta acción requiere confirmación."
-        message="¿Querés guardar los cambios del paciente?"
-        detail={
-          <>
-            <div className="fw-semibold">
-              {patient.apellidos},{' '}
-              {patient.nombres}
-            </div>
+    <div className="patient-detail-page pb-5">
+      {/* Modal de edición */}
+      {editModalOpen && (
+        <PatientEditModal
+          open={editModalOpen}
+          patient={patient}
+          saving={saving}
+          error={modalError}
+          onClose={() => {
+            setEditModalOpen(false);
+            setModalError('');
+          }}
+          onSave={handleSavePatient}
+        />
+      )}
 
-            <div className="text-muted small mt-1">
-              DNI: {patient.dni}
-            </div>
-          </>
-        }
-        confirmText="Guardar cambios"
-        cancelText="Cancelar"
-        variant="primary"
-        icon="bi-check-lg"
-        loading={saving}
-        onClose={() =>
-          setSaveConfirmOpen(
-            false
-          )
-        }
-        onConfirm={() => {
-          setSaveConfirmOpen(
-            false
-          );
-
-          void handleSave();
-        }}
-      />
-
+      {/* Modal de confirmación para activar/desactivar */}
       {confirmTarget && (
         <ConfirmationModal
           open
-          title={
-            confirmTarget.activo
-              ? 'Desactivar paciente'
-              : 'Activar paciente'
-          }
+          title={confirmTarget.activo ? 'Desactivar paciente' : 'Activar paciente'}
           subtitle="Esta acción requiere confirmación."
           message={
             confirmTarget.activo
@@ -494,151 +299,24 @@ const PacienteDetallePage = () => {
           detail={
             <>
               <div className="fw-semibold">
-                {
-                  confirmTarget.apellidos
-                }
-                ,{' '}
-                {
-                  confirmTarget.nombres
-                }
+                {confirmTarget.apellidos}, {confirmTarget.nombres}
               </div>
-
               <div className="text-muted small mt-1">
-                DNI:{' '}
-                {
-                  confirmTarget.dni
-                }
+                DNI: {confirmTarget.dni}
               </div>
             </>
           }
-          confirmText={
-            confirmTarget.activo
-              ? 'Desactivar paciente'
-              : 'Activar paciente'
-          }
+          confirmText={confirmTarget.activo ? 'Desactivar paciente' : 'Activar paciente'}
           cancelText="Cancelar"
-          variant={
-            confirmTarget.activo
-              ? 'danger'
-              : 'success'
-          }
-          icon={
-            confirmTarget.activo
-              ? 'bi-person-dash'
-              : 'bi-person-check'
-          }
-          loading={
-            confirming
-          }
-          onClose={() =>
-            setConfirmTarget(
-              null
-            )
-          }
-          onConfirm={() =>
-            void confirmStatusChange()
-          }
+          variant={confirmTarget.activo ? 'danger' : 'success'}
+          icon={confirmTarget.activo ? 'bi-person-dash' : 'bi-person-check'}
+          loading={confirming}
+          onClose={() => setConfirmTarget(null)}
+          onConfirm={() => void confirmStatusChange()}
         />
       )}
 
-      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
-        <div>
-          <button
-            type="button"
-            className="btn btn-outline-secondary mb-2"
-            onClick={() =>
-              navigate(
-                '/pacientes'
-              )
-            }
-          >
-            <i className="bi bi-arrow-left me-2" />
-            Volver a pacientes
-          </button>
-
-          <div className="d-flex align-items-center gap-3">
-            <h2 className="fw-bold mb-1">
-              {patient.apellidos},{' '}
-              {patient.nombres}
-            </h2>
-            <ConnectionStatusBadge />
-            {refreshing && (
-              <span
-                className="spinner-border spinner-border-sm text-secondary"
-                role="status"
-                title="Actualizando datos en segundo plano..."
-              />
-            )}
-          </div>
-
-          <p className="text-muted mb-0">
-            DNI: {patient.dni}
-          </p>
-        </div>
-
-        <div className="d-flex flex-wrap gap-2">
-          {/* TURNOS DEL PACIENTE */}
-          <Link
-            to={`/turnos?search=${patient.dni}`}
-            className="btn btn-outline-secondary"
-            title="Ver agenda y turnos del paciente"
-          >
-            <i className="bi bi-calendar3 me-2" />
-            Turnos
-          </Link>
-
-          {/* HISTORIA CLÍNICA SI TIENE PERMISO */}
-          {permissions.includes('VER_HISTORIA_CLINICA') && (
-            <Link
-              to={`/historia-clinica/pacientes/${patient.id_paciente}?salita=${encodeURIComponent(patient.id_salita_asignada)}`}
-              className="btn btn-outline-success"
-              title="Consultar historia clínica del paciente"
-            >
-              <i className="bi bi-journal-medical me-2" />
-              Historia clínica
-            </Link>
-          )}
-
-          <button
-            type="button"
-            className="btn btn-outline-primary"
-            onClick={() => {
-              setEditing(true);
-              setSuccess('');
-              setError('');
-            }}
-            disabled={editing}
-          >
-            <i className="bi bi-pencil me-2" />
-            Editar
-          </button>
-
-          <button
-            type="button"
-            className={`btn ${
-              patient.activo
-                ? 'btn-outline-danger'
-                : 'btn-outline-success'
-            }`}
-            onClick={() =>
-              void handleStatusChange()
-            }
-          >
-            <i
-              className={`bi ${
-                patient.activo
-                  ? 'bi-person-dash'
-                  : 'bi-person-check'
-              } me-2`}
-            />
-
-            {patient.activo
-              ? 'Desactivar'
-              : 'Activar'}
-          </button>
-        </div>
-      </div>
-
+      {/* Feedbacks flotantes */}
       {error && (
         <FloatingFeedbackToast
           variant="error"
@@ -655,574 +333,317 @@ const PacienteDetallePage = () => {
         />
       )}
 
-      {/* COBERTURA Y SALITA ASIGNADA */}
-      <div className="card border-0 shadow-sm mb-4">
-        <div className="card-header bg-white py-3">
-          <h5 className="mb-0 fw-bold">
-            <i className="bi bi-geo-alt me-2 text-success" />
+      {/* SECCIÓN 1: ENCABEZADO Y JERARQUÍA DE ACCIONES */}
+      <div className="mb-4">
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 mb-3"
+          onClick={() => navigate('/pacientes')}
+        >
+          <i className="bi bi-arrow-left" />
+          Volver a pacientes
+        </button>
+
+        <div className="d-flex flex-wrap align-items-start justify-content-between gap-3">
+          <div>
+            <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
+              <h2 className="fw-bold mb-0 text-dark">
+                {patient.apellidos}, {patient.nombres}
+              </h2>
+
+              <span
+                className={`badge rounded-pill ${
+                  patient.activo
+                    ? 'bg-success-subtle text-success border border-success-subtle'
+                    : 'bg-danger-subtle text-danger border border-danger-subtle'
+                }`}
+              >
+                <i className={`bi ${patient.activo ? 'bi-check-circle-fill' : 'bi-slash-circle'} me-1`} />
+                {patient.activo ? 'Activo' : 'Inactivo'}
+              </span>
+
+              <ConnectionStatusBadge />
+
+              {refreshing && (
+                <span
+                  className="spinner-border spinner-border-sm text-secondary"
+                  role="status"
+                  title="Actualizando datos en segundo plano..."
+                />
+              )}
+            </div>
+
+            <div className="text-muted small d-flex flex-wrap align-items-center gap-3">
+              <span>
+                <strong className="text-dark">DNI:</strong> {patient.dni}
+              </span>
+              {patient.id_paciente && (
+                <span className="text-muted">
+                  Ref: #{patient.id_paciente.replace(/-/g, '').slice(-6).toUpperCase()}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Acciones principales organizadas */}
+          <div className="d-flex flex-wrap align-items-center gap-2">
+            {/* Historia clínica - Prioridad de atención médica */}
+            {permissions.includes('VER_HISTORIA_CLINICA') && (
+              <Link
+                to={`/historia-clinica/pacientes/${patient.id_paciente}?salita=${encodeURIComponent(patient.id_salita_asignada)}`}
+                className="btn btn-success d-inline-flex align-items-center gap-2 shadow-sm"
+                title="Consultar historia clínica del paciente"
+              >
+                <i className="bi bi-journal-medical" />
+                <span>Historia clínica</span>
+              </Link>
+            )}
+
+            {/* Turnos del paciente */}
+            <Link
+              to={`/turnos?search=${patient.dni}`}
+              className="btn btn-outline-success d-inline-flex align-items-center gap-2"
+              title="Ver agenda y turnos del paciente"
+            >
+              <i className="bi bi-calendar3" />
+              <span>Turnos</span>
+            </Link>
+
+            {/* Editar paciente */}
+            <button
+              type="button"
+              className="btn btn-outline-primary d-inline-flex align-items-center gap-2"
+              onClick={() => {
+                setModalError('');
+                setEditModalOpen(true);
+              }}
+              title="Editar datos del paciente"
+            >
+              <i className="bi bi-pencil" />
+              <span>Editar paciente</span>
+            </button>
+
+            {/* Desactivar / Activar - Acción administrativa discreta */}
+            <button
+              type="button"
+              className={`btn btn-sm ${
+                patient.activo
+                  ? 'btn-outline-danger'
+                  : 'btn-outline-success'
+              } d-inline-flex align-items-center gap-1 ms-lg-2`}
+              onClick={handleStatusChange}
+              title={patient.activo ? 'Desactivar paciente' : 'Activar paciente'}
+            >
+              <i className={`bi ${patient.activo ? 'bi-person-dash' : 'bi-person-check'}`} />
+              <span>{patient.activo ? 'Desactivar' : 'Activar'}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* SECCIÓN 2: INFORMACIÓN PERSONAL Y DE CONTACTO */}
+      <section className="card border-0 shadow-sm mb-4">
+        <div className="card-header bg-white py-3 border-bottom">
+          <h5 className="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
+            <i className="bi bi-person text-success" />
+            Información personal y de contacto
+          </h5>
+        </div>
+
+        <div className="card-body">
+          <div className="row g-3">
+            <div className="col-sm-6 col-md-3">
+              <span className="text-muted small d-block mb-1">DNI</span>
+              <span className="fw-semibold text-dark">{patient.dni}</span>
+            </div>
+
+            <div className="col-sm-6 col-md-3">
+              <span className="text-muted small d-block mb-1">Fecha de nacimiento</span>
+              <span className="fw-semibold text-dark">
+                {formatFecha(patient.fecha_nacimiento)}
+                {age !== null && (
+                  <span className="text-muted fw-normal small ms-1.5">
+                    ({age} {age === 1 ? 'año' : 'años'})
+                  </span>
+                )}
+              </span>
+            </div>
+
+            <div className="col-sm-6 col-md-3">
+              <span className="text-muted small d-block mb-1">Sexo</span>
+              <span className="fw-semibold text-dark">{formatSexo(patient.sexo)}</span>
+            </div>
+
+            <div className="col-sm-6 col-md-3">
+              <span className="text-muted small d-block mb-1">Teléfono</span>
+              {patient.telefono ? (
+                <a
+                  href={`tel:${patient.telefono}`}
+                  className="fw-semibold text-decoration-none text-dark d-inline-flex align-items-center gap-1"
+                >
+                  <i className="bi bi-telephone text-success small" />
+                  {patient.telefono}
+                </a>
+              ) : (
+                <span className="text-muted">No informado</span>
+              )}
+            </div>
+
+            <div className="col-sm-6 col-md-4">
+              <span className="text-muted small d-block mb-1">Correo electrónico</span>
+              {patient.email ? (
+                <a
+                  href={`mailto:${patient.email}`}
+                  className="fw-semibold text-decoration-none text-primary d-inline-flex align-items-center gap-1 text-break"
+                >
+                  <i className="bi bi-envelope text-primary small" />
+                  {patient.email}
+                </a>
+              ) : (
+                <span className="text-muted">No informado</span>
+              )}
+            </div>
+
+            <div className="col-sm-6 col-md-4">
+              <span className="text-muted small d-block mb-1">Dirección</span>
+              <span className="fw-semibold text-dark">
+                {patient.direccion || <span className="text-muted fw-normal">No informada</span>}
+              </span>
+            </div>
+
+            <div className="col-sm-6 col-md-4">
+              <span className="text-muted small d-block mb-1">Localidad y provincia</span>
+              <span className="fw-semibold text-dark">
+                {patient.localidad || patient.provincia ? (
+                  `${patient.localidad || ''}${patient.localidad && patient.provincia ? ', ' : ''}${patient.provincia || ''}${patient.codigo_postal ? ` (CP ${patient.codigo_postal})` : ''}`
+                ) : (
+                  <span className="text-muted fw-normal">No informada</span>
+                )}
+              </span>
+            </div>
+
+            <div className="col-12 border-top pt-3 mt-3">
+              <span className="text-muted small d-block mb-1">Contacto de emergencia</span>
+              {patient.contacto_emergencia_nombre || patient.contacto_emergencia_telefono ? (
+                <div className="p-2.5 px-3 bg-light rounded-3 border d-inline-flex flex-wrap align-items-center gap-2">
+                  <i className="bi bi-telephone-plus text-danger" />
+                  <span className="fw-semibold text-dark">
+                    {patient.contacto_emergencia_nombre || 'Contacto designado'}
+                  </span>
+                  {patient.contacto_emergencia_telefono && (
+                    <>
+                      <span className="text-muted">·</span>
+                      <a
+                        href={`tel:${patient.contacto_emergencia_telefono}`}
+                        className="text-decoration-none text-dark fw-medium"
+                      >
+                        {patient.contacto_emergencia_telefono}
+                      </a>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <span className="text-muted small">Sin contacto de emergencia registrado</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SECCIÓN 3: INFORMACIÓN SANITARIA */}
+      <section className="card border-0 shadow-sm mb-4">
+        <div className="card-header bg-white py-3 border-bottom">
+          <h5 className="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
+            <i className="bi bi-clipboard2-pulse text-success" />
+            Información sanitaria
+          </h5>
+        </div>
+
+        <div className="card-body">
+          <div className="row g-3">
+            <div className="col-md-4">
+              <span className="text-muted small d-block mb-1">Obra social / Cobertura</span>
+              <div className="p-2.5 px-3 bg-light rounded-3 border fw-semibold text-dark">
+                <i className="bi bi-shield-check text-success me-2" />
+                {patient.obra_social || 'Pública / Sin obra social declarada'}
+              </div>
+            </div>
+
+            <div className="col-md-4">
+              <span className="text-muted small d-block mb-1">Número de afiliado</span>
+              <div className="p-2.5 px-3 bg-light rounded-3 border fw-semibold text-dark">
+                <i className="bi bi-card-text text-secondary me-2" />
+                {patient.numero_afiliado || <span className="text-muted fw-normal">No informado</span>}
+              </div>
+            </div>
+
+            <div className="col-md-4">
+              <span className="text-muted small d-block mb-1">Salita de cabecera</span>
+              <div className="p-2.5 px-3 bg-light rounded-3 border fw-semibold text-dark">
+                <i className="bi bi-hospital text-success me-2" />
+                {assignedSalita?.nombre || 'Salita asignada'}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SECCIÓN 4: COBERTURA TERRITORIAL Y SALITA ASIGNADA */}
+      <section className="card border-0 shadow-sm mb-4">
+        <div className="card-header bg-white py-3 border-bottom">
+          <h5 className="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
+            <i className="bi bi-geo-alt text-success" />
             Cobertura territorial y salita asignada
           </h5>
         </div>
+
         <div className="card-body">
           <div className="row g-3">
             <div className="col-md-6">
               <label className="form-label text-muted small mb-1">Salita asignada de cabecera</label>
-              <div className="p-2 px-3 bg-light rounded border fw-semibold text-dark">
-                <i className="bi bi-hospital me-2 text-success" />
-                {salitas.find((s) => s.id_salita === patient.id_salita_asignada)?.nombre || 'Salita asignada'}
-                {salitas.find((s) => s.id_salita === patient.id_salita_asignada)?.direccion && (
-                  <span className="text-muted fw-normal small d-block mt-1">
-                    Dirección: {salitas.find((s) => s.id_salita === patient.id_salita_asignada)?.direccion}
-                  </span>
+              <div className="p-3 bg-light rounded-3 border text-dark">
+                <div className="fw-semibold d-flex align-items-center gap-2 mb-1">
+                  <i className="bi bi-hospital text-success fs-5" />
+                  <span>{assignedSalita?.nombre || 'Salita asignada'}</span>
+                </div>
+                {assignedSalita?.direccion ? (
+                  <div className="text-muted small ps-4">
+                    Dirección: {assignedSalita.direccion}
+                  </div>
+                ) : (
+                  <div className="text-muted small ps-4">
+                    Centro de atención primaria municipal
+                  </div>
                 )}
               </div>
             </div>
+
             <div className="col-md-6">
               <label className="form-label text-muted small mb-1">Barrio declarado</label>
-              <div className="p-2 px-3 bg-light rounded border fw-semibold text-dark">
-                <i className="bi bi-pin-map me-2 text-primary" />
-                {barrios.find((b) => b.id_barrio === patient.id_barrio)?.nombre || 'Barrio declarado'}
+              <div className="p-3 bg-light rounded-3 border text-dark">
+                <div className="fw-semibold d-flex align-items-center gap-2 mb-1">
+                  <i className="bi bi-pin-map text-primary fs-5" />
+                  <span>{declaredBarrio?.nombre || 'Barrio declarado'}</span>
+                </div>
+                <div className="text-muted small ps-4">
+                  Zona de cobertura sanitaria municipal de Corrientes
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <PatientAccountPanel key={patient.id_paciente} patient={patient} onLinked={() => void loadPatient()} />
+      {/* SECCIÓN 5: CUENTA DIGITAL DEL PACIENTE (Única instancia) */}
+      <PatientAccountPanel
+        patient={patient}
+        onLinked={() => void loadPatient(true)}
+      />
 
-      <PatientTutorsPanel key={patient.id_paciente} patientId={patient.id_paciente} />
-      <div className="card border-0 shadow-sm mb-4">
-        <div className="card-header bg-white py-3">
-          <h5 className="mb-0 fw-bold">
-            <i className="bi bi-person me-2 text-success" />
-            Datos personales
-          </h5>
-        </div>
-
-        <div className="card-body">
-          <div className="row g-3">
-            <div className="col-md-4">
-              <label className="form-label">
-                DNI
-              </label>
-
-              <input
-                type="text"
-                className="form-control"
-                value={
-                  patient.dni
-                }
-                disabled
-              />
-            </div>
-
-            <div className="col-md-4">
-              <label className="form-label">
-                Nombres
-              </label>
-
-              <ValidatedInput
-                field="nombres"
-                type="text"
-                className="form-control"
-                disabled={
-                  !editing
-                }
-                value={
-                  form.nombres ??
-                  ''
-                }
-                onChange={(
-                  event
-                ) =>
-                  handleChange(
-                    'nombres',
-                    event.target
-                      .value
-                  )
-                }
-              />
-            </div>
-
-            <div className="col-md-4">
-              <label className="form-label">
-                Apellidos
-              </label>
-
-              <ValidatedInput
-                field="apellidos"
-                type="text"
-                className="form-control"
-                disabled={
-                  !editing
-                }
-                value={
-                  form.apellidos ??
-                  ''
-                }
-                onChange={(
-                  event
-                ) =>
-                  handleChange(
-                    'apellidos',
-                    event.target
-                      .value
-                  )
-                }
-              />
-            </div>
-
-            <div className="col-md-4">
-              <label className="form-label">
-                Fecha de
-                nacimiento
-              </label>
-
-              <ValidatedInput
-                field="fecha_nacimiento"
-                type="date"
-                className="form-control"
-                disabled={
-                  !editing
-                }
-                value={
-                  form.fecha_nacimiento ??
-                  ''
-                }
-                onChange={(
-                  event
-                ) =>
-                  handleChange(
-                    'fecha_nacimiento',
-                    event.target
-                      .value ||
-                      null
-                  )
-                }
-              />
-            </div>
-
-            <div className="col-md-4">
-              <label className="form-label">
-                Sexo
-              </label>
-
-              <select
-                className="form-select"
-                disabled={
-                  !editing
-                }
-                value={
-                  form.sexo ??
-                  ''
-                }
-                onChange={(
-                  event
-                ) =>
-                  handleChange(
-                    'sexo',
-                    event.target
-                      .value
-                      ? (
-                          event
-                            .target
-                            .value as PatientSex
-                        )
-                      : null
-                  )
-                }
-              >
-                <option value="">
-                  No informado
-                </option>
-
-                <option value="FEMENINO">
-                  Femenino
-                </option>
-
-                <option value="MASCULINO">
-                  Masculino
-                </option>
-
-                <option value="X">
-                  X
-                </option>
-
-                <option value="NO_INFORMA">
-                  No informa
-                </option>
-              </select>
-            </div>
-
-            <div className="col-md-4">
-              <label className="form-label">
-                Teléfono
-              </label>
-
-              <ValidatedInput
-                field="telefono"
-                type="text"
-                className="form-control"
-                disabled={
-                  !editing
-                }
-                value={
-                  form.telefono ??
-                  ''
-                }
-                onChange={(
-                  event
-                ) =>
-                  handleChange(
-                    'telefono',
-                    event.target
-                      .value ||
-                      null
-                  )
-                }
-              />
-            </div>
-
-            <div className="col-md-6">
-              <label className="form-label">
-                Email
-              </label>
-
-              <ValidatedInput
-                field="email"
-                type="email"
-                className="form-control"
-                disabled={
-                  !editing
-                }
-                value={
-                  form.email ??
-                  ''
-                }
-                onChange={(
-                  event
-                ) =>
-                  handleChange(
-                    'email',
-                    event.target
-                      .value ||
-                      null
-                  )
-                }
-              />
-            </div>
-
-            <div className="col-md-6">
-              <label className="form-label">
-                Dirección
-              </label>
-
-              <ValidatedInput
-                field="direccion"
-                type="text"
-                className="form-control"
-                disabled={
-                  !editing
-                }
-                value={
-                  form.direccion ??
-                  ''
-                }
-                onChange={(
-                  event
-                ) =>
-                  handleChange(
-                    'direccion',
-                    event.target
-                      .value ||
-                      null
-                  )
-                }
-              />
-            </div>
-
-            <div className="col-md-4">
-              <label className="form-label">
-                Localidad
-              </label>
-
-              <input
-                type="text"
-                className="form-control"
-                disabled={
-                  !editing
-                }
-                value={
-                  form.localidad ??
-                  ''
-                }
-                onChange={(
-                  event
-                ) =>
-                  handleChange(
-                    'localidad',
-                    event.target
-                      .value
-                  )
-                }
-              />
-            </div>
-
-            <div className="col-md-4">
-              <label className="form-label">
-                Provincia
-              </label>
-
-              <input
-                type="text"
-                className="form-control"
-                disabled={
-                  !editing
-                }
-                value={
-                  form.provincia ??
-                  ''
-                }
-                onChange={(
-                  event
-                ) =>
-                  handleChange(
-                    'provincia',
-                    event.target
-                      .value
-                  )
-                }
-              />
-            </div>
-
-            <div className="col-md-4">
-              <label className="form-label">
-                Código postal
-              </label>
-
-              <input
-                type="text"
-                className="form-control"
-                disabled={
-                  !editing
-                }
-                value={
-                  form.codigo_postal ??
-                  ''
-                }
-                onChange={(
-                  event
-                ) =>
-                  handleChange(
-                    'codigo_postal',
-                    event.target
-                      .value ||
-                      null
-                  )
-                }
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="card border-0 shadow-sm mb-4">
-        <div className="card-header bg-white py-3">
-          <h5 className="mb-0 fw-bold">
-            <i className="bi bi-clipboard2-pulse me-2 text-success" />
-            Datos del paciente
-          </h5>
-        </div>
-
-        <div className="card-body">
-          <div className="row g-3">
-            <div className="col-md-6">
-              <label className="form-label">
-                Obra social
-              </label>
-
-              <input
-                type="text"
-                className="form-control"
-                disabled={
-                  !editing
-                }
-                value={
-                  form.obra_social ??
-                  ''
-                }
-                onChange={(
-                  event
-                ) =>
-                  handleChange(
-                    'obra_social',
-                    event.target
-                      .value ||
-                      null
-                  )
-                }
-              />
-            </div>
-
-            <div className="col-md-6">
-              <label className="form-label">
-                Número de
-                afiliado
-              </label>
-
-              <input
-                type="text"
-                className="form-control"
-                disabled={
-                  !editing
-                }
-                value={
-                  form.numero_afiliado ??
-                  ''
-                }
-                onChange={(
-                  event
-                ) =>
-                  handleChange(
-                    'numero_afiliado',
-                    event.target
-                      .value ||
-                      null
-                  )
-                }
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="card border-0 shadow-sm mb-4">
-        <div className="card-header bg-white py-3">
-          <h5 className="mb-0 fw-bold">
-            <i className="bi bi-telephone me-2 text-success" />
-            Contacto de emergencia
-          </h5>
-        </div>
-
-        <div className="card-body">
-          <div className="row g-3">
-            <div className="col-md-6">
-              <label className="form-label">
-                Nombre
-              </label>
-
-              <ValidatedInput
-                field="contacto_emergencia_nombre"
-                type="text"
-                className="form-control"
-                disabled={
-                  !editing
-                }
-                value={
-                  form
-                    .contacto_emergencia_nombre ??
-                  ''
-                }
-                onChange={(
-                  event
-                ) =>
-                  handleChange(
-                    'contacto_emergencia_nombre',
-                    event.target
-                      .value ||
-                      null
-                  )
-                }
-              />
-            </div>
-
-            <div className="col-md-6">
-              <label className="form-label">
-                Teléfono
-              </label>
-
-              <ValidatedInput
-                field="contacto_emergencia_telefono"
-                type="text"
-                className="form-control"
-                disabled={
-                  !editing
-                }
-                value={
-                  form
-                    .contacto_emergencia_telefono ??
-                  ''
-                }
-                onChange={(
-                  event
-                ) =>
-                  handleChange(
-                    'contacto_emergencia_telefono',
-                    event.target
-                      .value ||
-                      null
-                  )
-                }
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {editing && (
-        <div className="d-flex justify-content-end gap-2 mb-4">
-          <button
-            type="button"
-            className="btn btn-outline-secondary"
-            onClick={
-              handleCancelEdit
-            }
-            disabled={saving}
-          >
-            Cancelar
-          </button>
-
-          <button
-            type="button"
-            className="btn btn-saps"
-            onClick={() => {
-              const validationError =
-                personFieldsError(
-                  form
-                );
-
-              setError(
-                validationError
-              );
-
-              if (
-                !validationError
-              ) {
-                setSaveConfirmOpen(
-                  true
-                );
-              }
-            }}
-            disabled={saving}
-          >
-            {saving ? (
-              <>
-                <span
-                  className="spinner-border spinner-border-sm me-2"
-                  role="status"
-                />
-
-                Guardando...
-              </>
-            ) : (
-              <>
-                <i className="bi bi-check-lg me-2" />
-                Guardar cambios
-              </>
-            )}
-          </button>
-        </div>
-      )}
+      {/* SECCIÓN 6: TUTORES Y REPRESENTANTES AUTORIZADOS */}
+      <PatientTutorsPanel
+        patientId={patient.id_paciente}
+      />
     </div>
   );
 };

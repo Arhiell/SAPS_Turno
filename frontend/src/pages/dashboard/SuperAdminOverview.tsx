@@ -1,18 +1,36 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { getDashboardSummary, type DashboardSummary } from '../../services/dashboard.service';
 import { authError } from '../../utils/auth-errors';
 
 const timeZone = 'America/Argentina/Buenos_Aires';
 const formatDateTime = (value: string) => new Date(value).toLocaleString('es-AR', { timeZone });
 const actions: Record<string, string> = { INSERT: 'Alta', UPDATE: 'Modificación', DELETE: 'Baja' };
+const actionBadges: Record<string, string> = {
+  INSERT: 'bg-success-subtle text-success border border-success-subtle',
+  UPDATE: 'bg-primary-subtle text-primary border border-primary-subtle',
+  DELETE: 'bg-danger-subtle text-danger border border-danger-subtle',
+};
 const entities: Record<string, string> = {
-  personas: 'personas', usuarios: 'cuentas', salitas: 'salitas', pacientes: 'pacientes',
-  profesionales: 'profesionales', turnos: 'turnos', horarios_atencion: 'horarios',
-  bloqueos_agenda: 'bloqueos de agenda', sanciones: 'sanciones', tutores: 'tutores',
+  personas: 'personas',
+  usuarios: 'cuentas',
+  salitas: 'salitas',
+  pacientes: 'pacientes',
+  profesionales: 'profesionales',
+  turnos: 'turnos',
+  horarios_atencion: 'horarios',
+  bloqueos_agenda: 'bloqueos de agenda',
+  sanciones: 'sanciones',
+  tutores: 'tutores',
   paciente_tutores: 'vínculos de tutores',
 };
 
-export default function SuperAdminOverview({ revision, onRefresh }: { revision: number; onRefresh: () => void }) {
+export default function SuperAdminOverview({
+  revision,
+}: {
+  revision: number;
+  onRefresh?: () => void;
+}) {
   const [data, setData] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -21,90 +39,286 @@ export default function SuperAdminOverview({ revision, onRefresh }: { revision: 
     let active = true;
     setLoading(true);
     setError('');
-    void getDashboardSummary().then(result => {
-      if (active) setData(result);
-    }).catch(cause => {
-      if (active) setError(authError(cause));
-    }).finally(() => {
-      if (active) setLoading(false);
-    });
-    return () => { active = false; };
+    void getDashboardSummary()
+      .then((result) => {
+        if (active) setData(result);
+      })
+      .catch((cause) => {
+        if (active) setError(authError(cause));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [revision]);
 
   const available = !loading && !error && data;
+
   const totals = [
-    { label: 'Salitas', value: data?.salitas, icon: 'bi-hospital' },
-    { label: 'Administradores de salita', value: data?.administradores, icon: 'bi-person-gear' },
-    { label: 'Superadministradores', value: data?.superadministradores, icon: 'bi-shield-check' },
-    { label: 'Profesionales', value: data?.profesionales, icon: 'bi-person-badge' },
-    { label: 'Pacientes', value: data?.pacientes, icon: 'bi-people' },
+    {
+      label: 'Salitas municipales',
+      value: data?.salitas,
+      icon: 'bi-hospital',
+      cardModifier: 'dashboard-stat-card--green',
+      iconModifier: 'dashboard-stat-icon--green',
+    },
+    {
+      label: 'Administradores de salita',
+      value: data?.administradores,
+      icon: 'bi-person-gear',
+      cardModifier: 'dashboard-stat-card--blue',
+      iconModifier: 'dashboard-stat-icon--blue',
+    },
+    {
+      label: 'Superadministradores',
+      value: data?.superadministradores,
+      icon: 'bi-shield-check',
+      cardModifier: 'dashboard-stat-card--slate',
+      iconModifier: 'dashboard-stat-icon--slate',
+    },
+    {
+      label: 'Profesionales de salud',
+      value: data?.profesionales,
+      icon: 'bi-person-badge',
+      cardModifier: 'dashboard-stat-card--green',
+      iconModifier: 'dashboard-stat-icon--green',
+    },
+    {
+      label: 'Pacientes registrados',
+      value: data?.pacientes,
+      icon: 'bi-people',
+      cardModifier: 'dashboard-stat-card--blue',
+      iconModifier: 'dashboard-stat-icon--blue',
+    },
   ];
+
   const states = data?.turnos.por_estado;
+
   const daily = [
-    { label: 'Turnos registrados hoy', value: data?.turnos.registrados_hoy, description: 'Reservas creadas hoy, para cualquier fecha', icon: 'bi-calendar-plus' },
-    { label: 'Turnos programados para hoy', value: data?.turnos.programados_hoy, description: 'Citas con fecha de atención de hoy', icon: 'bi-calendar-check' },
-    { label: 'Pendientes de atención', value: data?.turnos.pendientes, description: available ? `${states?.SOLICITADO} solicitados · ${states?.CONFIRMADO} confirmados · ${states?.EN_ESPERA} en espera` : '', icon: 'bi-clock' },
-    { label: 'Atendidos hoy', value: states?.ATENDIDO, description: 'Citas programadas para hoy', icon: 'bi-check2-circle' },
-    { label: 'Cancelados', value: states?.CANCELADO, description: 'Citas programadas para hoy', icon: 'bi-calendar-x' },
-    { label: 'Inasistencias hoy', value: states?.NO_ASISTIO, description: 'Citas programadas para hoy', icon: 'bi-person-x' },
-    { label: 'Reprogramados', value: states?.REPROGRAMADO, description: 'Citas originales programadas para hoy', icon: 'bi-arrow-repeat' },
+    {
+      label: 'Turnos registrados hoy',
+      value: data?.turnos.registrados_hoy,
+      description: 'Nuevas reservas creadas en el día',
+      icon: 'bi-calendar-plus',
+      cardModifier: 'dashboard-stat-card--blue',
+      iconModifier: 'dashboard-stat-icon--blue',
+    },
+    {
+      label: 'Programados para hoy',
+      value: data?.turnos.programados_hoy,
+      description: 'Citas con atención fijada para hoy',
+      icon: 'bi-calendar-check',
+      cardModifier: 'dashboard-stat-card--blue',
+      iconModifier: 'dashboard-stat-icon--blue',
+    },
+    {
+      label: 'Pendientes de atención',
+      value: data?.turnos.pendientes,
+      description: available
+        ? `${states?.SOLICITADO ?? 0} solicitados · ${states?.CONFIRMADO ?? 0} confirmados · ${states?.EN_ESPERA ?? 0} en espera`
+        : '',
+      icon: 'bi-hourglass-split',
+      cardModifier: 'dashboard-stat-card--amber',
+      iconModifier: 'dashboard-stat-icon--amber',
+    },
+    {
+      label: 'Atendidos hoy',
+      value: states?.ATENDIDO,
+      description: 'Consultas médicas completadas',
+      icon: 'bi-check2-circle',
+      cardModifier: 'dashboard-stat-card--green',
+      iconModifier: 'dashboard-stat-icon--green',
+    },
+    {
+      label: 'Cancelados',
+      value: states?.CANCELADO,
+      description: 'Citas canceladas del día',
+      icon: 'bi-calendar-x',
+      cardModifier: 'dashboard-stat-card--coral',
+      iconModifier: 'dashboard-stat-icon--coral',
+    },
+    {
+      label: 'Inasistencias registradas',
+      value: states?.NO_ASISTIO,
+      description: 'Turnos donde el paciente no asistió',
+      icon: 'bi-person-x',
+      cardModifier: 'dashboard-stat-card--coral',
+      iconModifier: 'dashboard-stat-icon--coral',
+    },
+    {
+      label: 'Reprogramados',
+      value: states?.REPROGRAMADO,
+      description: 'Turnos reasignados a otra fecha',
+      icon: 'bi-arrow-repeat',
+      cardModifier: 'dashboard-stat-card--slate',
+      iconModifier: 'dashboard-stat-icon--slate',
+    },
   ];
 
   return (
     <div className="mb-4" aria-busy={loading}>
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+      {/* Encabezado ejecutivo */}
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 pb-3 border-bottom">
         <div>
-          <h2 className="h5 mb-1">Estado general del sistema</h2>
+          <div className="d-flex align-items-center gap-2 mb-1">
+            <span className="badge bg-primary text-white px-2 py-1">
+              <i className="bi bi-shield-check me-1" aria-hidden="true" />
+              Superadministración
+            </span>
+            <span className="fw-bold text-dark fs-5">
+              Panel general del sistema de salud
+            </span>
+          </div>
           <small className="text-muted">
-            {loading ? 'Cargando indicadores…' : error ? 'Indicadores no disponibles' : data ? `Última actualización: ${formatDateTime(data.actualizado_en)} · Hora de Argentina` : ''}
+            {loading
+              ? 'Cargando indicadores globales…'
+              : error
+                ? 'Indicadores no disponibles'
+                : data
+                  ? `Última sincronización: ${formatDateTime(data.actualizado_en)} · Red municipal CORA`
+                  : ''}
           </small>
         </div>
-        <button className="btn btn-outline-success" disabled={loading} onClick={onRefresh}>
-          <i className="bi bi-arrow-clockwise me-2" aria-hidden="true" />Actualizar
-        </button>
       </div>
-      {loading && <p role="status">Cargando resumen del sistema…</p>}
-      {error && <div className="alert alert-danger" role="alert">No se pudo cargar el resumen. {error} Usá Actualizar para reintentar.</div>}
+
+      {error && (
+        <div className="alert alert-danger mb-4" role="alert">
+          <i className="bi bi-exclamation-triangle-fill me-2" />
+          No se pudo cargar el resumen. {error}
+        </div>
+      )}
+
+      {/* Accesos rápidos de superadministración */}
+      <div className="d-flex flex-wrap gap-2 mb-4">
+        <Link to="/salitas/nueva" className="btn btn-sm btn-success d-inline-flex align-items-center gap-1">
+          <i className="bi bi-hospital" />
+          Nueva salita
+        </Link>
+        <Link to="/administracion" className="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1">
+          <i className="bi bi-person-lock" />
+          Cuentas de acceso
+        </Link>
+        <Link to="/profesionales/nuevo" className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1">
+          <i className="bi bi-person-plus" />
+          Nuevo profesional
+        </Link>
+        <Link to="/reportes" className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 ms-auto">
+          <i className="bi bi-bar-chart" />
+          Ver reportes globales
+        </Link>
+      </div>
+
+      {/* Totales estructurales del sistema */}
+      <h2 className="h6 fw-bold text-dark text-uppercase letter-spacing-1 mb-3">
+        <i className="bi bi-building me-2 text-success" />
+        Capacidad y recursos instalados
+      </h2>
       <div className="row g-3 mb-4">
-        {totals.map(item => (
-          <div className="col-12 col-sm-6 col-xl-4" key={item.label}>
-            <div className="dashboard-stat-card h-100">
+        {totals.map((item) => (
+          <div className="col-12 col-sm-6 col-xl" key={item.label}>
+            <div className={`dashboard-stat-card ${item.cardModifier} h-100`}>
               <div className="dashboard-stat-top">
-                <i className={`dashboard-stat-icon bi ${item.icon}`} aria-hidden="true" />
+                <div className={`dashboard-stat-icon ${item.iconModifier}`}>
+                  <i className={`bi ${item.icon}`} aria-hidden="true" />
+                </div>
                 <span className="dashboard-stat-label">{item.label}</span>
               </div>
-              <div className="dashboard-stat-value">{available ? item.value?.total : '—'}</div>
-              <small>{available ? `${item.value?.activos} activos · ${item.value?.inactivos} inactivos` : loading ? 'Cargando' : 'No disponible'}</small>
+              <div className="dashboard-stat-value">
+                {available ? item.value?.total : '—'}
+              </div>
+              <small>
+                {available
+                  ? `${item.value?.activos} activos · ${item.value?.inactivos} inactivos`
+                  : loading
+                    ? 'Cargando…'
+                    : 'No disponible'}
+              </small>
             </div>
           </div>
         ))}
       </div>
-      <h2 className="h5 mb-3">Turnos del día{available ? ` · ${data.fecha.split('-').reverse().join('/')}` : ''}</h2>
+
+      {/* Turnos del día */}
+      <div className="d-flex align-items-center justify-content-between mb-3">
+        <h2 className="h6 fw-bold text-dark text-uppercase letter-spacing-1 mb-0">
+          <i className="bi bi-calendar3 me-2 text-success" />
+          Turnos del día {available ? `· ${data.fecha.split('-').reverse().join('/')}` : ''}
+        </h2>
+        <Link to="/turnos" className="small text-success text-decoration-none fw-semibold">
+          Ver agenda global <i className="bi bi-arrow-right" />
+        </Link>
+      </div>
       <div className="row g-3 mb-4">
-        {daily.map(item => (
+        {daily.map((item) => (
           <div className="col-12 col-sm-6 col-xl-3" key={item.label}>
-            <div className="dashboard-stat-card h-100">
+            <div className={`dashboard-stat-card ${item.cardModifier} h-100`}>
               <div className="dashboard-stat-top">
-                <i className={`dashboard-stat-icon bi ${item.icon}`} aria-hidden="true" />
+                <div className={`dashboard-stat-icon ${item.iconModifier}`}>
+                  <i className={`bi ${item.icon}`} aria-hidden="true" />
+                </div>
                 <span className="dashboard-stat-label">{item.label}</span>
               </div>
-              <div className="dashboard-stat-value">{available ? item.value : '—'}</div>
-              <small>{available ? item.description : loading ? 'Cargando' : 'No disponible'}</small>
+              <div className="dashboard-stat-value">
+                {available ? item.value ?? '—' : '—'}
+              </div>
+              <small>
+                {available ? item.description : loading ? 'Cargando…' : 'No disponible'}
+              </small>
             </div>
           </div>
         ))}
       </div>
-      <section className="dashboard-panel">
-        <div className="dashboard-panel-header"><h2>Actividad reciente</h2></div>
-        {available && (data.actividad.disponible ? (
-          data.actividad.data.length ? <ul className="list-group list-group-flush">
-            {data.actividad.data.map(item => <li className="list-group-item d-flex flex-wrap justify-content-between gap-2" key={item.id_auditoria}>
-              <span>{actions[item.accion] ?? item.accion} en {entities[item.entidad] ?? item.entidad}</span>
-              <small className="text-muted">{formatDateTime(item.fecha)}</small>
-            </li>)}
-          </ul> : <p className="p-3 mb-0">No hay actividad registrada.</p>
-        ) : <p className="p-3 mb-0 text-danger" role="alert">No se pudo consultar la actividad reciente. Usá Actualizar para reintentar.</p>)}
-        {!available && <p className="p-3 mb-0">{loading ? 'Cargando actividad reciente…' : 'Actividad no disponible.'}</p>}
+
+      {/* Actividad reciente auditada */}
+      <section className="card border-0 shadow-sm rounded-3">
+        <div className="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h3 className="h6 fw-bold mb-0 text-dark">
+            <i className="bi bi-clock-history me-2 text-success" />
+            Actividad reciente y auditoría del sistema
+          </h3>
+          <span className="badge bg-light text-muted border">Últimos eventos</span>
+        </div>
+        {available &&
+          (data.actividad.disponible ? (
+            data.actividad.data.length ? (
+              <ul className="list-group list-group-flush">
+                {data.actividad.data.map((item) => (
+                  <li
+                    className="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-2 py-3"
+                    key={item.id_auditoria}
+                  >
+                    <div className="d-flex align-items-center gap-2">
+                      <span className={`badge ${actionBadges[item.accion] ?? 'bg-secondary'}`}>
+                        {actions[item.accion] ?? item.accion}
+                      </span>
+                      <span className="fw-semibold text-dark">
+                        En {entities[item.entidad] ?? item.entidad}
+                      </span>
+                    </div>
+                    <small className="text-muted">
+                      <i className="bi bi-clock me-1" />
+                      {formatDateTime(item.fecha)}
+                    </small>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="p-4 text-center text-muted small">
+                No hay actividad reciente registrada en el registro de auditoría.
+              </div>
+            )
+          ) : (
+            <div className="p-4 text-center text-danger small" role="alert">
+              No se pudo consultar la actividad reciente. Usá Actualizar para reintentar.
+            </div>
+          ))}
+        {!available && (
+          <div className="p-4 text-center text-muted small">
+            {loading ? 'Cargando registro de actividad…' : 'Actividad no disponible.'}
+          </div>
+        )}
       </section>
     </div>
   );

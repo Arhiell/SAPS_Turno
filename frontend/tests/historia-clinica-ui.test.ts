@@ -37,10 +37,14 @@ test('getMenuForRole respeta permisos reales por rol en Historia Clínica y Audi
     false
   );
   assert.equal(
+    getMenuForRole('RECEPCION', []).some((i) => i.path.includes('historia-clinica')),
+    false
+  );
+  assert.equal(
     getMenuForRole('RECEPCION', ['VER_HISTORIA_CLINICA']).some((i) =>
       i.path.includes('historia-clinica')
     ),
-    false
+    true
   );
   assert.equal(
     getMenuForRole('PACIENTE', ['VER_HISTORIA_CLINICA']).some((i) =>

@@ -350,8 +350,10 @@
   .hc-tabs {
     flex-wrap: nowrap;
     overflow-x: auto;
-    padding-bottom: 4px;
+    padding-bottom: 6px;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    max-width: 100%;
   }
 
   .hc-tab-btn {

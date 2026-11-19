@@ -15,9 +15,9 @@ import { AppError } from '../utils/app-error.js';
 export const cierreScope = async (
   user: AuthenticatedUser
 ) => {
-  // Restringe el acceso a usuarios con roles administrativos.
+  // Restringe el acceso a usuarios con roles administrativos o de salita.
   if (
-    !['SUPER_ADMIN', 'ADMIN_SALITA'].includes(user.rol)
+    !['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION'].includes(user.rol)
   ) {
     throw new AppError(
       'No tiene permisos para gestionar cierres institucionales',

@@ -45,13 +45,13 @@ const authorize = [
 router.get(
   '/tutor-requests',
   authenticate,
-  requireRole('SUPER_ADMIN', 'ADMIN_SALITA'),
+  requireRole('SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION'),
   listAdminTutorRequestsController
 );
 router.patch(
   '/tutor-requests/:requestId',
   authenticate,
-  requireRole('SUPER_ADMIN', 'ADMIN_SALITA'),
+  requireRole('SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION'),
   resolveTutorRequestController
 );
 

@@ -6,8 +6,6 @@ import {
   type FormEvent,
 } from 'react';
 
-import { Link } from 'react-router-dom';
-
 import { useAuth } from '../../context/AuthContext';
 
 import {
@@ -281,14 +279,6 @@ export default function ParametrosPage() {
           void submit();
         }}
       />
-
-      <Link
-        to="/configuracion"
-        className="btn btn-outline-secondary mb-3"
-      >
-        <i className="bi bi-arrow-left me-2" aria-hidden="true" />
-        Volver a configuración
-      </Link>
 
       <div className="dashboard-header">
         <h1>

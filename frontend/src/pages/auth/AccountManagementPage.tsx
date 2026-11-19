@@ -86,21 +86,32 @@ export default function AccountManagementPage() {
   };
 
   return (
-    <div className="card shadow-sm">
+    <div className="card shadow-sm border-0 rounded-3">
       <div className="card-body p-3 p-md-4">
-        <div className="d-flex flex-wrap gap-3 align-items-center justify-content-between mb-3">
-          <h1 className="h3 mb-0">Cuentas administrativas</h1>
+        <div className="d-flex flex-wrap gap-3 align-items-center justify-content-between mb-3 border-bottom pb-3">
+          <div>
+            <h1 className="h3 fw-bold mb-1">Cuentas administrativas</h1>
+            <p className="text-muted small mb-0">
+              Gestión de usuarios y accesos autorizados para administración y salitas municipales
+            </p>
+          </div>
           {user?.rol === 'SUPER_ADMIN' && (
-            <button type="button" className="btn btn-success" disabled={busy}
-              aria-expanded={formOpen} aria-controls="alta-administrador"
+            <button
+              type="button"
+              className="btn btn-success d-inline-flex align-items-center gap-2"
+              disabled={busy}
+              aria-expanded={formOpen}
+              aria-controls="alta-administrador"
               onClick={() => {
                 setFormOpen((value) => !value);
                 setShowPasswordErrors(false);
                 setError('');
                 setPassword('');
                 setConfirmation('');
-              }}>
-              {formOpen ? 'Cerrar formulario' : 'Agregar persona'}
+              }}
+            >
+              <i className={`bi ${formOpen ? 'bi-x-lg' : 'bi-person-plus-fill'}`} aria-hidden="true" />
+              {formOpen ? 'Cerrar formulario' : 'Nueva cuenta administrativa'}
             </button>
           )}
         </div>
@@ -113,33 +124,67 @@ export default function AccountManagementPage() {
           }}
         />
         {user?.rol === 'SUPER_ADMIN' && formOpen && (
-          <form id="alta-administrador" className="border rounded p-3 mb-4" onSubmit={(event) => {
-            event.preventDefault();
-            if (validateAdminForm()) {
-              setConfirmOpen(true);
-            }
-          }}>
-            <h2 className="h5">Agregar persona · Cuenta administrativa</h2>
-            <p className="text-muted">La persona completará sus datos personales al ingresar.</p>
+          <form
+            id="alta-administrador"
+            className="border rounded-3 p-3 p-md-4 mb-4 bg-light shadow-sm"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (validateAdminForm()) {
+                setConfirmOpen(true);
+              }
+            }}
+          >
+            <div className="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+              <h2 className="h5 fw-bold mb-0 text-success">
+                <i className="bi bi-person-plus-fill me-2" aria-hidden="true" />
+                Crear cuenta administrativa
+              </h2>
+              <span className="badge bg-success-subtle text-success">Superadministrador</span>
+            </div>
+            <p className="text-muted small">
+              La persona completará sus datos personales al ingresar al sistema por primera vez.
+            </p>
             <fieldset disabled={busy || loading}>
               <div className="row g-3 mb-3">
-                <label className="form-label col-12 col-md-6">Cargo
-                  <select className="form-select" value={kind} onChange={(event) => {
-                    setKind(event.target.value as AccountKind); setTarget('');
-                  }}>
+                <div className="col-12 col-md-6">
+                  <label htmlFor="account-kind" className="form-label small fw-semibold">
+                    Cargo
+                  </label>
+                  <select
+                    id="account-kind"
+                    className="form-select"
+                    value={kind}
+                    onChange={(event) => {
+                      setKind(event.target.value as AccountKind);
+                      setTarget('');
+                    }}
+                  >
                     <option value="ADMIN_SALITA">Administrador de sala</option>
                     <option value="SUPER_ADMIN">Superadministrador</option>
                   </select>
-                </label>
+                </div>
                 {kind === 'ADMIN_SALITA' && (
-                  <label className="form-label col-12 col-md-6">Sala *
-                    <select className="form-select" required value={target} onChange={(event) => setTarget(event.target.value)}>
+                  <div className="col-12 col-md-6">
+                    <label htmlFor="account-salita" className="form-label small fw-semibold">
+                      Sala asignada *
+                    </label>
+                    <select
+                      id="account-salita"
+                      className="form-select"
+                      required
+                      value={target}
+                      onChange={(event) => setTarget(event.target.value)}
+                    >
                       <option value="">Seleccionar sala</option>
-                      {salitas.filter((salita) => salita.activo).map((salita) => (
-                        <option key={salita.id_salita} value={salita.id_salita}>{salita.nombre}</option>
-                      ))}
+                      {salitas
+                        .filter((salita) => salita.activo)
+                        .map((salita) => (
+                          <option key={salita.id_salita} value={salita.id_salita}>
+                            {salita.nombre}
+                          </option>
+                        ))}
                     </select>
-                  </label>
+                  </div>
                 )}
               </div>
             {/* Solicita el nombre de usuario. */}

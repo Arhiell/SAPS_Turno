@@ -15,10 +15,10 @@ import {
 // Inicializa el enrutador de cierres de calendario.
 const router = Router();
 
-// Restringe el acceso a usuarios autenticados con roles administrativos.
+// Restringe el acceso a usuarios autenticados con roles de gestión de salita o administración general.
 router.use(
   authenticate,
-  requireRole('SUPER_ADMIN', 'ADMIN_SALITA')
+  requireRole('SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION')
 );
 
 // Obtiene los cierres de calendario.

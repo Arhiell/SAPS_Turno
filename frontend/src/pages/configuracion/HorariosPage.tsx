@@ -541,10 +541,9 @@ export default function HorariosPage() {
       {impact && <AgendaImpactPanel cambio={impact} onClose={() => setImpact(null)} onSaved={() => {
         setImpact(null); reset(); setError(''); setSuccess('Cambio de agenda guardado.'); setRevision(v => v + 1);
       }} />}
-      {/* Navegación contextual */}
-      <div className="d-flex flex-wrap gap-2 mb-3">
-        {openedFromProfessional &&
-        form.id_profesional ? (
+      {/* Navegación contextual cuando se accede desde la ficha de un profesional */}
+      {openedFromProfessional && form.id_profesional && (
+        <div className="d-flex flex-wrap gap-2 mb-3">
           <Link
             className="btn btn-outline-secondary"
             to={`/profesionales/${form.id_profesional}`}
@@ -552,16 +551,8 @@ export default function HorariosPage() {
             <i className="bi bi-arrow-left me-2" aria-hidden="true" />
             Volver al profesional
           </Link>
-        ) : (
-          <Link
-            className="btn btn-outline-secondary"
-            to="/configuracion"
-          >
-            <i className="bi bi-arrow-left me-2" aria-hidden="true" />
-            Volver a configuración
-          </Link>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Encabezado */}
       <div className="dashboard-header">

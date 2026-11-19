@@ -29,8 +29,8 @@ router.get("/", authenticate, listConfiguracionesController);
 
 router.get("/:clave", authenticate, getConfiguracionController);
 
-router.post("/", authenticate, requireRole("SUPER_ADMIN", "ADMIN_SALITA"), createConfiguracionController);
+router.post("/", authenticate, requireRole("SUPER_ADMIN", "ADMIN_SALITA", "RECEPCION"), createConfiguracionController);
 
-router.patch("/:id", authenticate, requireRole("SUPER_ADMIN", "ADMIN_SALITA"), updateConfiguracionController);
+router.patch("/:id", authenticate, requireRole("SUPER_ADMIN", "ADMIN_SALITA", "RECEPCION"), updateConfiguracionController);
 
 export default router;

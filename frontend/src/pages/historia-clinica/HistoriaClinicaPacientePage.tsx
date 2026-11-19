@@ -8,6 +8,8 @@ import ExportarHistoriaModal from '../../components/historia-clinica/ExportarHis
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
 import { FloatingFeedbackToast } from '../../components/ui/FormFeedback';
 import { useAuth } from '../../context/AuthContext';
+import { getParametros } from '../../services/configuracion.service';
+import { getSpecialties } from '../../services/especialidades.service';
 import {
   anularConsultaBorrador,
   extractClinicalApiError,
@@ -16,6 +18,8 @@ import {
   getHistoriaClinicaPaciente,
   listarDerivacionesClinicas,
 } from '../../services/historia-clinica.service';
+import type { Parametro } from '../../types/configuracion.types';
+import type { Specialty } from '../../types/profesional.types';
 import {
   CLINICAL_PERMISSIONS,
   type ConsultaMedicaItem,
@@ -80,6 +84,9 @@ export default function HistoriaClinicaPacientePage() {
   const [context, setContext] = useState<HistoriaClinicaContextData | null>(null);
   const [selectedSalita, setSelectedSalita] = useState(searchParams.get('salita') || '');
   const [selectedEspecialidad, setSelectedEspecialidad] = useState('');
+  const [specialtiesList, setSpecialtiesList] = useState<Specialty[]>([]);
+  const [clinicSettings, setClinicSettings] = useState<Parametro[]>([]);
+  const [loadingEspecialidades, setLoadingEspecialidades] = useState(false);
   const [activeTab, setActiveTab] = useState<DossierTab>('resumen');
 
   const [dossier, setDossier] = useState<HistoriaClinicaDossier | null>(null);
@@ -190,6 +197,70 @@ export default function HistoriaClinicaPacientePage() {
     };
   }, [fetchDossier, searchParams]);
 
+  useEffect(() => {
+    let active = true;
+    setLoadingEspecialidades(true);
+    Promise.all([
+      getSpecialties().catch(() => ({ success: true, data: [] })),
+      getParametros().catch(() => []),
+    ])
+      .then(([espRes, params]) => {
+        if (!active) return;
+        setSpecialtiesList(espRes.data ?? []);
+        setClinicSettings(params ?? []);
+      })
+      .finally(() => {
+        if (active) setLoadingEspecialidades(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const availableEspecialidades = useMemo(() => {
+    const baseList: { id_especialidad: string; nombre: string }[] =
+      specialtiesList.length > 0
+        ? specialtiesList.filter((s) => s.activo)
+        : (context?.catalogo_especialidades ?? context?.especialidades_autorizadas ?? []);
+
+    const setting = clinicSettings.find(
+      (s) => s.clave === 'salita.especialidades' && s.id_salita === selectedSalita
+    );
+    const allowedIds =
+      setting && Array.isArray(setting.valor) && setting.valor.length > 0
+        ? new Set(setting.valor as string[])
+        : null;
+
+    const patientEspMap = new Map<string, string>();
+    (dossier?.consultas ?? []).forEach((c) => {
+      if (!selectedSalita || c.id_salita === selectedSalita) {
+        patientEspMap.set(c.id_especialidad, c.especialidad || 'Especialidad');
+      }
+    });
+
+    const filtered = baseList.filter(
+      (esp) =>
+        allowedIds === null ||
+        allowedIds.has(esp.id_especialidad) ||
+        patientEspMap.has(esp.id_especialidad)
+    );
+
+    patientEspMap.forEach((nombre, id_especialidad) => {
+      if (!filtered.some((e) => e.id_especialidad === id_especialidad)) {
+        filtered.push({ id_especialidad, nombre });
+      }
+    });
+
+    const result = filtered.length > 0 ? filtered : baseList;
+    return [...result].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+  }, [specialtiesList, clinicSettings, selectedSalita, context, dossier?.consultas]);
+
+  const filteredConsultas = useMemo(() => {
+    if (!dossier?.consultas) return [];
+    if (!selectedEspecialidad) return dossier.consultas;
+    return dossier.consultas.filter((c) => c.id_especialidad === selectedEspecialidad);
+  }, [dossier?.consultas, selectedEspecialidad]);
+
   const antecedentesPersonales = useMemo(
     () => (dossier?.antecedentes ?? []).filter((a) => a.tipo !== 'FAMILIAR'),
     [dossier]
@@ -202,15 +273,15 @@ export default function HistoriaClinicaPacientePage() {
 
   const allDiagnosticos = useMemo(
     () =>
-      (dossier?.consultas ?? []).flatMap((c) =>
+      filteredConsultas.flatMap((c) =>
         c.diagnosticos.map((d) => ({ ...d, fecha_atencion: c.fecha_atencion, salita: c.salita }))
       ),
-    [dossier]
+    [filteredConsultas]
   );
 
   const allEvoluciones = useMemo(
     () =>
-      (dossier?.consultas ?? [])
+      filteredConsultas
         .flatMap((c) =>
           c.evoluciones.map((ev) => ({
             ...ev,
@@ -223,23 +294,23 @@ export default function HistoriaClinicaPacientePage() {
             Date.parse(b.fecha_evolucion) - Date.parse(a.fecha_evolucion) ||
             b.version - a.version
         ),
-    [dossier]
+    [filteredConsultas]
   );
 
   const allTratamientos = useMemo(
     () =>
-      (dossier?.consultas ?? []).flatMap((c) =>
+      filteredConsultas.flatMap((c) =>
         c.tratamientos.map((t) => ({ ...t, consulta_motivo: c.motivo_consulta }))
       ),
-    [dossier]
+    [filteredConsultas]
   );
 
   const allEstudios = useMemo(
     () =>
-      (dossier?.consultas ?? []).flatMap((c) =>
+      filteredConsultas.flatMap((c) =>
         c.estudios.map((es) => ({ ...es, consulta_motivo: c.motivo_consulta }))
       ),
-    [dossier]
+    [filteredConsultas]
   );
 
   const activeAlergias = useMemo(
@@ -303,6 +374,7 @@ export default function HistoriaClinicaPacientePage() {
 
   const handleSalitaChange = (nextSalita: string) => {
     setSelectedSalita(nextSalita);
+    setSelectedEspecialidad('');
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       if (nextSalita) next.set('salita', nextSalita);
@@ -310,7 +382,14 @@ export default function HistoriaClinicaPacientePage() {
       return next;
     });
     if (nextSalita) {
-      void fetchDossier(nextSalita, selectedEspecialidad);
+      void fetchDossier(nextSalita);
+    }
+  };
+
+  const handleEspecialidadChange = (nextEsp: string) => {
+    setSelectedEspecialidad(nextEsp);
+    if (selectedSalita) {
+      void fetchDossier(selectedSalita, nextEsp);
     }
   };
 
@@ -337,7 +416,11 @@ export default function HistoriaClinicaPacientePage() {
       : {}),
   };
 
-  const primaryBack = resolvePrimaryBackTarget(navState);
+  const fallbackBuscadorUrl = selectedSalita
+    ? `/historia-clinica?salita=${encodeURIComponent(selectedSalita)}`
+    : '/historia-clinica';
+
+  const primaryBack = resolvePrimaryBackTarget(navState, fallbackBuscadorUrl);
 
   const newConsultaUrl = `/historia-clinica/pacientes/${idPaciente}/nueva-consulta${
     selectedSalita ? `?salita=${encodeURIComponent(selectedSalita)}` : ''
@@ -456,63 +539,66 @@ export default function HistoriaClinicaPacientePage() {
             </div>
             <div>
               <span className="hc-meta-label">Consultas visibles</span>
-              <span className="hc-meta-value">{dossier.consultas.length}</span>
+              <span className="hc-meta-value">{filteredConsultas.length}</span>
             </div>
           </div>
         )}
 
-        <div className="row g-2 mt-3 pt-3 border-top no-print">
-          <div className="col-12 col-md-5">
-            <label className="form-label small fw-semibold mb-1" htmlFor="dossier-salita">
+        <div className="row g-3 mt-3 pt-3 border-top no-print">
+          <div className="col-12 col-md-6">
+            <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="dossier-salita">
               Salita de consulta
             </label>
             <select
               id="dossier-salita"
-              className="form-select form-select-sm"
+              className="form-select text-truncate"
+              style={{ minHeight: '40px', height: '40px' }}
               value={selectedSalita}
               onChange={(e) => handleSalitaChange(e.target.value)}
             >
               {context?.salitas_autorizadas.map((s) => (
-                <option key={s.id_salita} value={s.id_salita}>
+                <option key={s.id_salita} value={s.id_salita} title={s.nombre}>
                   {s.nombre}
                 </option>
               ))}
             </select>
           </div>
-          <div className="col-12 col-md-5">
-            <label className="form-label small fw-semibold mb-1" htmlFor="dossier-esp">
-              Especialidad
-            </label>
+          <div className="col-12 col-md-6">
+            <div className="d-flex justify-content-between align-items-center mb-1">
+              <label className="form-label small fw-semibold text-secondary mb-0" htmlFor="dossier-esp">
+                Especialidad
+              </label>
+              {selectedEspecialidad && (
+                <button
+                  type="button"
+                  className="btn btn-link p-0 text-success text-decoration-none small"
+                  style={{ fontSize: '0.8rem' }}
+                  onClick={() => handleEspecialidadChange('')}
+                >
+                  <i className="bi bi-x me-1" />
+                  Ver todas
+                </button>
+              )}
+            </div>
             <select
               id="dossier-esp"
-              className="form-select form-select-sm"
+              className="form-select text-truncate"
+              style={{ minHeight: '40px', height: '40px' }}
               value={selectedEspecialidad}
-              onChange={(e) => {
-                const nextEsp = e.target.value;
-                setSelectedEspecialidad(nextEsp);
-                if (selectedSalita) {
-                  void fetchDossier(selectedSalita, nextEsp);
-                }
-              }}
+              disabled={loading || loadingEspecialidades}
+              onChange={(e) => handleEspecialidadChange(e.target.value)}
             >
-              <option value="">Todas las especialidades</option>
-              {context?.especialidades_autorizadas.map((esp) => (
-                <option key={esp.id_especialidad} value={esp.id_especialidad}>
+              <option value="">
+                {availableEspecialidades.length === 0
+                  ? 'Sin especialidades registradas'
+                  : 'Todas las especialidades'}
+              </option>
+              {availableEspecialidades.map((esp) => (
+                <option key={esp.id_especialidad} value={esp.id_especialidad} title={esp.nombre}>
                   {esp.nombre}
                 </option>
               ))}
             </select>
-          </div>
-          <div className="col-12 col-md-2 d-flex align-items-end">
-            <button
-              type="button"
-              className="btn btn-sm btn-outline-secondary w-100"
-              disabled={loading || !selectedSalita}
-              onClick={() => void fetchDossier(selectedSalita, selectedEspecialidad)}
-            >
-              <i className="bi bi-arrow-clockwise me-1" />
-              Actualizar
-            </button>
           </div>
         </div>
       </div>
@@ -632,7 +718,7 @@ export default function HistoriaClinicaPacientePage() {
         <>
           <div className="hc-tabs no-print" role="tablist">
             {[
-              { key: 'resumen', label: 'Resumen clínico', count: dossier.consultas.length },
+              { key: 'resumen', label: 'Resumen clínico', count: filteredConsultas.length },
               {
                 key: 'antecedentes_personales',
                 label: 'Antecedentes personales',
@@ -644,7 +730,7 @@ export default function HistoriaClinicaPacientePage() {
                 count: antecedentesFamiliares.length,
               },
               { key: 'alergias', label: 'Alergias', count: dossier.alergias.length },
-              { key: 'consultas', label: 'Consultas médicas', count: dossier.consultas.length },
+              { key: 'consultas', label: 'Consultas médicas', count: filteredConsultas.length },
               { key: 'diagnosticos', label: 'Diagnósticos', count: allDiagnosticos.length },
               { key: 'evoluciones', label: 'Evoluciones', count: allEvoluciones.length },
               {
@@ -681,13 +767,28 @@ export default function HistoriaClinicaPacientePage() {
                 </div>
               )}
 
-              {dossier.consultas.length === 0 ? (
-                <p className="text-muted mb-0">
-                  No hay consultas médicas registradas dentro del alcance actual.
-                </p>
+              {filteredConsultas.length === 0 ? (
+                <div className="text-center py-4 text-muted">
+                  <i className="bi bi-funnel fs-3 d-block mb-2 text-secondary" />
+                  <p className="mb-2">
+                    {selectedEspecialidad
+                      ? 'No hay consultas registradas para la especialidad seleccionada.'
+                      : 'No hay consultas médicas registradas dentro del alcance actual.'}
+                  </p>
+                  {selectedEspecialidad && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-success"
+                      onClick={() => handleEspecialidadChange('')}
+                    >
+                      <i className="bi bi-x-circle me-1" />
+                      Mostrar todas las especialidades
+                    </button>
+                  )}
+                </div>
               ) : (
                 <div className="hc-timeline">
-                  {dossier.consultas.map((c) => (
+                  {filteredConsultas.map((c) => (
                     <div
                       key={c.id_consulta}
                       className={`hc-timeline-item ${
@@ -904,11 +1005,28 @@ export default function HistoriaClinicaPacientePage() {
           {activeTab === 'consultas' && (
             <div className="hc-card p-3 p-md-4">
               <h2 className="h5 mb-3">Consultas médicas y firma</h2>
-              {dossier.consultas.length === 0 ? (
-                <p className="text-muted mb-0">Sin consultas médicas registradas.</p>
+              {filteredConsultas.length === 0 ? (
+                <div className="text-center py-4 text-muted">
+                  <i className="bi bi-funnel fs-3 d-block mb-2 text-secondary" />
+                  <p className="mb-2">
+                    {selectedEspecialidad
+                      ? 'No hay consultas registradas para la especialidad seleccionada.'
+                      : 'Sin consultas médicas registradas.'}
+                  </p>
+                  {selectedEspecialidad && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-success"
+                      onClick={() => handleEspecialidadChange('')}
+                    >
+                      <i className="bi bi-x-circle me-1" />
+                      Mostrar todas las especialidades
+                    </button>
+                  )}
+                </div>
               ) : (
                 <div className="d-grid gap-3">
-                  {dossier.consultas.map((c) => {
+                  {filteredConsultas.map((c) => {
                     const isOwnDraft =
                       c.estado === 'BORRADOR' &&
                       context?.id_profesional === c.id_profesional_autor;

@@ -66,7 +66,31 @@ export default function HistoriaClinicaBuscadorPage() {
     if (nextSalita) next.set('salita', nextSalita);
     if (nextPage > 1) next.set('page', String(nextPage));
     setSearchParams(next, { replace: true });
+    if (typeof window !== 'undefined') {
+      const qs = next.toString();
+      sessionStorage.setItem('saps_last_clinical_search', `/historia-clinica${qs ? `?${qs}` : ''}`);
+    }
   };
+
+  // Restaurar búsqueda previa de la sesión si se ingresa a la URL base sin parámetros
+  useEffect(() => {
+    if (!initialSearch && !initialSalita && typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('saps_last_clinical_search');
+      if (saved && saved.startsWith('/historia-clinica?')) {
+        const url = new URL(saved, window.location.origin);
+        const s = url.searchParams.get('search') || '';
+        const sal = url.searchParams.get('salita') || '';
+        const p = Math.max(1, Number(url.searchParams.get('page') || '1') || 1);
+        if (s || sal || p > 1) {
+          setSearchInput(s);
+          setAppliedSearch(s);
+          if (sal) setSelectedSalita(sal);
+          if (p > 1) setPage(p);
+          syncUrlParams(s, sal, p);
+        }
+      }
+    }
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -77,7 +101,7 @@ export default function HistoriaClinicaBuscadorPage() {
         const ctx = await getHistoriaClinicaContext();
         if (!active) return;
         setContext(ctx);
-        if (!initialSalita && ctx.salitas_autorizadas.length === 1) {
+        if (!initialSalita && !selectedSalita && ctx.salitas_autorizadas.length === 1) {
           setSelectedSalita(ctx.salitas_autorizadas[0].id_salita);
         }
       } catch (err) {
@@ -90,7 +114,7 @@ export default function HistoriaClinicaBuscadorPage() {
     return () => {
       active = false;
     };
-  }, [initialSalita]);
+  }, [initialSalita, selectedSalita]);
 
   useEffect(() => {
     if (!context) return;
@@ -128,12 +152,35 @@ export default function HistoriaClinicaBuscadorPage() {
     };
   }, [context, selectedSalita, appliedSearch, page]);
 
+  // Búsqueda en tiempo real (as-you-type) con debounce de 300ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const trimmed = searchInput.trim();
+      if (trimmed !== appliedSearch) {
+        setPage(1);
+        setAppliedSearch(trimmed);
+        syncUrlParams(trimmed, selectedSalita, 1);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchInput, appliedSearch, selectedSalita]);
+
+  const handleClear = () => {
+    setSearchInput('');
+    setAppliedSearch('');
+    setPage(1);
+    syncUrlParams('', selectedSalita, 1);
+  };
+
   const handleSearch = (event: FormEvent) => {
     event.preventDefault();
     const trimmed = searchInput.trim();
-    setPage(1);
-    setAppliedSearch(trimmed);
-    syncUrlParams(trimmed, selectedSalita, 1);
+    if (trimmed !== appliedSearch) {
+      setPage(1);
+      setAppliedSearch(trimmed);
+      syncUrlParams(trimmed, selectedSalita, 1);
+    }
   };
 
   const defaultSalitaForLink =
@@ -195,27 +242,46 @@ export default function HistoriaClinicaBuscadorPage() {
 
       <div className="hc-card p-3">
         <form className="row g-3 align-items-end" onSubmit={handleSearch}>
-          <div className="col-12 col-md-5">
-            <label className="form-label fw-semibold" htmlFor="hc-search-input">
+          <div className="col-12 col-md-7 col-lg-8">
+            <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="hc-search-input">
               Buscar por DNI, nombre o apellido
             </label>
-            <input
-              id="hc-search-input"
-              type="search"
-              className="form-control"
-              placeholder="Ej.: 35123456 o Pérez"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-            />
+            <div className="position-relative">
+              <i
+                className="bi bi-search text-muted position-absolute start-0 top-50 translate-middle-y ms-3"
+                style={{ pointerEvents: 'none' }}
+              />
+              <input
+                id="hc-search-input"
+                type="search"
+                className="form-control ps-5 pe-5"
+                style={{ minHeight: '42px', height: '42px' }}
+                placeholder="Escribí DNI, nombre o apellido para filtrar en tiempo real..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
+              {searchInput && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-link text-secondary position-absolute end-0 top-50 translate-middle-y me-2 p-1"
+                  style={{ textDecoration: 'none' }}
+                  title="Limpiar búsqueda"
+                  onClick={handleClear}
+                >
+                  <i className="bi bi-x-circle-fill fs-5" />
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="col-12 col-md-4">
-            <label className="form-label fw-semibold" htmlFor="hc-search-salita">
+          <div className="col-12 col-md-5 col-lg-4">
+            <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="hc-search-salita">
               Salita autorizada
             </label>
             <select
               id="hc-search-salita"
-              className="form-select"
+              className="form-select text-truncate"
+              style={{ minHeight: '42px', height: '42px' }}
               value={selectedSalita}
               disabled={loadingContext || !context?.salitas_autorizadas.length}
               onChange={(e) => {
@@ -227,32 +293,11 @@ export default function HistoriaClinicaBuscadorPage() {
             >
               <option value="">Todas mis salitas vigentes</option>
               {context?.salitas_autorizadas.map((s) => (
-                <option key={s.id_salita} value={s.id_salita}>
+                <option key={s.id_salita} value={s.id_salita} title={s.nombre}>
                   {s.nombre}
                 </option>
               ))}
             </select>
-          </div>
-
-          <div className="col-12 col-md-3 d-flex gap-2">
-            <button type="submit" className="btn btn-success flex-grow-1" disabled={loadingList}>
-              <i className="bi bi-search me-1" />
-              Buscar
-            </button>
-            {appliedSearch && (
-              <button
-                type="button"
-                className="btn btn-outline-secondary"
-                onClick={() => {
-                  setSearchInput('');
-                  setAppliedSearch('');
-                  setPage(1);
-                  syncUrlParams('', selectedSalita, 1);
-                }}
-              >
-                Limpiar
-              </button>
-            )}
           </div>
         </form>
       </div>
@@ -322,11 +367,10 @@ export default function HistoriaClinicaBuscadorPage() {
                         DNI {patient.dni} · {calculateAgeLabel(patient.fecha_nacimiento)}
                       </div>
                     </div>
-                    {patient.via_acceso_estimada === 'DERIVACION_AUTORIZADA' ? (
-                      <span className="badge text-bg-info flex-shrink-0">Derivación</span>
-                    ) : (
-                      <span className="badge text-bg-success-subtle text-success border border-success-subtle flex-shrink-0">
-                        Salita
+                    {patient.via_acceso_estimada === 'DERIVACION_AUTORIZADA' && (
+                      <span className="badge text-bg-info flex-shrink-0">
+                        <i className="bi bi-arrow-left-right me-1" />
+                        Derivación
                       </span>
                     )}
                   </div>
@@ -346,19 +390,21 @@ export default function HistoriaClinicaBuscadorPage() {
                     <Link
                       to={dossierUrl}
                       state={{ ...navStateFromBuscador, patientSummary }}
-                      className="btn btn-success btn-sm"
+                      className="btn btn-success btn-sm flex-fill d-inline-flex align-items-center justify-content-center gap-1 text-nowrap"
+                      style={{ minHeight: '38px' }}
                     >
-                      <i className="bi bi-folder2-open me-1" />
-                      Ver HC
+                      <i className="bi bi-journal-medical" />
+                      <span>Ver historia clínica</span>
                     </Link>
                     {canCreateConsulta && (
                       <Link
                         to={newConsultaUrl}
                         state={{ ...navStateFromBuscador, patientSummary }}
-                        className="btn btn-outline-primary btn-sm"
+                        className="btn btn-outline-primary btn-sm flex-fill d-inline-flex align-items-center justify-content-center gap-1 text-nowrap"
+                        style={{ minHeight: '38px' }}
                       >
-                        <i className="bi bi-plus-circle me-1" />
-                        Nueva consulta
+                        <i className="bi bi-plus-circle" />
+                        <span>Nueva consulta</span>
                       </Link>
                     )}
                   </div>
@@ -377,7 +423,6 @@ export default function HistoriaClinicaBuscadorPage() {
                     <th>DNI</th>
                     <th>Edad / Nacimiento</th>
                     <th>Salita asignada</th>
-                    <th>Alcance de acceso</th>
                     <th className="text-end">Acciones</th>
                   </tr>
                 </thead>
@@ -390,13 +435,13 @@ export default function HistoriaClinicaBuscadorPage() {
                         ? patient.id_salita_asignada
                         : defaultSalitaForLink);
 
-                        const patientSummary = {
-                    id_paciente: patient.id_paciente,
-                    dni: patient.dni,
-                    nombres: patient.nombres,
-                    apellidos: patient.apellidos,
-                  };
-                  const dossierUrl = `/historia-clinica/pacientes/${patient.id_paciente}${
+                    const patientSummary = {
+                      id_paciente: patient.id_paciente,
+                      dni: patient.dni,
+                      nombres: patient.nombres,
+                      apellidos: patient.apellidos,
+                    };
+                    const dossierUrl = `/historia-clinica/pacientes/${patient.id_paciente}${
                       salitaForPatient ? `?salita=${encodeURIComponent(salitaForPatient)}` : ''
                     }`;
 
@@ -423,17 +468,12 @@ export default function HistoriaClinicaBuscadorPage() {
                             {formatArgentinaDate(patient.fecha_nacimiento)}
                           </div>
                         </td>
-                        <td>{patient.salita_nombre || 'Sin salita asignada'}</td>
                         <td>
-                          {patient.via_acceso_estimada === 'DERIVACION_AUTORIZADA' ? (
-                            <span className="badge text-bg-info">
+                          <span>{patient.salita_nombre || 'Sin salita asignada'}</span>
+                          {patient.via_acceso_estimada === 'DERIVACION_AUTORIZADA' && (
+                            <span className="badge text-bg-info ms-2" title="Acceso mediante derivación vigente">
                               <i className="bi bi-arrow-left-right me-1" />
-                              Derivación autorizada
-                            </span>
-                          ) : (
-                            <span className="badge text-bg-success-subtle text-success border border-success-subtle">
-                              <i className="bi bi-check2-circle me-1" />
-                              Salita asignada
+                              Derivación
                             </span>
                           )}
                         </td>
@@ -442,19 +482,21 @@ export default function HistoriaClinicaBuscadorPage() {
                             <Link
                               to={dossierUrl}
                               state={{ ...navStateFromBuscador, patientSummary }}
-                              className="btn btn-sm btn-success"
+                              className="btn btn-sm btn-success d-inline-flex align-items-center gap-1 text-nowrap px-3"
+                              style={{ minHeight: '34px' }}
                             >
-                              <i className="bi bi-folder2-open me-1" />
-                              Ver HC
+                              <i className="bi bi-journal-medical" />
+                              <span>Ver historia clínica</span>
                             </Link>
                             {canCreateConsulta && (
                               <Link
                                 to={newConsultaUrl}
                                 state={{ ...navStateFromBuscador, patientSummary }}
-                                className="btn btn-sm btn-outline-primary"
+                                className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 text-nowrap"
+                                style={{ minHeight: '34px' }}
                               >
-                                <i className="bi bi-plus-circle me-1" />
-                                Nueva consulta
+                                <i className="bi bi-plus-circle" />
+                                <span>Nueva consulta</span>
                               </Link>
                             )}
                           </div>

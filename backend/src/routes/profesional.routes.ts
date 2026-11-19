@@ -19,7 +19,7 @@ router.get('/me/horarios-disponibilidad', authenticate, requireRole('PROFESIONAL
 router.get('/', authenticate, requireRole('SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION'), professionalScope, getAllProfesionales);
 router.use(authenticate);
 
-router.get("/:id", requireRole("SUPER_ADMIN", "ADMIN_SALITA"), professionalScope, getProfesionalById);
+router.get("/:id", requireRole("SUPER_ADMIN", "ADMIN_SALITA", "RECEPCION"), professionalScope, getProfesionalById);
 router.post("/", requireRole("SUPER_ADMIN", "ADMIN_SALITA"), professionalScope, createProfesional);
 router.put("/:id", requireRole("SUPER_ADMIN", "ADMIN_SALITA"), professionalScope, updateProfesional);
 router.delete("/:id", requireRole("SUPER_ADMIN", "ADMIN_SALITA"), professionalScope, deleteProfesional);

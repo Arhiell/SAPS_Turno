@@ -435,61 +435,85 @@ const ProfesionalesPage = () => {
             ) : (
               <>
                 {/* Vista móvil en tarjetas */}
-                <div className="d-md-none p-3">
-                  <div className="d-flex flex-column gap-3">
+                <div className="d-md-none p-2 p-sm-3">
+                  <div className="d-flex flex-column gap-2">
                     {paginatedProfessionals.map((professional) => (
                       <article
                         key={professional.id_profesional}
-                        className="p-3 bg-white border rounded-3 shadow-sm d-flex flex-column gap-2"
+                        className="bg-white border rounded-3 shadow-sm p-3 d-flex flex-column gap-2"
+                        style={{
+                          borderLeft: `4px solid ${
+                            professional.activo ? 'var(--cora-green-600, #16a34a)' : '#9ca3af'
+                          }`,
+                        }}
                       >
+                        {/* Encabezado: Avatar + Nombre + Matrícula + Badge Estado */}
                         <div className="d-flex justify-content-between align-items-start gap-2">
-                          <div className="d-flex align-items-center gap-2">
+                          <div className="d-flex align-items-center gap-2 min-w-0">
                             <div
-                              className="d-flex align-items-center justify-content-center bg-light text-success rounded-circle border"
-                              style={{ width: '40px', height: '40px' }}
+                              className="d-flex align-items-center justify-content-center bg-light text-success rounded-circle border flex-shrink-0"
+                              style={{ width: '38px', height: '38px' }}
                             >
-                              <i className="bi bi-person-fill" />
+                              <i className="bi bi-person-fill fs-6" />
                             </div>
-                            <div>
-                              <strong className="d-block text-dark">
+                            <div className="min-w-0">
+                              <h6 className="mb-0 fw-bold text-dark text-truncate">
                                 {professional.persona.apellidos}, {professional.persona.nombres}
-                              </strong>
-                              <span className="badge bg-light text-secondary border font-monospace small">
-                                Mat: {professional.matricula}
-                              </span>
+                              </h6>
+                              <div className="text-secondary small font-monospace">
+                                Mat. {professional.matricula}
+                              </div>
                             </div>
                           </div>
                           {professional.activo ? (
-                            <span className="badge bg-success-subtle text-success">Activo</span>
+                            <span className="badge bg-success-subtle text-success flex-shrink-0">
+                              Activo
+                            </span>
                           ) : (
-                            <span className="badge bg-secondary-subtle text-secondary">Inactivo</span>
+                            <span className="badge bg-secondary-subtle text-secondary flex-shrink-0">
+                              Inactivo
+                            </span>
                           )}
                         </div>
 
-                        <div className="small text-secondary">
-                          <div>
-                            <strong>DNI:</strong> {professional.persona.dni}
+                        {/* Bloque compacto de datos: DNI y Teléfono */}
+                        <div className="bg-light rounded-2 p-2 small">
+                          <div className="row g-2">
+                            <div className="col-6">
+                              <span className="text-secondary d-block" style={{ fontSize: '0.75rem' }}>
+                                DNI
+                              </span>
+                              <strong className="text-dark">{professional.persona.dni}</strong>
+                            </div>
+                            <div className="col-6">
+                              <span className="text-secondary d-block" style={{ fontSize: '0.75rem' }}>
+                                TELÉFONO
+                              </span>
+                              <span className="text-dark">{professional.persona.telefono || '—'}</span>
+                            </div>
                           </div>
-                          {professional.persona.telefono && (
-                            <div>
-                              <strong>Tel:</strong> {professional.persona.telefono}
+                          {professional.persona.cuenta && (
+                            <div className="mt-1 pt-1 border-top">
+                              <AccountSummary account={professional.persona.cuenta} />
                             </div>
                           )}
-                          <AccountSummary account={professional.persona.cuenta} />
                         </div>
 
-                        <div className="d-flex justify-content-end gap-2 pt-2 border-top mt-1">
+                        {/* Acciones con texto visible e icono */}
+                        <div className="d-flex gap-2 pt-1 border-top mt-1">
                           <button
                             type="button"
-                            className="btn btn-sm btn-outline-success"
+                            className="btn btn-sm btn-outline-success flex-fill d-inline-flex align-items-center justify-content-center gap-1 py-1"
+                            style={{ minHeight: '36px' }}
                             onClick={() => navigate(`/profesionales/${professional.id_profesional}`)}
                           >
-                            <i className="bi bi-eye me-1" />
-                            Detalle
+                            <i className="bi bi-eye" />
+                            <span>Detalle</span>
                           </button>
                           <button
                             type="button"
-                            className="btn btn-sm btn-outline-primary"
+                            className="btn btn-sm btn-outline-primary flex-fill d-inline-flex align-items-center justify-content-center gap-1 py-1"
+                            style={{ minHeight: '36px' }}
                             onClick={() =>
                               navigate(`/profesionales/${professional.id_profesional}/editar`, {
                                 state: {
@@ -500,26 +524,28 @@ const ProfesionalesPage = () => {
                               })
                             }
                           >
-                            <i className="bi bi-pencil me-1" />
-                            Editar
+                            <i className="bi bi-pencil" />
+                            <span>Editar</span>
                           </button>
                           {professional.activo ? (
                             <button
                               type="button"
-                              className="btn btn-sm btn-outline-danger"
-                              title="Desactivar"
+                              className="btn btn-sm btn-outline-danger flex-fill d-inline-flex align-items-center justify-content-center gap-1 py-1"
+                              style={{ minHeight: '36px' }}
                               onClick={() => void handleDelete(professional)}
                             >
                               <i className="bi bi-person-dash" />
+                              <span>Desactivar</span>
                             </button>
                           ) : (
                             <button
                               type="button"
-                              className="btn btn-sm btn-outline-success"
-                              title="Activar"
+                              className="btn btn-sm btn-outline-success flex-fill d-inline-flex align-items-center justify-content-center gap-1 py-1"
+                              style={{ minHeight: '36px' }}
                               onClick={() => void handleActivate(professional)}
                             >
                               <i className="bi bi-person-check" />
+                              <span>Activar</span>
                             </button>
                           )}
                         </div>
@@ -530,7 +556,7 @@ const ProfesionalesPage = () => {
 
                 {/* Vista escritorio en tabla */}
                 <div className="table-responsive d-none d-md-block">
-                  <table className="table saps-responsive-table table-hover align-middle mb-0">
+                  <table className="table table-hover align-middle mb-0">
                     <thead>
                       <tr>
                         <th scope="col">Profesional</th>

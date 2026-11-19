@@ -7,10 +7,22 @@ const changedEvent = 'cora-launcher-preferences';
 function read(key: string): Preferences {
   try {
     const value = JSON.parse(localStorage.getItem(key) ?? 'null');
-    return { hidden: value?.hidden === true,
-      position: Number.isFinite(value?.position?.x) && Number.isFinite(value?.position?.y)
-        ? value.position : null };
-  } catch { return { hidden: false, position: null }; }
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    const pos =
+      Number.isFinite(value?.position?.x) && Number.isFinite(value?.position?.y)
+        ? value.position
+        : null;
+    // En móviles, si la posición guardada colisiona con el navbar superior (y < 72), restaurar a null para posición CSS óptima
+    if (isMobile && pos && pos.y < 72) {
+      return { hidden: value?.hidden === true, position: null };
+    }
+    return {
+      hidden: value?.hidden === true,
+      position: pos,
+    };
+  } catch {
+    return { hidden: false, position: null };
+  }
 }
 
 export default function useChatbotLauncher(identity: string, launcher: RefObject<HTMLButtonElement | null>) {
@@ -33,9 +45,15 @@ export default function useChatbotLauncher(identity: string, launcher: RefObject
     const top = viewport?.offsetTop ?? 0;
     const width = viewport?.width ?? window.innerWidth;
     const height = viewport?.height ?? window.innerHeight;
+    const isMobile = width < 768;
+    const minTop = isMobile ? top + 72 : top + 8;
+    const maxTop = isMobile
+      ? top + height - (rect?.height ?? 56) - 96
+      : top + height - (rect?.height ?? 56) - 8;
+
     return {
       x: Math.max(left + 8, Math.min(position.x, left + width - (rect?.width ?? 56) - 8)),
-      y: Math.max(top + 8, Math.min(position.y, top + height - (rect?.height ?? 56) - 8)),
+      y: Math.max(minTop, Math.min(position.y, maxTop)),
     };
   };
 

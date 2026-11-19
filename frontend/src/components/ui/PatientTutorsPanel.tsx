@@ -3,19 +3,48 @@ import api from '../../services/api';
 import { authError } from '../../utils/auth-errors';
 import ConfirmationModal from './ConfirmationModal';
 
-type Tutor = { id_tutor: string; nombres: string; apellidos: string; dni: string;
-  parentesco: string; puede_gestionar_turnos: boolean; fecha_desde: string; fecha_hasta: string | null;
-  identidad_verificada: boolean; documentacion_verificada: boolean; autorizacion_verificada: boolean;
-  fecha_modificacion: string | null; modificado_por: { nombre_usuario: string } | null;
-  historial: { id_historial: number; accion: 'INSERT' | 'UPDATE' | 'DELETE'; fecha: string;
-    actor: { nombre_usuario: string; persona: { nombres: string; apellidos: string } | null } | null }[] };
+type Tutor = {
+  id_tutor: string;
+  nombres: string;
+  apellidos: string;
+  dni: string;
+  parentesco: string;
+  puede_gestionar_turnos: boolean;
+  fecha_desde: string;
+  fecha_hasta: string | null;
+  identidad_verificada: boolean;
+  documentacion_verificada: boolean;
+  autorizacion_verificada: boolean;
+  fecha_modificacion: string | null;
+  modificado_por: { nombre_usuario: string } | null;
+  historial: {
+    id_historial: number;
+    accion: 'INSERT' | 'UPDATE' | 'DELETE';
+    fecha: string;
+    actor: {
+      nombre_usuario: string;
+      persona: { nombres: string; apellidos: string } | null;
+    } | null;
+  }[];
+};
 
 const authorizationStatus = (tutor: Tutor) => {
-  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
+  const today = new Date().toLocaleDateString('en-CA', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+  });
   if (!tutor.puede_gestionar_turnos) return 'Autorización revocada';
   if (tutor.fecha_desde > today) return 'Autorización aún no vigente';
   if (tutor.fecha_hasta && tutor.fecha_hasta < today) return 'Autorización vencida';
-  return 'Gestión de turnos autorizada';
+  return 'Gestión autorizada';
+};
+
+const formatParentescoBadge = (raw?: string) => {
+  if (!raw) return 'Responsable';
+  const clean = raw.trim();
+  return clean
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
 export default function PatientTutorsPanel({ patientId }: { patientId: string }) {
@@ -27,19 +56,21 @@ export default function PatientTutorsPanel({ patientId }: { patientId: string })
   const [success, setSuccess] = useState('');
   const [revision, setRevision] = useState(0);
   const [tutorToRevoke, setTutorToRevoke] = useState<Tutor | null>(null);
+
   const url = `/patients/${patientId}/tutors`;
   const isLoading = loading || loadedPatientId !== patientId;
 
   useEffect(() => {
     let active = true;
-    void api.get<{ data: { tutors: Tutor[] } }>(url)
-      .then(response => {
+    void api
+      .get<{ data: { tutors: Tutor[] } }>(url)
+      .then((response) => {
         if (active) {
           setItems(response.data.data.tutors);
           setError('');
         }
       })
-      .catch(cause => {
+      .catch((cause) => {
         if (active) {
           setItems([]);
           setError(authError(cause));
@@ -51,83 +82,201 @@ export default function PatientTutorsPanel({ patientId }: { patientId: string })
           setLoading(false);
         }
       });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [url, patientId, revision]);
 
   const revoke = async (tutor: Tutor) => {
-    setBusy(true); setError(''); setSuccess('');
+    setBusy(true);
+    setError('');
+    setSuccess('');
     try {
       await api.patch(`${url}/${tutor.id_tutor}/end`, {});
-      setSuccess('La autorización se revocó correctamente.');
+      setSuccess('La autorización de gestión fue revocada correctamente.');
       setLoading(true);
-      setRevision(value => value + 1);
-    } catch (cause) { setError(authError(cause)); }
-    finally { setBusy(false); }
+      setRevision((value) => value + 1);
+    } catch (cause) {
+      setError(authError(cause));
+    } finally {
+      setBusy(false);
+    }
   };
 
-  return <section className="card border-0 shadow-sm mb-4">
-    <div className="card-header bg-white py-3"><h3 className="h5 mb-0">Tutores y responsables</h3></div>
-    <div className="card-body">
-      <p className="text-muted">Consultá las autorizaciones de este paciente y revocá las que ya no correspondan.</p>
-      <div className="alert alert-info">
-        El paciente a cargo puede ser menor o adulto y no necesita correo ni cuenta propia.
-        Las altas y renovaciones se tramitan mediante una solicitud iniciada desde una cuenta de paciente y aprobada por la salita tras verificar presencialmente la identidad, documentación y autorización.
+  return (
+    <section className="card border-0 shadow-sm mb-4">
+      <div className="card-header bg-white py-3 d-flex flex-wrap align-items-center justify-content-between gap-2 border-bottom">
+        <h5 className="mb-0 fw-bold">
+          <i className="bi bi-people me-2 text-success" aria-hidden="true" />
+          Tutores y representantes autorizados
+        </h5>
+        <span className="badge bg-light text-muted border">
+          {items.length} {items.length === 1 ? 'responsable' : 'responsables'}
+        </span>
       </div>
-      {error && <div className="alert alert-danger" role="alert">{error}</div>}
-      {success && <div className="alert alert-success" role="status">{success}</div>}
-      {isLoading ? <p>Cargando responsables…</p> : items.length === 0 ? <p>No hay responsables registrados.</p> :
-        <ul className="list-group mb-3">{items.map(tutor => <li key={tutor.id_tutor} className="list-group-item d-flex flex-wrap gap-2 justify-content-between align-items-center">
-          <div><strong>{tutor.apellidos}, {tutor.nombres}</strong><div className="small">DNI {tutor.dni} · {tutor.parentesco}</div>
-            <div className="small">{authorizationStatus(tutor)}
-              {tutor.fecha_hasta ? ` · Hasta ${tutor.fecha_hasta.split('-').reverse().join('/')}` : ''}
-            </div>
-            <div className="small text-muted">Verificación presencial:
-              {` identidad ${tutor.identidad_verificada ? 'sí' : 'no registrada'}`}
-              {`, documentación ${tutor.documentacion_verificada ? 'sí' : 'no registrada'}`}
-              {`, autorización ${tutor.autorizacion_verificada ? 'sí' : 'no registrada'}`}
-            </div>
-            {tutor.fecha_modificacion && <div className="small text-muted">
-              Última modificación: {new Date(tutor.fecha_modificacion).toLocaleString('es-AR')}
-              {tutor.modificado_por?.nombre_usuario ? ` · ${tutor.modificado_por.nombre_usuario}` : ''}
-            </div>}</div>
-          {!!tutor.historial.length && <details className="w-100">
-            <summary className="small">Ver historial de cambios</summary>
-            <ul className="small mb-0 mt-2">{tutor.historial.map(entry => <li key={entry.id_historial}>
-              {new Date(entry.fecha).toLocaleString('es-AR')} · {entry.accion === 'INSERT' ? 'Vínculo registrado' : entry.accion === 'DELETE' ? 'Vínculo eliminado' : 'Vínculo actualizado'}
-              {entry.actor ? ` por ${entry.actor.persona ? `${entry.actor.persona.apellidos}, ${entry.actor.persona.nombres}` : entry.actor.nombre_usuario}` : ' · actor previo no registrado'}
-            </li>)}</ul>
-          </details>}
-          {authorizationStatus(tutor) === 'Gestión de turnos autorizada' && (
-            <button
-              type="button"
-              className="btn btn-sm btn-outline-danger"
-              disabled={busy}
-              onClick={() => setTutorToRevoke(tutor)}
-            >
-              Revocar autorización
-            </button>
-          )}
-        </li>)}</ul>}
-    </div>
 
-    <ConfirmationModal
-      open={Boolean(tutorToRevoke)}
-      title="Revocar autorización de tutor"
-      subtitle="Esta acción retira el permiso de gestión de turnos."
-      message={`¿Confirmás que querés revocar la autorización de ${tutorToRevoke?.nombres} ${tutorToRevoke?.apellidos}? No podrá realizar nuevas gestiones para este paciente.`}
-      confirmText="Revocar autorización"
-      cancelText="Cancelar"
-      variant="danger"
-      icon="bi-shield-x"
-      loading={busy}
-      onClose={() => setTutorToRevoke(null)}
-      onConfirm={() => {
-        if (tutorToRevoke) {
-          const target = tutorToRevoke;
-          setTutorToRevoke(null);
-          void revoke(target);
-        }
-      }}
-    />
-  </section>;
+      <div className="card-body">
+        {error && (
+          <div className="alert alert-danger small mb-3" role="alert">
+            <i className="bi bi-exclamation-triangle-fill me-2" />
+            {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="alert alert-success small mb-3" role="status">
+            <i className="bi bi-check-circle-fill me-2" />
+            {success}
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="text-center py-4 text-muted small" role="status">
+            <span className="spinner-border spinner-border-sm text-success me-2" />
+            Cargando responsables…
+          </div>
+        ) : items.length === 0 ? (
+          <div className="p-3 bg-light rounded-3 border text-center text-muted small">
+            <i className="bi bi-person-slash me-1" />
+            No hay tutores o representantes registrados para este paciente.
+          </div>
+        ) : (
+          <div className="d-flex flex-column gap-3">
+            {items.map((tutor) => {
+              const status = authorizationStatus(tutor);
+              const isAuthorized = status === 'Gestión autorizada';
+
+              return (
+                <div
+                  key={tutor.id_tutor}
+                  className="p-3 bg-light rounded-3 border d-flex flex-column gap-2"
+                >
+                  <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <div>
+                      <span className="fw-bold text-dark me-2">
+                        {tutor.apellidos}, {tutor.nombres}
+                      </span>
+                      <span className="badge bg-white text-dark border me-2">
+                        DNI {tutor.dni}
+                      </span>
+                      <span className="badge bg-primary-subtle text-primary border border-primary-subtle">
+                        {formatParentescoBadge(tutor.parentesco)}
+                      </span>
+                    </div>
+
+                    <div className="d-flex align-items-center gap-2">
+                      <span
+                        className={`badge ${
+                          isAuthorized
+                            ? 'bg-success-subtle text-success border border-success-subtle'
+                            : 'bg-danger-subtle text-danger border border-danger-subtle'
+                        } rounded-pill`}
+                      >
+                        {status}
+                      </span>
+
+                      {isAuthorized && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1"
+                          disabled={busy}
+                          onClick={() => setTutorToRevoke(tutor)}
+                        >
+                          <i className="bi bi-shield-x" />
+                          Revocar
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="small text-muted d-flex flex-wrap align-items-center gap-2 mt-1">
+                    {!tutor.identidad_verificada && !tutor.documentacion_verificada && !tutor.autorizacion_verificada ? (
+                      <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle fw-normal">
+                        <i className="bi bi-clock-history me-1" />
+                        Verificación presencial pendiente
+                      </span>
+                    ) : (
+                      <div className="d-flex flex-wrap align-items-center gap-1.5">
+                        <span className="text-secondary fw-semibold small me-1">Verificación presencial:</span>
+                        {tutor.identidad_verificada && (
+                          <span className="badge bg-success-subtle text-success border border-success-subtle">
+                            <i className="bi bi-check-lg me-1" />Identidad verificada
+                          </span>
+                        )}
+                        {tutor.documentacion_verificada && (
+                          <span className="badge bg-success-subtle text-success border border-success-subtle">
+                            <i className="bi bi-check-lg me-1" />Documentación verificada
+                          </span>
+                        )}
+                        {tutor.autorizacion_verificada && (
+                          <span className="badge bg-success-subtle text-success border border-success-subtle">
+                            <i className="bi bi-check-lg me-1" />Autorización verificada
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {tutor.fecha_hasta && (
+                      <span className="text-muted ms-auto small">
+                        <i className="bi bi-calendar-event me-1" />
+                        Vigencia hasta: {tutor.fecha_hasta.split('-').reverse().join('/')}
+                      </span>
+                    )}
+                  </div>
+
+                  {Boolean(tutor.historial.length) && (
+                    <details className="small text-muted mt-1">
+                      <summary className="cursor-pointer text-decoration-none">
+                        <i className="bi bi-clock-history me-1" />
+                        Ver historial de auditoría ({tutor.historial.length})
+                      </summary>
+                      <ul className="mb-0 mt-2 ps-3">
+                        {tutor.historial.map((entry) => (
+                          <li key={entry.id_historial}>
+                            {new Date(entry.fecha).toLocaleString('es-AR')} ·{' '}
+                            {entry.accion === 'INSERT'
+                              ? 'Vínculo creado'
+                              : entry.accion === 'DELETE'
+                                ? 'Vínculo revocado'
+                                : 'Vínculo modificado'}{' '}
+                            {entry.actor
+                              ? `por ${
+                                  entry.actor.persona
+                                    ? `${entry.actor.persona.apellidos}, ${entry.actor.persona.nombres}`
+                                    : entry.actor.nombre_usuario
+                                }`
+                              : ''}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <ConfirmationModal
+        open={Boolean(tutorToRevoke)}
+        title="Revocar autorización de tutor"
+        subtitle="Esta acción retira el permiso de gestión de turnos."
+        message={`¿Confirmás que querés revocar la autorización de ${tutorToRevoke?.nombres} ${tutorToRevoke?.apellidos}? No podrá realizar nuevas gestiones para este paciente.`}
+        confirmText="Revocar autorización"
+        cancelText="Cancelar"
+        variant="danger"
+        icon="bi-shield-x"
+        loading={busy}
+        onClose={() => setTutorToRevoke(null)}
+        onConfirm={() => {
+          if (tutorToRevoke) {
+            const target = tutorToRevoke;
+            setTutorToRevoke(null);
+            void revoke(target);
+          }
+        }}
+      />
+    </section>
+  );
 }

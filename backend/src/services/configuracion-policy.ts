@@ -174,7 +174,7 @@ export const configuracionReadAccess = async (
   }
 
   if (
-    actor.rol !== 'ADMIN_SALITA'
+    !['ADMIN_SALITA', 'RECEPCION'].includes(actor.rol)
   ) {
     return {
       publicOnly: true,
@@ -213,7 +213,7 @@ export const assertConfiguracionWrite = async (
   }
 
   if (
-    user.rol !== 'ADMIN_SALITA' ||
+    !['ADMIN_SALITA', 'RECEPCION'].includes(user.rol) ||
     !idSalita ||
     !configuracionAdminKeys.has(clave)
   ) {

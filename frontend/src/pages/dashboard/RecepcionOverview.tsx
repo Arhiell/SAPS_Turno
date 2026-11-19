@@ -15,12 +15,11 @@ import { authError } from '../../utils/auth-errors';
 
 interface RecepcionOverviewProps {
   revision: number;
-  onRefresh: () => void;
+  onRefresh?: () => void;
 }
 
 export default function RecepcionOverview({
   revision,
-  onRefresh,
 }: RecepcionOverviewProps) {
   const navigate = useNavigate();
   const { ultimoEvento, resyncTick } = useAgendaSocket();
@@ -144,6 +143,22 @@ export default function RecepcionOverview({
     setError('');
     setSuccess('');
 
+    // Actualización optimista inmediata para cero latencia visual en ventanilla
+    setTurnos((prev) =>
+      prev.map((t) =>
+        t.id_turno === turno.id_turno
+          ? {
+              ...t,
+              estado: {
+                ...t.estado,
+                codigo: 'EN_ESPERA',
+                nombre: 'En espera',
+              },
+            }
+          : t
+      )
+    );
+
     try {
       await changeTurnoStatus(turno.id_turno, { estado: 'EN_ESPERA' });
       setSuccess(
@@ -152,6 +167,7 @@ export default function RecepcionOverview({
       await loadTurnosHoy();
     } catch (err) {
       setError(authError(err));
+      await loadTurnosHoy();
     } finally {
       setActionBusy(null);
     }
@@ -246,70 +262,68 @@ export default function RecepcionOverview({
           )}
 
           <ConnectionStatusBadge />
-
-          <button
-            type="button"
-            className="btn btn-sm btn-outline-success"
-            onClick={onRefresh}
-            title="Sincronizar datos"
-          >
-            <i className="bi bi-arrow-clockwise me-1" aria-hidden="true" />
-            Sincronizar
-          </button>
         </div>
       </div>
 
-      {/* 4 Contadores operativos clave de hoy */}
+      {/* 4 Contadores operativos clave de hoy (Con borde semántico de 4px y valor uniforme) */}
       <div className="row g-3 mb-4">
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="dashboard-stat-card h-100 border-start border-4 border-primary">
+          <div className="dashboard-stat-card dashboard-stat-card--blue h-100">
             <div className="dashboard-stat-top">
-              <i className="dashboard-stat-icon bi bi-calendar-check text-primary" aria-hidden="true" />
+              <div className="dashboard-stat-icon dashboard-stat-icon--blue">
+                <i className="bi bi-calendar-check" aria-hidden="true" />
+              </div>
               <span className="dashboard-stat-label">Turnos de hoy</span>
             </div>
-            <div className="dashboard-stat-value text-dark">
+            <div className="dashboard-stat-value">
               {loading ? '…' : totalHoy}
             </div>
-            <small className="text-muted">Total programado para la salita</small>
+            <small>Total programado para la salita</small>
           </div>
         </div>
 
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="dashboard-stat-card h-100 border-start border-4 border-warning bg-warning-subtle bg-opacity-25">
+          <div className="dashboard-stat-card dashboard-stat-card--amber h-100">
             <div className="dashboard-stat-top">
-              <i className="dashboard-stat-icon bi bi-hourglass-split text-warning" aria-hidden="true" />
-              <span className="dashboard-stat-label fw-bold text-dark">En sala de espera</span>
+              <div className="dashboard-stat-icon dashboard-stat-icon--amber">
+                <i className="bi bi-hourglass-split" aria-hidden="true" />
+              </div>
+              <span className="dashboard-stat-label">En sala de espera</span>
             </div>
-            <div className="dashboard-stat-value text-dark fw-bolder">
+            <div className="dashboard-stat-value">
               {loading ? '…' : enEspera}
             </div>
-            <small className="text-dark fw-medium">Llegaron a ventanilla y aguardan atención</small>
+            <small>Llegaron a ventanilla y aguardan atención</small>
           </div>
         </div>
 
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="dashboard-stat-card h-100 border-start border-4 border-success">
+          <div className="dashboard-stat-card dashboard-stat-card--green h-100">
             <div className="dashboard-stat-top">
-              <i className="dashboard-stat-icon bi bi-check2-circle text-success" aria-hidden="true" />
+              <div className="dashboard-stat-icon dashboard-stat-icon--green">
+                <i className="bi bi-check2-circle" aria-hidden="true" />
+              </div>
               <span className="dashboard-stat-label">Atendidos</span>
             </div>
-            <div className="dashboard-stat-value text-success">
+            <div className="dashboard-stat-value">
               {loading ? '…' : atendidos}
             </div>
-            <small className="text-muted">Consultas médicas finalizadas</small>
+            <small>Consultas médicas finalizadas</small>
           </div>
         </div>
 
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="dashboard-stat-card h-100 border-start border-4 border-secondary">
+          <div className="dashboard-stat-card dashboard-stat-card--slate h-100">
             <div className="dashboard-stat-top">
-              <i className="dashboard-stat-icon bi bi-clock text-secondary" aria-hidden="true" />
+              <div className="dashboard-stat-icon dashboard-stat-icon--slate">
+                <i className="bi bi-clock" aria-hidden="true" />
+              </div>
               <span className="dashboard-stat-label">Por llegar</span>
             </div>
-            <div className="dashboard-stat-value text-secondary">
+            <div className="dashboard-stat-value">
               {loading ? '…' : porLlegar}
             </div>
-            <small className="text-muted">Turnos pendientes de presentación</small>
+            <small>Turnos pendientes de presentación</small>
           </div>
         </div>
       </div>

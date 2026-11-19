@@ -20,7 +20,8 @@ router.use(
   authenticate,
   requireRole(
     'SUPER_ADMIN',
-    'ADMIN_SALITA'
+    'ADMIN_SALITA',
+    'RECEPCION'
   )
 );
 

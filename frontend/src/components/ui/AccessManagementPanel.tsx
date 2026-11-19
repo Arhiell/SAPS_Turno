@@ -1,14 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import type { CompletePersonInput, PersonProfile } from '../../types/auth.types';
-import { correctManagedPerson, getManagedAccounts, setManagedAccountStatus,
-  type ManagedAccount } from '../../services/access-management.service';
+import {
+  correctManagedPerson,
+  getManagedAccounts,
+  setManagedAccountStatus,
+  type ManagedAccount,
+} from '../../services/access-management.service';
 import type { Salita } from '../../types/salita.types';
 import { authError } from '../../utils/auth-errors';
 import PersonProfileFields from './PersonProfileFields';
 import ConfirmationModal from './ConfirmationModal';
+import PaginationControls from './PaginationControls';
 
-export default function AccessManagementPanel({ revision, salitas }: { revision: number; salitas: Salita[] }) {
+export default function AccessManagementPanel({
+  revision,
+  salitas,
+}: {
+  revision: number;
+  salitas: Salita[];
+}) {
   const { user, reloadProfile } = useAuth();
   const [role, setRole] = useState('');
   const [clinic, setClinic] = useState('');
@@ -24,7 +35,11 @@ export default function AccessManagementPanel({ revision, salitas }: { revision:
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [target, setTarget] = useState<PersonProfile | null>(null);
-  const [draft, setDraft] = useState<CompletePersonInput>({ dni: '', nombres: '', apellidos: '' });
+  const [draft, setDraft] = useState<CompletePersonInput>({
+    dni: '',
+    nombres: '',
+    apellidos: '',
+  });
   const [statusTarget, setStatusTarget] = useState<ManagedAccount | null>(null);
   const [confirmSave, setConfirmSave] = useState(false);
   const editor = useRef<HTMLFormElement>(null);
@@ -37,144 +52,508 @@ export default function AccessManagementPanel({ revision, salitas }: { revision:
       try {
         const result = await getManagedAccounts(page, search, role, clinic);
         if (!active) return;
-        setAccounts(result.items); setTotal(result.total); setPages(result.totalPages);
-      } catch (cause) { if (active) setError(authError(cause)); }
-      finally { if (active) setLoading(false); }
+        setAccounts(result.items);
+        setTotal(result.total);
+        setPages(result.totalPages);
+      } catch (cause) {
+        if (active) setError(authError(cause));
+      } finally {
+        if (active) setLoading(false);
+      }
     };
     void load();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [page, revision, refresh, search, role, clinic]);
 
   const edit = (person: PersonProfile) => {
     setTarget(person);
-    setDraft({ dni: person.dni, nombres: person.nombres, apellidos: person.apellidos,
-      fecha_nacimiento: person.fecha_nacimiento, sexo: person.sexo,
-      telefono: person.telefono ?? '', direccion: person.direccion ?? '',
-      localidad: person.localidad ?? '', provincia: person.provincia ?? '',
-      codigo_postal: person.codigo_postal ?? '' });
-    setError(''); setMessage('');
+    setDraft({
+      dni: person.dni,
+      nombres: person.nombres,
+      apellidos: person.apellidos,
+      fecha_nacimiento: person.fecha_nacimiento,
+      sexo: person.sexo,
+      telefono: person.telefono ?? '',
+      direccion: person.direccion ?? '',
+      localidad: person.localidad ?? '',
+      provincia: person.provincia ?? '',
+      codigo_postal: person.codigo_postal ?? '',
+    });
+    setError('');
+    setMessage('');
   };
 
-  useEffect(() => { if (target) editor.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, [target]);
+  useEffect(() => {
+    if (target) {
+      editor.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+  }, [target]);
 
   const savePerson = async () => {
     if (!target || busy) return;
-    setBusy(true); setError(''); setMessage('');
+    setBusy(true);
+    setError('');
+    setMessage('');
     try {
-      await correctManagedPerson(target.id_persona, { ...draft,
+      await correctManagedPerson(target.id_persona, {
+        ...draft,
         direccion: draft.direccion?.trim() || null,
       });
       if (target.id_persona === user?.id_persona) await reloadProfile();
-      setTarget(null); setMessage('Datos personales actualizados.'); setRefresh((value) => value + 1);
-    } catch (cause) { setError(authError(cause)); }
-    finally { setBusy(false); setConfirmSave(false); }
+      setTarget(null);
+      setMessage('Datos personales actualizados correctamente.');
+      setRefresh((value) => value + 1);
+    } catch (cause) {
+      setError(authError(cause));
+    } finally {
+      setBusy(false);
+      setConfirmSave(false);
+    }
   };
 
   const changeStatus = async () => {
     if (!statusTarget || busy) return;
-    setBusy(true); setError(''); setMessage('');
+    setBusy(true);
+    setError('');
+    setMessage('');
     try {
-      await setManagedAccountStatus(statusTarget.id_usuario, !statusTarget.activo);
-      setMessage(statusTarget.activo ? 'Cuenta dada de baja. Ya no puede ingresar.' : 'Cuenta reactivada.');
+      await setManagedAccountStatus(
+        statusTarget.id_usuario,
+        !statusTarget.activo
+      );
+      setMessage(
+        statusTarget.activo
+          ? `La cuenta de ${statusTarget.nombre_usuario} fue dada de baja.`
+          : `La cuenta de ${statusTarget.nombre_usuario} fue reactivada.`
+      );
       setRefresh((value) => value + 1);
-    } catch (cause) { setError(authError(cause)); }
-    finally { setBusy(false); setStatusTarget(null); }
+    } catch (cause) {
+      setError(authError(cause));
+    } finally {
+      setBusy(false);
+      setStatusTarget(null);
+    }
   };
 
+  const hasActiveFilters = Boolean(search || role || clinic);
+
   return (
-    <section id="administrar-accesos" className="mt-4 border-top pt-4" style={{ scrollMarginTop: '6rem' }}>
-      <h2 className="h5">Administradores</h2>
-      <p className="text-muted">
-        {user?.rol === 'SUPER_ADMIN'
-          ? 'Administrá las cuentas de superadministradores y administradores de salas.'
-          : 'Consultá los administradores de tus salas con asignación vigente.'}
-      </p>
-      <div className="row g-3 mb-3">
-        <label className="form-label col-12 col-md-6">Cargo
-          <select className="form-select" value={role} disabled={busy}
-            onChange={(event) => {
-              setRole(event.target.value);
-              if (event.target.value === 'SUPER_ADMIN') setClinic('');
-              setPage(1);
-            }}>
-            <option value="">{user?.rol === 'SUPER_ADMIN' ? 'Todos los cargos administrativos' : 'Administradores de sala'}</option>
-            {user?.rol === 'SUPER_ADMIN' && <option value="SUPER_ADMIN">Superadministrador</option>}
-            <option value="ADMIN_SALITA">Administrador de sala</option>
-          </select>
-        </label>
-        <label className="form-label col-12 col-md-6">Sala
-          <select className="form-select" value={clinic} disabled={busy || role === 'SUPER_ADMIN'}
-            onChange={(event) => { setClinic(event.target.value); setPage(1); }}>
-            <option value="">{user?.rol === 'SUPER_ADMIN' ? 'Todas las salas' : 'Todas mis salas'}</option>
-            {salitas.map((salita) => <option key={salita.id_salita} value={salita.id_salita}>{salita.nombre}</option>)}
-          </select>
-        </label>
+    <section
+      id="administrar-accesos"
+      className="mt-4 border-top pt-4"
+      style={{ scrollMarginTop: '6rem' }}
+    >
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <div>
+          <h2 className="h5 fw-bold mb-1">
+            <i className="bi bi-people-fill text-success me-2" aria-hidden="true" />
+            Cuentas y personal administrativo
+          </h2>
+          <p className="text-muted small mb-0">
+            {user?.rol === 'SUPER_ADMIN'
+              ? 'Administrá las cuentas de superadministradores y administradores de salitas municipales.'
+              : 'Consultá y gestioná los administradores de tus salitas con asignación vigente.'}
+          </p>
+        </div>
       </div>
-      <form className="d-flex flex-wrap align-items-end gap-2 mb-3" onSubmit={(event) => {
-        event.preventDefault(); setSearch(searchInput.trim()); setPage(1); setRefresh((value) => value + 1);
-      }}>
-        <label className="form-label flex-grow-1 mb-0">
-          Buscar por usuario o correo
-          <input className="form-control" type="search" maxLength={100} value={searchInput}
-            disabled={busy} onChange={(event) => setSearchInput(event.target.value)} />
-        </label>
-        <button type="submit" className="btn btn-outline-success" disabled={busy || loading}>Buscar</button>
-      </form>
-      {error && <p className="alert alert-danger" role="alert">{error}</p>}
-      {message && <p className="alert alert-success" role="status">{message}</p>}
+
+      {/* Barra de filtros compacta y profesional */}
+      <div className="card border-0 bg-light p-3 mb-4 rounded-3 shadow-none">
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            setSearch(searchInput.trim());
+            setPage(1);
+            setRefresh((value) => value + 1);
+          }}
+        >
+          <div className="row g-2 align-items-end">
+            <div className="col-12 col-md-5">
+              <label
+                htmlFor="search-accounts"
+                className="form-label small fw-semibold text-muted mb-1"
+              >
+                <i className="bi bi-search me-1" aria-hidden="true" />
+                Buscar por usuario o correo
+              </label>
+              <div className="input-group input-group-sm">
+                <input
+                  id="search-accounts"
+                  className="form-control"
+                  type="search"
+                  placeholder="Nombre de usuario o correo..."
+                  maxLength={100}
+                  value={searchInput}
+                  disabled={busy}
+                  onChange={(event) => setSearchInput(event.target.value)}
+                />
+                <button
+                  type="submit"
+                  className="btn btn-success d-inline-flex align-items-center"
+                  disabled={busy || loading}
+                >
+                  <i className="bi bi-search me-1" aria-hidden="true" />
+                  Buscar
+                </button>
+              </div>
+            </div>
+
+            <div className="col-12 col-sm-6 col-md-3">
+              <label
+                htmlFor="filter-role"
+                className="form-label small fw-semibold text-muted mb-1"
+              >
+                <i className="bi bi-person-badge me-1" aria-hidden="true" />
+                Cargo
+              </label>
+              <select
+                id="filter-role"
+                className="form-select form-select-sm"
+                value={role}
+                disabled={busy}
+                onChange={(event) => {
+                  setRole(event.target.value);
+                  if (event.target.value === 'SUPER_ADMIN') setClinic('');
+                  setPage(1);
+                }}
+              >
+                <option value="">
+                  {user?.rol === 'SUPER_ADMIN'
+                    ? 'Todos los cargos'
+                    : 'Administradores de sala'}
+                </option>
+                {user?.rol === 'SUPER_ADMIN' && (
+                  <option value="SUPER_ADMIN">Superadministrador</option>
+                )}
+                <option value="ADMIN_SALITA">Administrador de sala</option>
+              </select>
+            </div>
+
+            <div className="col-12 col-sm-6 col-md-4">
+              <label
+                htmlFor="filter-clinic"
+                className="form-label small fw-semibold text-muted mb-1"
+              >
+                <i className="bi bi-hospital me-1" aria-hidden="true" />
+                Sala asignada
+              </label>
+              <select
+                id="filter-clinic"
+                className="form-select form-select-sm"
+                value={clinic}
+                disabled={busy || role === 'SUPER_ADMIN'}
+                onChange={(event) => {
+                  setClinic(event.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="">
+                  {user?.rol === 'SUPER_ADMIN'
+                    ? 'Todas las salas'
+                    : 'Todas mis salas'}
+                </option>
+                {salitas.map((salita) => (
+                  <option key={salita.id_salita} value={salita.id_salita}>
+                    {salita.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </form>
+
+        <div className="d-flex flex-wrap align-items-center justify-content-between mt-3 pt-2 border-top border-light-subtle">
+          <span className="badge bg-white text-dark border px-2 py-1 fw-medium">
+            <i className="bi bi-check-circle text-success me-1" aria-hidden="true" />
+            {total} {total === 1 ? 'cuenta encontrada' : 'cuentas encontradas'}
+          </span>
+
+          {hasActiveFilters && (
+            <button
+              type="button"
+              className="btn btn-link btn-sm text-decoration-none text-muted p-0"
+              onClick={() => {
+                setSearchInput('');
+                setSearch('');
+                setRole('');
+                setClinic('');
+                setPage(1);
+              }}
+            >
+              <i className="bi bi-x-circle me-1" aria-hidden="true" />
+              Limpiar filtros
+            </button>
+          )}
+        </div>
+      </div>
+
+      {error && (
+        <div className="alert alert-danger mb-3" role="alert">
+          <i className="bi bi-exclamation-triangle-fill me-2" aria-hidden="true" />
+          {error}
+        </div>
+      )}
+
+      {message && (
+        <div className="alert alert-success mb-3" role="status">
+          <i className="bi bi-check-circle-fill me-2" aria-hidden="true" />
+          {message}
+        </div>
+      )}
+
+      {/* Editor rápido de perfil */}
       {target && (
-        <form ref={editor} className="border rounded p-3 mb-3" onSubmit={(event) => { event.preventDefault(); setConfirmSave(true); }}>
-          <h3 className="h6">Corregir datos de {target.nombres} {target.apellidos}</h3>
+        <form
+          ref={editor}
+          className="border rounded-3 p-3 p-md-4 mb-4 bg-light shadow-sm"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setConfirmSave(true);
+          }}
+        >
+          <div className="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+            <h3 className="h6 fw-bold mb-0 text-success">
+              <i className="bi bi-pencil-square me-2" aria-hidden="true" />
+              Corregir datos de {target.nombres} {target.apellidos}
+            </h3>
+            <button
+              type="button"
+              className="btn-close"
+              aria-label="Cerrar formulario"
+              onClick={() => setTarget(null)}
+            />
+          </div>
           <fieldset disabled={busy}>
             <PersonProfileFields value={draft} onChange={setDraft} />
-            <div className="d-flex flex-wrap gap-2 mt-3">
-              <button className="btn btn-success" type="submit">Guardar cambios</button>
-              <button className="btn btn-outline-secondary" type="button" onClick={() => setTarget(null)}>Cancelar</button>
+            <div className="d-flex flex-wrap gap-2 mt-3 pt-2 border-top">
+              <button className="btn btn-success" type="submit">
+                <i className="bi bi-check-lg me-1" aria-hidden="true" />
+                Guardar cambios
+              </button>
+              <button
+                className="btn btn-outline-secondary"
+                type="button"
+                onClick={() => setTarget(null)}
+              >
+                Cancelar
+              </button>
             </div>
           </fieldset>
         </form>
       )}
-      {loading ? <p role="status">Cargando registros…</p> : !error && (
+
+      {/* Listado de cuentas */}
+      {loading ? (
+        <div className="text-center py-5 text-muted" role="status">
+          <div className="spinner-border spinner-border-sm text-success me-2" />
+          Cargando cuentas administrativas…
+        </div>
+      ) : !error && (
         <>
-          <p className="small text-muted">{total} registros</p>
           <div className="row g-3">
-            {accounts.map((account) => (
-              <div className="col-12 col-xl-6" key={account.id_usuario}>
-                <article className="border rounded p-3 h-100 text-break">
-                  <h3 className="h6">{account.nombre_usuario}</h3>
-                  <p className="mb-1">{account.rol.nombre} · {account.activo ? 'Activa' : 'Inactiva'}</p>
-                  <p className="mb-1">{account.email}</p>
-                  <p className="small text-muted">{account.persona
-                    ? `${account.persona.nombres} ${account.persona.apellidos} · DNI ${account.persona.dni}`
-                    : 'Datos personales pendientes: la cuenta debe completar su perfil al ingresar.'}</p>
-                  <p className="small text-muted">{account.rol.codigo === 'SUPER_ADMIN'
-                    ? 'Alcance global'
-                    : account.asignaciones.map((assignment) => assignment.salita?.nombre).filter(Boolean).join(', ') || 'Sin sala vigente'}</p>
-                  {user?.rol === 'SUPER_ADMIN' && <div className="d-flex flex-wrap gap-2">
-                    <button type="button" className="btn btn-outline-success" disabled={busy || !account.persona}
-                      onClick={() => account.persona && edit(account.persona)}>Editar datos personales</button>
-                    <button type="button" className={`btn ${account.activo ? 'btn-outline-danger' : 'btn-outline-success'}`}
-                      disabled={busy || account.id_usuario === user?.id_usuario}
-                      onClick={() => setStatusTarget(account)}>{account.activo ? 'Dar de baja' : 'Reactivar'}</button>
-                  </div>}
-                  {user?.rol === 'SUPER_ADMIN' && account.id_usuario === user?.id_usuario && <p className="small text-muted mt-2 mb-0">Tu cuenta: podés corregir tus datos, pero no darte de baja.</p>}
-                </article>
-              </div>
-            ))}
+            {accounts.map((account) => {
+              const isSuperAdmin = account.rol.codigo === 'SUPER_ADMIN';
+              const isSelf = account.id_usuario === user?.id_usuario;
+
+              return (
+                <div className="col-12 col-xl-6" key={account.id_usuario}>
+                  <article className="card h-100 border rounded-3 shadow-none p-3 d-flex flex-column justify-content-between">
+                    <div>
+                      <div className="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-2 pb-2 border-bottom">
+                        <div className="d-flex align-items-center gap-2">
+                          <div
+                            className={`p-2 rounded-circle ${
+                              isSuperAdmin
+                                ? 'bg-primary-subtle text-primary'
+                                : 'bg-success-subtle text-success'
+                            }`}
+                          >
+                            <i
+                              className={`bi ${
+                                isSuperAdmin
+                                  ? 'bi-shield-check'
+                                  : 'bi-person-badge'
+                              } fs-5`}
+                              aria-hidden="true"
+                            />
+                          </div>
+                          <div>
+                            <h3 className="h6 fw-bold mb-0 text-dark">
+                              {account.nombre_usuario}
+                            </h3>
+                            <small className="text-muted">
+                              {account.persona
+                                ? `${account.persona.nombres} ${account.persona.apellidos}`
+                                : 'Perfil personal pendiente'}
+                            </small>
+                          </div>
+                        </div>
+
+                        <div className="d-flex align-items-center gap-1">
+                          <span
+                            className={`badge ${
+                              isSuperAdmin
+                                ? 'bg-primary-subtle text-primary border border-primary-subtle'
+                                : 'bg-info-subtle text-info border border-info-subtle'
+                            } rounded-pill`}
+                          >
+                            {account.rol.nombre}
+                          </span>
+                          <span
+                            className={`badge ${
+                              account.activo
+                                ? 'bg-success-subtle text-success border border-success-subtle'
+                                : 'bg-danger-subtle text-danger border border-danger-subtle'
+                            } rounded-pill`}
+                          >
+                            {account.activo ? 'Activa' : 'Inactiva'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="small text-muted d-flex flex-column gap-1 mb-3">
+                        <div className="d-flex align-items-center gap-2 text-dark">
+                          <i className="bi bi-envelope text-muted" aria-hidden="true" />
+                          <span className="text-break">{account.email}</span>
+                        </div>
+
+                        <div className="d-flex align-items-center gap-2">
+                          <i className="bi bi-hospital text-muted" aria-hidden="true" />
+                          <span>
+                            {isSuperAdmin
+                              ? 'Alcance global municipal'
+                              : account.asignaciones
+                                  .map((a) => a.salita?.nombre)
+                                  .filter(Boolean)
+                                  .join(', ') || 'Sin sala vigente asignada'}
+                          </span>
+                        </div>
+
+                        {account.persona ? (
+                          <div className="d-flex align-items-center gap-2">
+                            <i className="bi bi-person-vcard text-muted" aria-hidden="true" />
+                            <span>
+                              DNI {account.persona.dni}
+                              {account.persona.telefono
+                                ? ` · Tel: ${account.persona.telefono}`
+                                : ''}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="text-warning small">
+                            <i className="bi bi-exclamation-circle me-1" aria-hidden="true" />
+                            Debe completar sus datos al ingresar.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {user?.rol === 'SUPER_ADMIN' && (
+                      <div className="d-flex flex-wrap gap-2 pt-2 border-top mt-auto">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1"
+                          disabled={busy || !account.persona}
+                          onClick={() => account.persona && edit(account.persona)}
+                        >
+                          <i className="bi bi-pencil" aria-hidden="true" />
+                          Editar datos
+                        </button>
+
+                        <button
+                          type="button"
+                          className={`btn btn-sm ${
+                            account.activo
+                              ? 'btn-outline-danger'
+                              : 'btn-outline-success'
+                          } d-inline-flex align-items-center gap-1`}
+                          disabled={busy || isSelf}
+                          onClick={() => setStatusTarget(account)}
+                        >
+                          <i
+                            className={`bi ${
+                              account.activo
+                                ? 'bi-person-x'
+                                : 'bi-person-check'
+                            }`}
+                            aria-hidden="true"
+                          />
+                          {account.activo ? 'Dar de baja' : 'Reactivar'}
+                        </button>
+
+                        {isSelf && (
+                          <span className="text-muted small align-self-center ms-auto">
+                            (Tu cuenta activa)
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </article>
+                </div>
+              );
+            })}
           </div>
-          {total === 0 && <p>No hay registros disponibles en tu alcance.</p>}
+
+          {total === 0 && (
+            <div className="text-center py-5 text-muted border rounded-3 bg-light">
+              <i className="bi bi-person-x fs-2 text-muted d-block mb-2" />
+              <p className="fw-semibold mb-1">No hay registros disponibles</p>
+              <p className="small mb-0">
+                {hasActiveFilters
+                  ? 'Probá ajustando o limpiando los filtros de búsqueda.'
+                  : 'Aún no se crearon cuentas en este alcance.'}
+              </p>
+            </div>
+          )}
+
+          {/* Paginación estandarizada */}
+          <div className="mt-4">
+            <PaginationControls
+              page={page}
+              totalPages={pages}
+              totalItems={total}
+              itemsPerPage={10}
+              onPageChange={setPage}
+              loading={loading || busy}
+              itemLabel="cuentas"
+            />
+          </div>
         </>
       )}
-      <nav className="d-flex flex-wrap gap-3 align-items-center justify-content-center mt-3" aria-label="Páginas de administración de accesos">
-        <button type="button" className="btn btn-outline-secondary" disabled={loading || busy || page <= 1} onClick={() => setPage((value) => value - 1)}>Anterior</button>
-        <span>Página {page} de {Math.max(1, pages)}</span>
-        <button type="button" className="btn btn-outline-secondary" disabled={loading || busy || page >= pages} onClick={() => setPage((value) => value + 1)}>Siguiente</button>
-      </nav>
-      <ConfirmationModal open={!!statusTarget} title={statusTarget?.activo ? 'Dar de baja la cuenta' : 'Reactivar cuenta'}
-        message={`${statusTarget?.nombre_usuario ?? ''}: ${statusTarget?.activo ? 'se impedirá el acceso y se revocarán sus sesiones. Sus datos se conservarán.' : 'podrá volver a ingresar.'}`}
-        confirmText="Confirmar" loading={busy} onClose={() => { if (!busy) setStatusTarget(null); }} onConfirm={() => void changeStatus()} />
-      <ConfirmationModal open={confirmSave} title="Guardar datos personales" message="Confirmá la corrección de los datos de esta persona."
-        confirmText="Guardar" loading={busy} onClose={() => { if (!busy) setConfirmSave(false); }} onConfirm={() => void savePerson()} />
+
+      <ConfirmationModal
+        open={Boolean(statusTarget)}
+        title={
+          statusTarget?.activo
+            ? 'Dar de baja la cuenta'
+            : 'Reactivar cuenta'
+        }
+        message={`${statusTarget?.nombre_usuario ?? ''}: ${
+          statusTarget?.activo
+            ? 'se impedirá el acceso y se revocarán sus sesiones activas. Sus datos y registros se conservarán.'
+            : 'podrá volver a ingresar al sistema normalmente.'
+        }`}
+        confirmText="Confirmar"
+        loading={busy}
+        onClose={() => {
+          if (!busy) setStatusTarget(null);
+        }}
+        onConfirm={() => void changeStatus()}
+      />
+
+      <ConfirmationModal
+        open={confirmSave}
+        title="Guardar datos personales"
+        message="¿Confirmás la corrección de los datos personales de esta persona?"
+        confirmText="Guardar"
+        loading={busy}
+        onClose={() => {
+          if (!busy) setConfirmSave(false);
+        }}
+        onConfirm={() => void savePerson()}
+      />
     </section>
   );
 }

@@ -20,7 +20,7 @@ const router = Router();
 router.post(
   '/change/request',
   authenticate,
-  requireRole('PACIENTE', 'SUPER_ADMIN', 'ADMIN_SALITA', 'PROFESIONAL'),
+  requireRole('PACIENTE', 'SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION', 'PROFESIONAL'),
   requestChange
 );
 
@@ -28,7 +28,7 @@ router.post(
 router.post(
   '/change/verify',
   authenticate,
-  requireRole('PACIENTE', 'SUPER_ADMIN', 'ADMIN_SALITA', 'PROFESIONAL'),
+  requireRole('PACIENTE', 'SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION', 'PROFESIONAL'),
   confirmChange
 );
 

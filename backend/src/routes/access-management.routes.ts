@@ -15,14 +15,13 @@ import {
 // Inicializa las rutas de gestión de cuentas y datos personales.
 const router = Router();
 
-// Restringe el acceso a los administradores autorizados.
+// Restringe el acceso a usuarios autorizados de salita y administración general.
 router.use(
   authenticate,
-  requireRole('SUPER_ADMIN', 'ADMIN_SALITA'),
-  requirePermission(GENERAL_PERMISSIONS.GESTIONAR_USUARIOS)
+  requireRole('SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION')
 );
 
-// Obtiene las cuentas administrativas con filtros y paginación.
+// Obtiene las cuentas administrativas con filtros y paginación dentro del alcance de salitas.
 router.get('/accounts', async (req, res, next) => {
   try {
     // Valida los parámetros de consulta.
@@ -66,8 +65,8 @@ router.get('/accounts', async (req, res, next) => {
   }
 });
 
-// Activa o desactiva una cuenta administrativa.
-router.patch('/accounts/:id/status', async (req, res, next) => {
+// Activa o desactiva una cuenta administrativa (requiere permiso GESTIONAR_USUARIOS).
+router.patch('/accounts/:id/status', requirePermission(GENERAL_PERMISSIONS.GESTIONAR_USUARIOS), async (req, res, next) => {
   try {
     // Valida el identificador y el nuevo estado de la cuenta.
     const id = z
@@ -96,8 +95,8 @@ router.patch('/accounts/:id/status', async (req, res, next) => {
   }
 });
 
-// Permite corregir los datos personales de un usuario administrado.
-router.patch('/people/:id', async (req, res, next) => {
+// Permite corregir los datos personales de un usuario administrado (requiere permiso GESTIONAR_USUARIOS).
+router.patch('/people/:id', requirePermission(GENERAL_PERMISSIONS.GESTIONAR_USUARIOS), async (req, res, next) => {
   try {
     // Valida el identificador de la persona.
     const id = z
@@ -113,6 +112,7 @@ router.patch('/people/:id', async (req, res, next) => {
         id,
         req.body
       ),
+      message: 'Datos personales corregidos.',
     });
   } catch (error) {
     next(error);

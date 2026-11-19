@@ -237,14 +237,6 @@ export default function CoberturaPage() {
         }}
       />
 
-      <Link
-        to="/configuracion"
-        className="btn btn-outline-secondary mb-3"
-      >
-        <i className="bi bi-arrow-left me-2" aria-hidden="true" />
-        Volver a configuración
-      </Link>
-
       <div className="dashboard-header">
         <h1>Cobertura de salitas</h1>
 

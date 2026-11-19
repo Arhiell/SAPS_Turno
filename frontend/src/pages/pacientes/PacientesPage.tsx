@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useAgendaSocket } from '../../context/AgendaSocketContext';
 import ConnectionStatusBadge from '../../components/ui/ConnectionStatusBadge';
 import { FloatingFeedbackToast } from '../../components/ui/FormFeedback';
+import PaginationControls from '../../components/ui/PaginationControls';
 import { useAutoDismiss } from '../../utils/useAutoDismiss';
 
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
@@ -266,10 +267,10 @@ const PacientesPage = () => {
       )}
 
       {/* ENCABEZADO */}
-      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 mb-md-4">
         <div>
-          <div className="d-flex align-items-center gap-3">
-            <h2 className="fw-bold mb-1">
+          <div className="d-flex align-items-center gap-2">
+            <h2 className="fw-bold mb-0 text-dark fs-4 fs-md-3">
               Pacientes
             </h2>
             <ConnectionStatusBadge />
@@ -282,20 +283,20 @@ const PacientesPage = () => {
             )}
           </div>
 
-          <p className="text-muted mb-0">
+          <p className="text-muted small mb-0 d-none d-sm-block">
             Administración de pacientes registrados.
           </p>
         </div>
 
         <button
           type="button"
-          className="btn btn-saps"
+          className="btn btn-saps btn-sm py-2 px-3 d-inline-flex align-items-center gap-1.5"
           onClick={() =>
             navigate('/pacientes/nuevo')
           }
         >
-          <i className="bi bi-person-plus me-2" />
-          Nuevo paciente
+          <i className="bi bi-person-plus" />
+          <span>Nuevo paciente</span>
         </button>
       </div>
 
@@ -315,25 +316,25 @@ const PacientesPage = () => {
         />
       )}
 
-      {/* BUSCADOR */}
-      <div className="card border-0 shadow-sm mb-4">
-        <div className="card-body">
-          <div className="row g-3">
+      {/* BUSCADOR Y FILTROS */}
+      <div className="card border-0 shadow-sm mb-3 mb-md-4">
+        <div className="card-body p-3">
+          <div className="row g-2 g-md-3">
 
-            <div className="col-lg-5">
-              <label className="form-label">
+            <div className="col-12 col-md-5">
+              <label className="form-label small fw-semibold text-secondary mb-1">
                 Buscar
               </label>
 
               <div className="input-group">
-                <span className="input-group-text bg-white">
+                <span className="input-group-text bg-white border-end-0 text-muted">
                   <i className="bi bi-search" />
                 </span>
 
                 <input
                   type="search"
-                  className="form-control"
-                  placeholder="DNI, apellido o nombre completo"
+                  className="form-control border-start-0 ps-0"
+                  placeholder="DNI, apellido o nombre..."
                   aria-label="Buscar paciente por DNI, apellido o nombre completo"
                   maxLength={150}
                   value={search}
@@ -344,13 +345,13 @@ const PacientesPage = () => {
               </div>
             </div>
 
-            <div className="col-lg-3">
-              <label className="form-label">
+            <div className="col-6 col-md-3">
+              <label className="form-label small fw-semibold text-secondary mb-1">
                 Estado
               </label>
 
               <select
-                className="form-select"
+                className="form-select form-select-sm"
                 value={statusFilter}
                 aria-label="Filtrar pacientes por estado"
                 onChange={(event) => {
@@ -366,14 +367,14 @@ const PacientesPage = () => {
               </select>
             </div>
 
-            <div className="col-lg-4">
-              <label className="form-label" htmlFor="filtro-salita">
+            <div className="col-6 col-md-4">
+              <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="filtro-salita">
                 Salita
               </label>
 
               <select
                 id="filtro-salita"
-                className="form-select"
+                className="form-select form-select-sm"
                 value={selectedSalita}
                 aria-label="Filtrar pacientes por salita"
                 onChange={(event) => {
@@ -381,7 +382,7 @@ const PacientesPage = () => {
                   setPage(1);
                 }}
               >
-                <option value="">Todas las salitas disponibles</option>
+                <option value="">Todas las salitas</option>
                 {salitas.map((salita) => (
                   <option key={salita.id_salita} value={salita.id_salita}>
                     {salita.nombre}
@@ -394,7 +395,7 @@ const PacientesPage = () => {
         </div>
       </div>
 
-      {/* TABLA */}
+      {/* CONTENEDOR DE PACIENTES: MÓVIL Y ESCRITORIO */}
       <div className="card border-0 shadow-sm">
         <div className="card-body p-0">
 
@@ -414,187 +415,267 @@ const PacientesPage = () => {
               No hay pacientes para mostrar.
             </div>
           ) : (
-            <div className="table-responsive">
-              <table className="table saps-responsive-table table-hover align-middle mb-0">
-                <thead>
-                  <tr>
-                    <th scope="col">DNI</th>
-                    <th scope="col">Paciente</th>
-                    <th scope="col">Teléfono</th>
-                    <th scope="col">Obra social</th>
-                    <th scope="col">Estado</th>
-                    <th scope="col" className="text-end">
-                      Acciones
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {patients.map((patient) => (
-                    <tr
-                      key={patient.id_paciente}
-                    >
-                      <td data-label="DNI">
-                        {patient.dni}
-                      </td>
-
-                      <td data-label="Paciente">
-                        <strong>
-                          {patient.apellidos},{' '}
-                          {patient.nombres}
-                        </strong>
-                        <AccountSummary account={patient.cuenta} />
-                      </td>
-
-                      <td data-label="Teléfono">
-                        {patient.telefono || '-'}
-                      </td>
-
-                      <td data-label="Obra social">
-                        {patient.obra_social || '-'}
-                      </td>
-
-                      <td data-label="Estado">
-                        <span
-                          className={`badge ${
-                            patient.activo
-                              ? 'text-bg-success'
-                              : 'text-bg-secondary'
-                          }`}
-                        >
-                          {patient.activo
-                            ? 'Activo'
-                            : 'Inactivo'}
-                        </span>
-                      </td>
-
-                      <td data-label="Acciones" className="text-end">
-                        <div className="d-flex justify-content-end gap-2">
-
-                          {/* VER FICHA */}
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-primary"
-                            title="Ver ficha del paciente"
-                            onClick={() =>
-                              handleViewPatient(
-                                patient.id_paciente,
-                              )
-                            }
-                          >
-                            <i className="bi bi-eye" />
-                          </button>
-
-                          {/* TURNOS */}
-                          <Link
-                            to={`/turnos?search=${patient.dni}`}
-                            className="btn btn-sm btn-outline-secondary"
-                            title="Ver turnos del paciente"
-                          >
-                            <i className="bi bi-calendar3" />
-                          </Link>
-
-                          {/* HISTORIA CLÍNICA (SI ESTÁ AUTORIZADO) */}
-                          {permissions.includes('VER_HISTORIA_CLINICA') && (
-                            <Link
-                              to={`/historia-clinica/pacientes/${patient.id_paciente}?salita=${encodeURIComponent(patient.id_salita_asignada)}`}
-                              className="btn btn-sm btn-outline-success"
-                              title="Ver historia clínica"
+            <>
+              {/* VISTA MÓVIL: TARJETAS RESPONSIVE ESPECÍFICAS (< 768px) */}
+              <div className="d-md-none p-2.5 p-sm-3 d-flex flex-column gap-2.5">
+                {patients.map((patient) => (
+                  <article
+                    key={patient.id_paciente}
+                    className="patient-mobile-card bg-white border rounded-3 p-3 shadow-xs position-relative"
+                    style={{
+                      borderLeft: `4px solid ${patient.activo ? '#16a34a' : '#94a3b8'}`,
+                    }}
+                  >
+                    {/* Fila 1: Nombre (principal), DNI (secundario), Estado (badge) */}
+                    <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
+                      <div className="min-w-0 flex-grow-1">
+                        <h6 className="fw-bold text-dark mb-0.5 text-truncate" style={{ fontSize: '15px' }}>
+                          {patient.apellidos}, {patient.nombres}
+                        </h6>
+                        <div className="text-muted d-flex flex-wrap align-items-center gap-1.5" style={{ fontSize: '12px' }}>
+                          <span>DNI {patient.dni}</span>
+                          {patient.cuenta && (
+                            <span
+                              className="badge bg-success-subtle text-success border border-success-subtle py-0.5 px-1.5 rounded-pill"
+                              style={{ fontSize: '10.5px' }}
                             >
-                              <i className="bi bi-journal-medical" />
-                            </Link>
+                              <i className="bi bi-person-check me-0.5" />
+                              Cuenta digital
+                            </span>
                           )}
-
-                          {/* ACTIVAR / DESACTIVAR */}
-                          <button
-                            type="button"
-                            className={`btn btn-sm ${
-                              patient.activo
-                                ? 'btn-outline-danger'
-                                : 'btn-outline-success'
-                            }`}
-                            title={
-                              patient.activo
-                                ? 'Desactivar paciente'
-                                : 'Activar paciente'
-                            }
-                            onClick={() =>
-                              void handleStatusChange(
-                                patient,
-                              )
-                            }
-                          >
-                            <i
-                              className={`bi ${
-                                patient.activo
-                                  ? 'bi-person-dash'
-                                  : 'bi-person-check'
-                              }`}
-                            />
-                          </button>
-
                         </div>
-                      </td>
+                      </div>
+
+                      <span
+                        className={`badge rounded-pill flex-shrink-0 ${
+                          patient.activo
+                            ? 'bg-success-subtle text-success border border-success-subtle'
+                            : 'bg-secondary-subtle text-secondary border border-secondary-subtle'
+                        }`}
+                        style={{ fontSize: '11px', padding: '4px 8px' }}
+                      >
+                        {patient.activo ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </div>
+
+                    {/* Fila 2: Información secundaria en barra compacta (Teléfono y Obra social) */}
+                    <div className="row g-2 py-1.5 px-2 my-1 border rounded-2 bg-light text-dark" style={{ fontSize: '12px' }}>
+                      <div className="col-6">
+                        <span className="text-muted d-block small" style={{ fontSize: '10px' }}>Teléfono</span>
+                        {patient.telefono ? (
+                          <a
+                            href={`tel:${patient.telefono}`}
+                            className="text-dark text-decoration-none fw-medium text-truncate d-inline-flex align-items-center gap-1"
+                          >
+                            <i className="bi bi-telephone text-success" />
+                            <span>{patient.telefono}</span>
+                          </a>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </div>
+
+                      <div className="col-6">
+                        <span className="text-muted d-block small" style={{ fontSize: '10px' }}>Obra social</span>
+                        <span className="text-dark fw-medium text-truncate d-block">
+                          <i className="bi bi-shield-check text-secondary me-1" />
+                          {patient.obra_social || 'Sin obra social'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Fila 3: Acciones con nombre claro y botones táctiles */}
+                    <div className="d-flex flex-wrap gap-1.5 pt-2">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-primary d-inline-flex align-items-center justify-content-center gap-1.5 flex-fill py-1.5 px-2"
+                        onClick={() => handleViewPatient(patient.id_paciente)}
+                      >
+                        <i className="bi bi-eye" />
+                        <span className="fw-medium">Ver ficha</span>
+                      </button>
+
+                      <Link
+                        to={`/turnos?search=${patient.dni}`}
+                        className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center justify-content-center gap-1.5 flex-fill py-1.5 px-2"
+                      >
+                        <i className="bi bi-calendar3" />
+                        <span className="fw-medium">Turnos</span>
+                      </Link>
+
+                      {permissions.includes('VER_HISTORIA_CLINICA') && (
+                        <Link
+                          to={`/historia-clinica/pacientes/${patient.id_paciente}?salita=${encodeURIComponent(patient.id_salita_asignada)}`}
+                          className="btn btn-sm btn-outline-success d-inline-flex align-items-center justify-content-center gap-1.5 flex-fill py-1.5 px-2"
+                        >
+                          <i className="bi bi-journal-medical" />
+                          <span className="fw-medium">Historia</span>
+                        </Link>
+                      )}
+
+                      <button
+                        type="button"
+                        className={`btn btn-sm ${
+                          patient.activo
+                            ? 'btn-outline-danger'
+                            : 'btn-outline-success'
+                        } d-inline-flex align-items-center justify-content-center gap-1.5 py-1.5 px-2`}
+                        title={patient.activo ? 'Desactivar paciente' : 'Activar paciente'}
+                        onClick={() => void handleStatusChange(patient)}
+                      >
+                        <i className={`bi ${patient.activo ? 'bi-person-dash' : 'bi-person-check'}`} />
+                        <span className="fw-medium">{patient.activo ? 'Desactivar' : 'Activar'}</span>
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              {/* VISTA ESCRITORIO: TABLA COMPLETA (>= 768px) */}
+              <div className="d-none d-md-block table-responsive">
+                <table className="table table-hover align-middle mb-0">
+                  <thead className="table-light">
+                    <tr>
+                      <th scope="col" style={{ width: '15%' }}>DNI</th>
+                      <th scope="col" style={{ width: '30%' }}>Paciente</th>
+                      <th scope="col" style={{ width: '15%' }}>Teléfono</th>
+                      <th scope="col" style={{ width: '15%' }}>Obra social</th>
+                      <th scope="col" style={{ width: '10%' }}>Estado</th>
+                      <th scope="col" className="text-end" style={{ width: '15%' }}>
+                        Acciones
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+
+                  <tbody>
+                    {patients.map((patient) => (
+                      <tr
+                        key={patient.id_paciente}
+                      >
+                        <td>
+                          <span className="fw-semibold text-dark">{patient.dni}</span>
+                        </td>
+
+                        <td>
+                          <strong className="text-dark d-block">
+                            {patient.apellidos},{' '}
+                            {patient.nombres}
+                          </strong>
+                          <AccountSummary account={patient.cuenta} />
+                        </td>
+
+                        <td>
+                          {patient.telefono || '—'}
+                        </td>
+
+                        <td>
+                          {patient.obra_social || '—'}
+                        </td>
+
+                        <td>
+                          <span
+                            className={`badge rounded-pill ${
+                              patient.activo
+                                ? 'bg-success-subtle text-success border border-success-subtle'
+                                : 'bg-secondary-subtle text-secondary border border-secondary-subtle'
+                            }`}
+                          >
+                            {patient.activo
+                              ? 'Activo'
+                              : 'Inactivo'}
+                          </span>
+                        </td>
+
+                        <td className="text-end">
+                          <div className="d-flex justify-content-end gap-1.5">
+
+                            {/* VER FICHA */}
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-primary"
+                              title="Ver ficha del paciente"
+                              onClick={() =>
+                                handleViewPatient(
+                                  patient.id_paciente,
+                                )
+                              }
+                            >
+                              <i className="bi bi-eye" />
+                            </button>
+
+                            {/* TURNOS */}
+                            <Link
+                              to={`/turnos?search=${patient.dni}`}
+                              className="btn btn-sm btn-outline-secondary"
+                              title="Ver turnos del paciente"
+                            >
+                              <i className="bi bi-calendar3" />
+                            </Link>
+
+                            {/* HISTORIA CLÍNICA (SI ESTÁ AUTORIZADO) */}
+                            {permissions.includes('VER_HISTORIA_CLINICA') && (
+                              <Link
+                                to={`/historia-clinica/pacientes/${patient.id_paciente}?salita=${encodeURIComponent(patient.id_salita_asignada)}`}
+                                className="btn btn-sm btn-outline-success"
+                                title="Ver historia clínica"
+                              >
+                                <i className="bi bi-journal-medical" />
+                              </Link>
+                            )}
+
+                            {/* ACTIVAR / DESACTIVAR */}
+                            <button
+                              type="button"
+                              className={`btn btn-sm ${
+                                patient.activo
+                                  ? 'btn-outline-danger'
+                                  : 'btn-outline-success'
+                              }`}
+                              title={
+                                patient.activo
+                                  ? 'Desactivar paciente'
+                                  : 'Activar paciente'
+                              }
+                              onClick={() =>
+                                void handleStatusChange(
+                                  patient,
+                                )
+                              }
+                            >
+                              <i
+                                className={`bi ${
+                                  patient.activo
+                                    ? 'bi-person-dash'
+                                    : 'bi-person-check'
+                                }`}
+                              />
+                            </button>
+
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
 
         {/* PAGINACIÓN */}
-        {pagination &&
-          pagination.totalPages > 1 && (
-            <div className="card-footer bg-white">
-              <div className="d-flex justify-content-between align-items-center">
-
-                <small className="text-muted">
-                  Total: {pagination.total}
-                </small>
-
-                <div className="d-flex gap-2 align-items-center">
-
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-secondary"
-                    disabled={page <= 1}
-                    onClick={() =>
-                      setPage(
-                        (current) =>
-                          current - 1,
-                      )
-                    }
-                  >
-                    Anterior
-                  </button>
-
-                  <span>
-                    Página {pagination.page} de{' '}
-                    {pagination.totalPages}
-                  </span>
-
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-secondary"
-                    disabled={
-                      page >=
-                      pagination.totalPages
-                    }
-                    onClick={() =>
-                      setPage(
-                        (current) =>
-                          current + 1,
-                      )
-                    }
-                  >
-                    Siguiente
-                  </button>
-
-                </div>
-              </div>
-            </div>
-          )}
+        {pagination && pagination.totalPages > 1 && (
+          <div className="card-footer bg-white border-0 py-3">
+            <PaginationControls
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              totalItems={pagination.total}
+              itemsPerPage={pagination.limit}
+              onPageChange={(newPage) => setPage(newPage)}
+              loading={refreshing}
+              itemLabel="pacientes"
+            />
+          </div>
+        )}
       </div>
     </div>
   );

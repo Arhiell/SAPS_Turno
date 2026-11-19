@@ -78,6 +78,15 @@ export const resolvePrimaryBackTarget = (
       label: state.returnLabel || fallbackLabel,
     };
   }
+  if (typeof window !== 'undefined') {
+    const saved = sessionStorage.getItem('saps_last_clinical_search');
+    if (saved && saved.startsWith('/historia-clinica')) {
+      return {
+        to: saved,
+        label: fallbackLabel,
+      };
+    }
+  }
   return {
     to: fallbackUrl,
     label: fallbackLabel,

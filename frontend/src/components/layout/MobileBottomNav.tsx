@@ -63,8 +63,7 @@ export default function MobileBottomNav() {
           '/solicitar-turno',
           '/mis-turnos',
         ]
-      : user?.rol ===
-          'PROFESIONAL'
+      : user?.rol === 'PROFESIONAL'
         ? [
             '/panel',
             '/mi-agenda',
@@ -73,7 +72,7 @@ export default function MobileBottomNav() {
         : [
             '/panel',
             '/turnos',
-            '/mis-notificaciones',
+            '/pacientes',
           ];
 
   // Obtiene las opciones principales del menú inferior.
@@ -83,20 +82,23 @@ export default function MobileBottomNav() {
           (path) =>
             items.filter(
               (item) =>
-                item.path ===
-                path
+                item.path === path
             )
         )
       : items;
 
-  // Agrupa las opciones restantes dentro del menú "Más".
-  const secondary =
-    items.filter(
-      (item) =>
-        !primary.includes(
-          item
-        )
-    );
+  // Agrupa las opciones restantes dentro del menú "Más", aplanando categorías si tienen sub-elementos.
+  const secondary = items.reduce<typeof items>((acc, item) => {
+    if (primary.some((p) => p.path === item.path)) {
+      return acc;
+    }
+    if (item.children && item.children.length > 0) {
+      acc.push(...item.children);
+    } else {
+      acc.push(item);
+    }
+    return acc;
+  }, []);
 
   // Cierra el menú adicional al cambiar de página.
   useEffect(() => {

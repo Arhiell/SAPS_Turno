@@ -35,7 +35,6 @@ const PrivacyPolicyPage = lazy(() => import('../pages/auth/PrivacyPolicyPage'));
 const Dashboard = lazy(() => import('../pages/dashboard/Dashboard'));
 const PatientOverview = lazy(() => import('../pages/dashboard/PatientOverview'));
 const ProfessionalOverview = lazy(() => import('../pages/dashboard/ProfessionalOverview'));
-const ConfiguracionPage = lazy(() => import('../pages/dashboard/ConfiguracionPage'));
 
 const PacientesPage = lazy(() => import('../pages/pacientes/PacientesPage'));
 const PacienteDetallePage = lazy(() => import('../pages/pacientes/PacienteDetallePage'));
@@ -134,14 +133,24 @@ const GuestOnlyRoute = () => {
   return isAuthenticated ? <Navigate to="/panel" replace /> : <Outlet />;
 };
 
+// Redirección inteligente de configuración según el rol del usuario, evitando pantallas intermedias
+const ConfiguracionRedirect = () => {
+  const { user } = useAuth();
+  if (['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION'].includes(user?.rol ?? '')) {
+    return <Navigate to="/configuracion/horarios" replace />;
+  }
+  return <Navigate to="/panel" replace />;
+};
+
 // Define las rutas públicas y privadas de la aplicación.
 const AppRoutes = () => {
   const { user } = useAuth();
 
-  // Identifica si el usuario tiene un rol administrativo.
+  // Identifica si el usuario tiene un rol administrativo o de salita.
   const administrative = [
     'SUPER_ADMIN',
     'ADMIN_SALITA',
+    'RECEPCION',
   ].includes(user?.rol ?? '');
 
   return (
@@ -208,7 +217,7 @@ const AppRoutes = () => {
               <Route
                 element={
                   <ProtectedRoute
-                    roles={['SUPER_ADMIN', 'ADMIN_SALITA', 'PACIENTE']}
+                    roles={['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION', 'PACIENTE']}
                   />
                 }
               >
@@ -305,6 +314,7 @@ const AppRoutes = () => {
               </Route>
 
               <Route element={<ProtectedRoute roles={['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION']} />}>
+                <Route path="/configuracion" element={<ConfiguracionRedirect />} />
                 <Route path="/configuracion/bloqueos" element={<BloqueosPage />} />
               </Route>
 
@@ -375,11 +385,11 @@ const AppRoutes = () => {
                 <Route path="/auditoria-clinica" element={<AuditoriaClinicaPage />} />
               </Route>
 
-              {/* Rutas para administradores de salitas y superadministradores. */}
+              {/* Rutas para administradores de salitas, recepción y superadministradores. */}
               <Route
                 element={
                   <ProtectedRoute
-                    roles={['SUPER_ADMIN', 'ADMIN_SALITA']}
+                    roles={['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION']}
                   />
                 }
               >
@@ -444,10 +454,10 @@ const AppRoutes = () => {
                   element={<DetalleNotificacionPage />}
                 />
 
-                {/* Configuración general del sistema. */}
+                {/* Redirección directa del menú Administración al apartado principal */}
                 <Route
-                  path="/configuracion"
-                  element={<ConfiguracionPage />}
+                  path="/admin-sistema"
+                  element={<Navigate to="/administracion" replace />}
                 />
 
                 <Route
