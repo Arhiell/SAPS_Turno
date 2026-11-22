@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import AdminSalitaOverview from './AdminSalitaOverview';
 import RecepcionOverview from './RecepcionOverview';
@@ -17,7 +17,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [revision, setRevision] = useState(0);
 
-  const handleRefresh = () => setRevision((v) => v + 1);
+  const handleRefresh = useCallback(() => setRevision((v) => v + 1), []);
 
   if (user?.rol === 'PROFESIONAL') {
     return <ProfessionalOverview revision={revision} onRefresh={handleRefresh} />;

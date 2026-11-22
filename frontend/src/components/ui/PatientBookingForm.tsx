@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { getPatientProfessionals } from '../../services/profesionales.service';
 import { getPatientAvailableDates, type PatientAvailableDates } from '../../services/turnos.service';
@@ -53,17 +53,24 @@ export default function PatientBookingForm({
 
   // Sincronización en segundo plano con WebSockets
   const { ultimoEvento, ultimoEventoSalita, resyncTick } = useAgendaSocket();
+  const lastEventKeyRef = useRef<string>(
+    `${ultimoEvento?.id ?? ''}|${ultimoEventoSalita?.id ?? ''}`
+  );
+  const lastResyncTickRef = useRef<number>(resyncTick);
 
   useEffect(() => {
     if (busy) return;
-    if (ultimoEvento || ultimoEventoSalita) {
-      setRevision((v) => v + 1);
-    }
+    if (!ultimoEvento && !ultimoEventoSalita) return;
+    const eventKey = `${ultimoEvento?.id ?? ''}|${ultimoEventoSalita?.id ?? ''}`;
+    if (lastEventKeyRef.current === eventKey) return;
+    lastEventKeyRef.current = eventKey;
+    setRevision((v) => v + 1);
   }, [ultimoEvento, ultimoEventoSalita, busy]);
 
   useEffect(() => {
     if (busy) return;
-    if (resyncTick > 0) {
+    if (resyncTick > 0 && resyncTick !== lastResyncTickRef.current) {
+      lastResyncTickRef.current = resyncTick;
       setRevision((v) => v + 1);
     }
   }, [resyncTick, busy]);

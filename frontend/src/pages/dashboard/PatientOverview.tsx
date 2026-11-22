@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useAgendaSocket } from '../../context/AgendaSocketContext';
@@ -24,7 +24,18 @@ export default function PatientOverview({
 
   const [internalRevision, setInternalRevision] = useState(0);
   const revision = externalRevision ?? internalRevision;
-  const onRefresh = externalOnRefresh ?? (() => setInternalRevision((v) => v + 1));
+  const onRefresh = useCallback(() => {
+    if (externalOnRefresh) {
+      externalOnRefresh();
+    } else {
+      setInternalRevision((v) => v + 1);
+    }
+  }, [externalOnRefresh]);
+
+  const lastEventKeyRef = useRef<string>(
+    `${ultimoEvento?.id ?? ''}|${ultimoEventoPaciente?.id ?? ''}`
+  );
+  const lastResyncTickRef = useRef<number>(resyncTick);
 
   const [nextTurno, setNextTurno] = useState<Turno | null>(null);
   const [unreadNotifsCount, setUnreadNotifsCount] = useState(0);
@@ -44,13 +55,16 @@ export default function PatientOverview({
 
   // Actualización automática por WebSockets en segundo plano
   useEffect(() => {
-    if (ultimoEvento || ultimoEventoPaciente) {
-      onRefresh();
-    }
+    if (!ultimoEvento && !ultimoEventoPaciente) return;
+    const eventKey = `${ultimoEvento?.id ?? ''}|${ultimoEventoPaciente?.id ?? ''}`;
+    if (lastEventKeyRef.current === eventKey) return;
+    lastEventKeyRef.current = eventKey;
+    onRefresh();
   }, [ultimoEvento, ultimoEventoPaciente, onRefresh]);
 
   useEffect(() => {
-    if (resyncTick > 0) {
+    if (resyncTick > 0 && resyncTick !== lastResyncTickRef.current) {
+      lastResyncTickRef.current = resyncTick;
       onRefresh();
     }
   }, [resyncTick, onRefresh]);

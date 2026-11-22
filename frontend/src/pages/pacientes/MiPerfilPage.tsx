@@ -53,6 +53,7 @@ function PatientProfile() {
   const lastPatientEventIdRef = useRef<string | null>(
     ultimoEventoPaciente?.id ?? null
   );
+  const lastResyncTickRef = useRef<number>(resyncTick);
 
   useEffect(() => {
     if (!ultimoEventoPaciente) return;
@@ -64,7 +65,8 @@ function PatientProfile() {
   }, [ultimoEventoPaciente, reloadProfile, retryCoverage]);
 
   useEffect(() => {
-    if (resyncTick > 0) {
+    if (resyncTick > 0 && resyncTick !== lastResyncTickRef.current) {
+      lastResyncTickRef.current = resyncTick;
       void reloadProfile();
       retryCoverage();
     }

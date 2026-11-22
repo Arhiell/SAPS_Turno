@@ -84,13 +84,16 @@ export default function MisNotificacionesPage() {
     };
   }, [success]);
 
+  // Evita que loadNotifications cambie de referencia al actualizar data.
+  const hasDataRef = useRef(false);
+
   // Carga la bandeja y conserva los datos actuales durante las actualizaciones.
   const loadNotifications = useCallback(async (
     showInitialLoading = false,
   ) => {
     const currentRequest = ++requestId.current;
 
-    if (showInitialLoading && !data) {
+    if (showInitialLoading && !hasDataRef.current) {
       setLoading(true);
     }
 
@@ -116,6 +119,7 @@ export default function MisNotificacionesPage() {
       ) {
         setPage((value) => value - 1);
       } else {
+        hasDataRef.current = true;
         setData(result);
       }
     } catch (loadError) {
@@ -127,7 +131,7 @@ export default function MisNotificacionesPage() {
         setLoading(false);
       }
     }
-  }, [data, filter, page]);
+  }, [filter, page]);
 
   // Carga al entrar y cuando cambian el filtro o la página.
   useEffect(() => {
@@ -141,9 +145,11 @@ export default function MisNotificacionesPage() {
 
   // Sincronización automática con WebSockets
   const { resyncTick } = useAgendaSocket();
+  const lastResyncTickRef = useRef<number>(resyncTick);
 
   useEffect(() => {
-    if (resyncTick > 0) {
+    if (resyncTick > 0 && resyncTick !== lastResyncTickRef.current) {
+      lastResyncTickRef.current = resyncTick;
       void loadNotifications(false);
     }
   }, [resyncTick, loadNotifications]);

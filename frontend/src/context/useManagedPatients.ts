@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { getManagedPatients, type ManagedPatient } from '../services/managed-patients.service';
@@ -23,13 +23,16 @@ export default function useManagedPatients() {
   }, [user?.id_usuario, revision]);
   const id = params.get('paciente') ?? patient?.id_paciente ?? '';
   const selected = id === patient?.id_paciente ? patient : items.find(row => row.id_paciente === id);
+  const retry = useCallback(() => setRevision(value => value + 1), []);
+  const select = useCallback((value: string) => setParams(previous => {
+    const next = new URLSearchParams(previous);
+    next.set('paciente', value);
+    return next;
+  }), [setParams]);
+
   return { items, selected, id, loading,
     error: error || (!loading && !selected ? 'Esta persona no está disponible entre tus vínculos autorizados.' : ''),
-    retry: () => setRevision(value => value + 1),
-    select: (value: string) => setParams(previous => {
-      const next = new URLSearchParams(previous);
-      next.set('paciente', value);
-      return next;
-    }),
+    retry,
+    select,
   };
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useAgendaSocket } from '../../context/AgendaSocketContext';
@@ -25,7 +25,18 @@ export default function ProfessionalOverview({
 
   const [internalRevision, setInternalRevision] = useState(0);
   const revision = externalRevision ?? internalRevision;
-  const onRefresh = externalOnRefresh ?? (() => setInternalRevision((v) => v + 1));
+  const onRefresh = useCallback(() => {
+    if (externalOnRefresh) {
+      externalOnRefresh();
+    } else {
+      setInternalRevision((v) => v + 1);
+    }
+  }, [externalOnRefresh]);
+
+  const lastEventKeyRef = useRef<string>(
+    `${ultimoEvento?.id ?? ''}|${ultimoEventoProfesional?.id ?? ''}`
+  );
+  const lastResyncTickRef = useRef<number>(resyncTick);
 
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [horariosData, setHorariosData] = useState<MisHorariosData | null>(null);
@@ -55,13 +66,16 @@ export default function ProfessionalOverview({
 
   // Actualización automática por WebSockets
   useEffect(() => {
-    if (ultimoEvento || ultimoEventoProfesional) {
-      onRefresh();
-    }
+    if (!ultimoEvento && !ultimoEventoProfesional) return;
+    const eventKey = `${ultimoEvento?.id ?? ''}|${ultimoEventoProfesional?.id ?? ''}`;
+    if (lastEventKeyRef.current === eventKey) return;
+    lastEventKeyRef.current = eventKey;
+    onRefresh();
   }, [ultimoEvento, ultimoEventoProfesional, onRefresh]);
 
   useEffect(() => {
-    if (resyncTick > 0) {
+    if (resyncTick > 0 && resyncTick !== lastResyncTickRef.current) {
+      lastResyncTickRef.current = resyncTick;
       onRefresh();
     }
   }, [resyncTick, onRefresh]);

@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import useManagedPatients from '../../context/useManagedPatients';
 import { useAuth } from '../../context/AuthContext';
@@ -44,15 +44,23 @@ export default function PersonasACargoPage() {
 
   // Actualización automática por WebSockets
   const { ultimoEventoPaciente, resyncTick } = useAgendaSocket();
+  const lastPatientEventIdRef = useRef<string | null>(
+    ultimoEventoPaciente?.id ?? null
+  );
+  const lastResyncTickRef = useRef<number>(resyncTick);
 
   useEffect(() => {
     if (!ultimoEventoPaciente) return;
+    if (lastPatientEventIdRef.current === ultimoEventoPaciente.id) return;
+    lastPatientEventIdRef.current = ultimoEventoPaciente.id;
+
     retry();
     setRevision((v) => v + 1);
   }, [ultimoEventoPaciente, retry]);
 
   useEffect(() => {
-    if (resyncTick > 0) {
+    if (resyncTick > 0 && resyncTick !== lastResyncTickRef.current) {
+      lastResyncTickRef.current = resyncTick;
       retry();
       setRevision((v) => v + 1);
     }
