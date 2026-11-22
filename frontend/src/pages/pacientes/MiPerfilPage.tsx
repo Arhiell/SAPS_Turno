@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useRef,
   useState,
 } from 'react';
 
@@ -48,19 +49,26 @@ function PatientProfile() {
 
   // Sincronización automática por WebSockets
   const { ultimoEventoPaciente, resyncTick } = useAgendaSocket();
+  const { retry: retryCoverage } = coverage;
+  const lastPatientEventIdRef = useRef<string | null>(
+    ultimoEventoPaciente?.id ?? null
+  );
 
   useEffect(() => {
     if (!ultimoEventoPaciente) return;
+    if (lastPatientEventIdRef.current === ultimoEventoPaciente.id) return;
+    lastPatientEventIdRef.current = ultimoEventoPaciente.id;
+
     void reloadProfile();
-    coverage.retry();
-  }, [ultimoEventoPaciente, reloadProfile, coverage]);
+    retryCoverage();
+  }, [ultimoEventoPaciente, reloadProfile, retryCoverage]);
 
   useEffect(() => {
     if (resyncTick > 0) {
       void reloadProfile();
-      coverage.retry();
+      retryCoverage();
     }
-  }, [resyncTick, reloadProfile, coverage]);
+  }, [resyncTick, reloadProfile, retryCoverage]);
 
   // PERFIL INCOMPLETO
 

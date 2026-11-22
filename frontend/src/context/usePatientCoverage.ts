@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useState,
 } from 'react';
@@ -182,6 +183,11 @@ export default function usePatientCoverage() {
     };
   }, [revision]);
 
+  // Fuerza una nueva carga de cobertura con referencia estable.
+  const retry = useCallback(() => {
+    setRevision((v) => v + 1);
+  }, []);
+
   // ========================================
   // DATOS EXPUESTOS POR EL HOOK
   // ========================================
@@ -193,11 +199,6 @@ export default function usePatientCoverage() {
     relations,
     loading,
     error,
-
-    // Fuerza una nueva carga de cobertura.
-    retry: () =>
-      setRevision(
-        (v) => v + 1
-      ),
+    retry,
   };
 }

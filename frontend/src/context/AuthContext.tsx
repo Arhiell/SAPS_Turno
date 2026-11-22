@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -84,7 +85,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const loadedUserId = useRef<string | null>(null);
 
   // Actualiza los datos del perfil sin generar nuevos tokens.
-  const updateProfile = (profile: ProfileResponse['data']) => {
+  const updateProfile = useCallback((profile: ProfileResponse['data']) => {
     loadedUserId.current = profile.user.id_usuario;
 
     setUser(profile.user);
@@ -94,12 +95,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setPerson(profile.person);
     setRoleInfo(profile.roleInfo);
     saveStoredProfile(profile.patient, profile.person);
-  };
+  }, []);
 
   // Consulta el perfil actualizado del usuario autenticado.
-  const reloadProfile = async () => {
+  const reloadProfile = useCallback(async () => {
     updateProfile((await getProfile()).data);
-  };
+  }, [updateProfile]);
 
   // Limpia los datos y tokens de la sesión actual.
   const reset = () => {
