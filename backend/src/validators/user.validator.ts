@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { registerSchema } from './auth.validator.js';
 
-// Valida los datos para crear una cuenta administrativa.
+// Valida los datos para crear una cuenta administrativa o de recepción.
 export const createAdminSchema = z
   .object({
     nombre_usuario: registerSchema.shape.nombre_usuario.unwrap(),
@@ -11,9 +11,9 @@ export const createAdminSchema = z
 
     password: registerSchema.shape.password,
 
-    // Permite únicamente los roles administrativos.
+    // Permite los roles administrativos y de recepción.
     rol: z
-      .enum(['SUPER_ADMIN', 'ADMIN_SALITA'])
+      .enum(['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION'])
       .default('ADMIN_SALITA'),
 
     id_salita: z
@@ -23,8 +23,8 @@ export const createAdminSchema = z
   })
   .strict()
   .superRefine((input, ctx) => {
-    // Exige una salita para el administrador de salita.
-    if (input.rol === 'ADMIN_SALITA' && !input.id_salita) {
+    // Exige una salita para el administrador de salita y para recepción.
+    if ((input.rol === 'ADMIN_SALITA' || input.rol === 'RECEPCION') && !input.id_salita) {
       ctx.addIssue({
         code: 'custom',
         path: ['id_salita'],

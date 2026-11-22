@@ -22,7 +22,7 @@ router.use(
 );
 
 // Obtiene las cuentas administrativas con filtros y paginación dentro del alcance de salitas.
-router.get('/accounts', async (req, res, next) => {
+router.get('/accounts', requirePermission(GENERAL_PERMISSIONS.GESTIONAR_USUARIOS), async (req, res, next) => {
   try {
     // Valida los parámetros de consulta.
     const page = z.coerce
@@ -40,7 +40,7 @@ router.get('/accounts', async (req, res, next) => {
       .parse(req.query.search);
 
     const role = z
-      .enum(['SUPER_ADMIN', 'ADMIN_SALITA'])
+      .enum(['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION'])
       .optional()
       .parse(req.query.role);
 

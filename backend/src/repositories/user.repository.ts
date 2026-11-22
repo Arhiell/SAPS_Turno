@@ -136,12 +136,14 @@ export const createUser = async (
 export const findUserForLogin = async (
   identifier: string
 ) => {
+  const sanitized = identifier.trim().toLowerCase();
+  const escaped = sanitized.replace(/"/g, '\\"');
   const { data, error } = await supabase
     .from('usuarios')
     .select(
       'id_usuario, id_rol, id_persona, nombre_usuario, email, password_hash, email_verificado, intentos_fallidos, bloqueado_hasta, activo'
     )
-    .or(`email.ilike.${identifier},nombre_usuario.ilike.${identifier}`)
+    .or(`email.ilike."${escaped}",nombre_usuario.ilike."${escaped}"`)
     .limit(1)
     .maybeSingle();
 

@@ -44,7 +44,7 @@ const ensureUserDoesNotExist = async (
   }
 };
 
-// Crea una cuenta administrativa y asigna una salita si corresponde.
+// Crea una cuenta administrativa o de recepción y asigna una salita si corresponde.
 export const createAdminAccount = async (
   input: CreateAdminInput
 ) => {
@@ -55,19 +55,20 @@ export const createAdminAccount = async (
   // Comprueba que la cuenta no exista.
   await ensureUserDoesNotExist(email, username);
 
-  // Obtiene el rol administrativo solicitado.
+  // Obtiene el rol administrativo o de recepción solicitado.
   const role = await findRoleByCode(input.rol);
 
   if (!role) {
     throw new AppError('Rol administrativo no encontrado', 500);
   }
 
-  // Verifica la salita cuando el rol es ADMIN_SALITA.
-  const salita = input.rol === 'ADMIN_SALITA' && input.id_salita
+  // Verifica la salita cuando el rol requiere asignación (ADMIN_SALITA o RECEPCION).
+  const requiresSalita = input.rol === 'ADMIN_SALITA' || input.rol === 'RECEPCION';
+  const salita = requiresSalita && input.id_salita
     ? await findActiveSalitaById(input.id_salita)
     : null;
 
-  if (input.rol === 'ADMIN_SALITA' && !salita) {
+  if (requiresSalita && !salita) {
     throw new AppError(
       'La salita indicada no existe o está inactiva',
       404

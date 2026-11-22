@@ -153,8 +153,8 @@ export default function AccessManagementPanel({
           </h2>
           <p className="text-muted small mb-0">
             {user?.rol === 'SUPER_ADMIN'
-              ? 'Administrá las cuentas de superadministradores y administradores de salitas municipales.'
-              : 'Consultá y gestioná los administradores de tus salitas con asignación vigente.'}
+              ? 'Administrá las cuentas de superadministradores, administradores de salitas municipales y personal de recepción.'
+              : 'Consultá y gestioná las cuentas de administración y recepción de tus salitas con asignación vigente.'}
           </p>
         </div>
       </div>
@@ -222,12 +222,13 @@ export default function AccessManagementPanel({
                 <option value="">
                   {user?.rol === 'SUPER_ADMIN'
                     ? 'Todos los cargos'
-                    : 'Administradores de sala'}
+                    : 'Todos los cargos de la sala'}
                 </option>
                 {user?.rol === 'SUPER_ADMIN' && (
                   <option value="SUPER_ADMIN">Superadministrador</option>
                 )}
                 <option value="ADMIN_SALITA">Administrador de sala</option>
+                <option value="RECEPCION">Recepción</option>
               </select>
             </div>
 
@@ -355,6 +356,7 @@ export default function AccessManagementPanel({
           <div className="row g-3">
             {accounts.map((account) => {
               const isSuperAdmin = account.rol.codigo === 'SUPER_ADMIN';
+              const isRecepcion = account.rol.codigo === 'RECEPCION';
               const isSelf = account.id_usuario === user?.id_usuario;
 
               return (
@@ -367,6 +369,8 @@ export default function AccessManagementPanel({
                             className={`p-2 rounded-circle ${
                               isSuperAdmin
                                 ? 'bg-primary-subtle text-primary'
+                                : isRecepcion
+                                ? 'bg-warning-subtle text-warning'
                                 : 'bg-success-subtle text-success'
                             }`}
                           >
@@ -374,6 +378,8 @@ export default function AccessManagementPanel({
                               className={`bi ${
                                 isSuperAdmin
                                   ? 'bi-shield-check'
+                                  : isRecepcion
+                                  ? 'bi-person-lines-fill'
                                   : 'bi-person-badge'
                               } fs-5`}
                               aria-hidden="true"
@@ -396,6 +402,8 @@ export default function AccessManagementPanel({
                             className={`badge ${
                               isSuperAdmin
                                 ? 'bg-primary-subtle text-primary border border-primary-subtle'
+                                : isRecepcion
+                                ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'
                                 : 'bg-info-subtle text-info border border-info-subtle'
                             } rounded-pill`}
                           >

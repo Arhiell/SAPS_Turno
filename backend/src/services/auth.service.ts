@@ -46,6 +46,7 @@ import {
 
 import {
   createVerificationCodeForNewUser,
+  createEmailCode,
 } from "./email-verification.service.js";
 
 import {
@@ -306,11 +307,11 @@ export const loginUser = async (
         user.id_usuario,
       );
 
-    const verificationExpiresAt =
+    let verificationExpiresAt =
       pending?.fecha_expiracion ??
       null;
 
-    const resendAvailableAt =
+    let resendAvailableAt =
       pending
         ? new Date(
             new Date(
@@ -319,6 +320,21 @@ export const loginUser = async (
             60 * 1000,
           ).toISOString()
         : null;
+
+    if (!pending || new Date(pending.fecha_expiracion).getTime() <= Date.now()) {
+      try {
+        verificationExpiresAt = await createEmailCode(
+          user.id_usuario,
+          user.email,
+          metadata.ip
+        );
+        resendAvailableAt = new Date(
+          Date.now() + 60 * 1000
+        ).toISOString();
+      } catch {
+        // Si el envío falla transitoriamente, permite continuar a la vista de verificación.
+      }
+    }
 
     return {
       requiresEmailVerification: true as const,

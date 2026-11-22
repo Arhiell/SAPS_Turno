@@ -14,6 +14,7 @@ import {
   loginWithGoogle as googleRequest,
   getProfile,
 } from '../services/auth.service';
+import { clearSalitasCache } from '../services/salitas.service';
 
 import type { Patient } from '../types/patient.types';
 
@@ -105,6 +106,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     loadedUserId.current = null;
 
     clearAuthSession();
+    clearSalitasCache();
 
     setAccessToken(null);
     setUser(null);

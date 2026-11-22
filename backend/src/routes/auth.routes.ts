@@ -51,6 +51,13 @@ router.get(
   ownProfile
 );
 
+// Obtiene el perfil del usuario autenticado (alias estándar /profile).
+router.get(
+  '/profile',
+  authenticateForProfile,
+  ownProfile
+);
+
 // Actualiza los datos personales permitidos según el rol.
 router.patch(
   '/profile',

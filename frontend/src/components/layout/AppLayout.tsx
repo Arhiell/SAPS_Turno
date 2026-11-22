@@ -18,7 +18,7 @@ const AppLayout = () => {
   // Muestra únicamente el formulario para administradores con perfil incompleto.
   if (
     user &&
-    ['SUPER_ADMIN', 'ADMIN_SALITA'].includes(user.rol) &&
+    ['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION'].includes(user.rol) &&
     !user.perfil_completo
   ) {
     return (

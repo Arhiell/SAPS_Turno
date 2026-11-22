@@ -11,15 +11,15 @@ import { updatePersonSchema } from '../validators/person.validator.js';
 import { revokeAllUserRefreshSessions } from '../repositories/sesion.repository.js';
 import { literalLikePattern } from '../utils/like-pattern.js';
 
-// Define los filtros para consultar las cuentas administrativas.
+// Define los filtros para consultar las cuentas administrativas y de recepción.
 export interface AdminFilters {
   page: number;
   search: string;
-  role?: 'SUPER_ADMIN' | 'ADMIN_SALITA';
+  role?: 'SUPER_ADMIN' | 'ADMIN_SALITA' | 'RECEPCION';
   clinic?: string;
 }
 
-// Obtiene las cuentas administrativas según el alcance del usuario.
+// Obtiene las cuentas administrativas y de recepción según el alcance del usuario.
 export async function listManagedRecords(
   user: AuthenticatedUser,
   filters: AdminFilters
@@ -75,8 +75,8 @@ export async function listManagedRecords(
     .in(
       'rol.codigo',
       scope !== null
-        ? ['ADMIN_SALITA']
-        : ['SUPER_ADMIN', 'ADMIN_SALITA']
+        ? ['ADMIN_SALITA', 'RECEPCION']
+        : ['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION']
     )
     .eq('asignaciones.activo', true)
     .lte('asignaciones.fecha_desde', today)
@@ -87,7 +87,7 @@ export async function listManagedRecords(
       }
     );
 
-  // Filtra las cuentas por rol administrativo.
+  // Filtra las cuentas por rol administrativo o de recepción.
   if (role) {
     query = query.eq('rol.codigo', role);
   }
@@ -134,7 +134,7 @@ export async function listManagedRecords(
   };
 }
 
-// Permite corregir los datos personales de una cuenta administrativa.
+// Permite corregir los datos personales de una cuenta administrativa o de recepción.
 export async function correctManagedPerson(
   user: AuthenticatedUser,
   id: string,
@@ -148,7 +148,7 @@ export async function correctManagedPerson(
     );
   }
 
-  // Verifica que la persona tenga una cuenta administrativa.
+  // Verifica que la persona tenga una cuenta administrativa o de recepción.
   const { data, error } = await supabase
     .from('usuarios')
     .select(
@@ -158,6 +158,7 @@ export async function correctManagedPerson(
     .in('rol.codigo', [
       'SUPER_ADMIN',
       'ADMIN_SALITA',
+      'RECEPCION',
     ])
     .limit(1);
 
@@ -184,7 +185,7 @@ export async function correctManagedPerson(
   return editPerson(id, input);
 }
 
-// Activa o desactiva el acceso de una cuenta administrativa.
+// Activa o desactiva el acceso de una cuenta administrativa o de recepción.
 export async function changeManagedAccess(
   user: AuthenticatedUser,
   id: string,
@@ -206,7 +207,7 @@ export async function changeManagedAccess(
     );
   }
 
-  // Busca la cuenta administrativa que se desea modificar.
+  // Busca la cuenta administrativa o de recepción que se desea modificar.
   const { data: target, error } = await supabase
     .from('usuarios')
     .select(
@@ -234,9 +235,9 @@ export async function changeManagedAccess(
     target.rol as unknown as { codigo: string }
   ).codigo;
 
-  // Verifica que la cuenta pertenezca a un rol administrativo.
+  // Verifica que la cuenta pertenezca a un rol administrativo o de recepción.
   if (
-    !['SUPER_ADMIN', 'ADMIN_SALITA'].includes(role)
+    !['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION'].includes(role)
   ) {
     throw new AppError(
       'Esta sección solo administra cuentas administrativas.',

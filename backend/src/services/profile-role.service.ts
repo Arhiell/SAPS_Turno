@@ -53,8 +53,8 @@ export const getProfileRoleInfo = async (
     row.fecha_desde <= today &&
     (!row.fecha_hasta || row.fecha_hasta >= today);
 
-  // Obtiene las salitas asignadas al administrador.
-  if (role === 'ADMIN_SALITA') {
+  // Obtiene las salitas asignadas al administrador o recepcionista.
+  if (role === 'ADMIN_SALITA' || role === 'RECEPCION') {
     const rows = await findProfileAssignments(userId);
 
     return {

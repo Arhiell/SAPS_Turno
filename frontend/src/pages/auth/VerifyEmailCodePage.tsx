@@ -387,9 +387,14 @@ export default function VerifyEmailCodePage() {
           )
         );
 
-        // Ingresa directamente al sistema.
+        // Si es rol administrativo con perfil incompleto, va directo a /completar-perfil.
+        const isAdministrative = ['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION'].includes(result.data.user.rol);
+        const destination = isAdministrative && !result.data.user.id_persona
+          ? '/completar-perfil'
+          : '/panel';
+
         navigate(
-          '/panel',
+          destination,
           {
             replace: true,
           }

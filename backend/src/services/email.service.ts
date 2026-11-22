@@ -51,6 +51,16 @@ export const sendEmailVerificationCode = async (to: string, code: string) => {
     to,
     subject: "Verificá tu correo — SAPS Turno",
     text: `Tu código de verificación es: ${code}\n\nEste código vence en 10 minutos. Si no solicitaste este registro, ignorá este correo.`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;">
+        <h2 style="color: #0f766e; margin-top: 0;">CORA — SAPS Turno</h2>
+        <p style="color: #334155; font-size: 16px;">Tu código de verificación de correo electrónico es:</p>
+        <div style="background-color: #f1f5f9; padding: 16px; border-radius: 6px; font-size: 32px; font-weight: bold; letter-spacing: 8px; text-align: center; color: #0f766e; margin: 24px 0;">
+          ${code}
+        </div>
+        <p style="color: #64748b; font-size: 14px; margin-bottom: 0;">Este código vence en 10 minutos. Si no solicitaste esta verificación, podés ignorar este correo.</p>
+      </div>
+    `,
   });
   if (result.accepted.length === 0) {
     throw new Error("El servidor SMTP no aceptó el correo de verificación.");

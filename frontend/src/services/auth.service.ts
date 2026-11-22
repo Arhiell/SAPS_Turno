@@ -220,7 +220,7 @@ export const completeProfile = async (
 // Conserva la API del formulario de pacientes sin duplicar la solicitud.
 export const completePatientProfile = completeProfile;
 
-// Crea una cuenta de acceso para administradores o profesionales.
+// Crea una cuenta de acceso para administradores, personal de recepción o profesionales.
 export const createInternalAccount = async (
   kind: 'admins' | 'professionals',
   data: {
@@ -229,7 +229,7 @@ export const createInternalAccount = async (
     password: string;
     id_salita?: string;
     id_profesional?: string;
-    rol?: 'SUPER_ADMIN' | 'ADMIN_SALITA';
+    rol?: 'SUPER_ADMIN' | 'ADMIN_SALITA' | 'RECEPCION';
   }
 ) => {
   const response = await api.post<{

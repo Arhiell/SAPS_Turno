@@ -12,7 +12,7 @@ import type { Salita } from '../../types/salita.types';
 import { authError } from '../../utils/auth-errors';
 import { validatePassword, validateConfirmation } from '../../utils/password-policy';
 
-type AccountKind = 'ADMIN_SALITA' | 'SUPER_ADMIN';
+type AccountKind = 'ADMIN_SALITA' | 'RECEPCION' | 'SUPER_ADMIN';
 
 export default function AccountManagementPage() {
   const { user } = useAuth();
@@ -37,13 +37,17 @@ export default function AccountManagementPage() {
 
   useEffect(() => {
     let active = true;
-    void getAdminSalitas().then((result) => { if (active) setSalitas(result.data); })
+    void getAdminSalitas(true).then((result) => { if (active) setSalitas(result.data); })
       .catch((cause) => { if (active) setError(authError(cause)); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);
 
   const validateAdminForm = () => {
+    if ((kind === 'ADMIN_SALITA' || kind === 'RECEPCION') && !target) {
+      document.getElementById('account-salita')?.focus();
+      return false;
+    }
     if (!username.trim()) {
       document.getElementById('account-username')?.focus();
       return false;
@@ -75,7 +79,7 @@ export default function AccountManagementPage() {
     try {
       await createInternalAccount('admins', {
         nombre_usuario: username, email, password, rol: kind,
-        ...(kind === 'ADMIN_SALITA' ? { id_salita: target } : {}),
+        ...(kind === 'ADMIN_SALITA' || kind === 'RECEPCION' ? { id_salita: target } : {}),
       });
       setPassword(''); setConfirmation(''); setUsername(''); setEmail(''); setTarget('');
       setShowPasswordErrors(false);
@@ -160,10 +164,11 @@ export default function AccountManagementPage() {
                     }}
                   >
                     <option value="ADMIN_SALITA">Administrador de sala</option>
+                    <option value="RECEPCION">Personal de recepción</option>
                     <option value="SUPER_ADMIN">Superadministrador</option>
                   </select>
                 </div>
-                {kind === 'ADMIN_SALITA' && (
+                {(kind === 'ADMIN_SALITA' || kind === 'RECEPCION') && (
                   <div className="col-12 col-md-6">
                     <label htmlFor="account-salita" className="form-label small fw-semibold">
                       Sala asignada *

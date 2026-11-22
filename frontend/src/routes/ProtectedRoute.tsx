@@ -66,7 +66,7 @@ const ProtectedRoute = ({
   }
 
   // Obliga al paciente a completar su perfil antes de acceder al sistema.
-  if (user && ['SUPER_ADMIN', 'ADMIN_SALITA'].includes(user.rol) &&
+  if (user && ['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION'].includes(user.rol) &&
       user.perfil_completo !== true && !['/completar-perfil', '/privacidad'].includes(location.pathname)) {
     return <Navigate to="/completar-perfil" replace />;
   }
