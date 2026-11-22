@@ -72,12 +72,34 @@ export interface EventoProfesional {
 export interface EventoSalita {
   id: string;
   tipo:
+    | 'SALITA_CREADA'
+    | 'SALITA_ACTUALIZADA'
+    | 'SALITA_ESTADO_CAMBIADO'
+    | 'SALITA_ELIMINADA'
     | 'SALITA_CONFIGURACION_ACTUALIZADA'
     | 'HORARIO_SALITA_ACTUALIZADO'
     | 'DISPONIBILIDAD_ACTUALIZADA'
     | 'BLOQUEO_SALITA';
   mensaje: string;
   id_salita: string;
+  activo?: boolean | undefined;
+  timestamp: string;
+}
+
+export interface EventoTerritorial {
+  id: string;
+  tipo:
+    | 'ZONA_CREADA'
+    | 'ZONA_ACTUALIZADA'
+    | 'ZONA_ELIMINADA'
+    | 'BARRIO_CREADO'
+    | 'BARRIO_ACTUALIZADO'
+    | 'BARRIO_ELIMINADO'
+    | 'COBERTURA_ACTUALIZADA';
+  mensaje: string;
+  id_zona?: string | undefined;
+  id_barrio?: string | undefined;
+  id_salita?: string | undefined;
   timestamp: string;
 }
 
@@ -397,6 +419,28 @@ export const emitirCambioSalita = (
   }
 
   io.to(rooms).emit('salita:cambio', payload);
+};
+
+/**
+ * Emite evento de cambios territoriales (zonas, barrios, coberturas).
+ */
+export const emitirCambioTerritorial = (
+  evento: Omit<EventoTerritorial, 'id' | 'timestamp'>
+) => {
+  if (!io) return;
+
+  const payload: EventoTerritorial = {
+    ...evento,
+    id: randomUUID(),
+    timestamp: new Date().toISOString(),
+  };
+
+  const rooms: string[] = ['super_admin'];
+  if (evento.id_salita) {
+    rooms.push(`salita:${evento.id_salita}`);
+  }
+
+  io.to(rooms).emit('territorio:cambio', payload);
 };
 
 /**

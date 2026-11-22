@@ -27,6 +27,8 @@ import type {
 } from '../../types/configuracion.types';
 
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
+import PaginationControls from '../../components/ui/PaginationControls';
+import { useAgendaSocket } from '../../context/AgendaSocketContext';
 
 import { authError } from '../../utils/auth-errors';
 
@@ -70,10 +72,14 @@ export default function CatalogoPage({
   const [form, setForm] = useState<CatalogoInput>(empty);
   const [editing, setEditing] = useState<string>();
 
-  // Filtros del listado.
+  // Filtros del listado y paginación.
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('todos');
   const [zoneFilter, setZoneFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 15;
+
+  const { ultimoEventoTerritorial, resyncTick } = useAgendaSocket();
 
   // Estados generales de la pantalla.
   const [loading, setLoading] = useState(true);
@@ -84,6 +90,84 @@ export default function CatalogoPage({
   const [revision, setRevision] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [specialtyConfirmOpen, setSpecialtyConfirmOpen] = useState(false);
+  const [expandedSpecialties, setExpandedSpecialties] = useState<Record<string, boolean>>({});
+
+  const toggleSpecialtyExpand = (id: string) => {
+    setExpandedSpecialties((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  const renderAssignedClinics = (rowId: string, isMobile = false) => {
+    const assigned = clinics.filter((clinic) =>
+      clinicSettings.some(
+        (setting) =>
+          setting.id_salita === clinic.id_salita &&
+          Array.isArray(setting.valor) &&
+          setting.valor.includes(rowId)
+      )
+    );
+    const isExpanded = Boolean(expandedSpecialties[rowId]);
+
+    if (assigned.length === 0) {
+      return (
+        <span className="text-muted small fst-italic">
+          Sin salitas asignadas
+        </span>
+      );
+    }
+
+    const visibleClinics = isExpanded ? assigned : assigned.slice(0, 3);
+    const remaining = assigned.length - 3;
+
+    return (
+      <div className={isMobile ? 'my-1.5' : ''}>
+        <div className="d-flex align-items-center gap-1.5 mb-1.5 flex-wrap">
+          <span
+            className="badge bg-primary-subtle text-primary border border-primary-subtle py-1 px-2"
+            style={{ fontSize: '11px' }}
+          >
+            <i className="bi bi-hospital me-1" />
+            {assigned.length} {assigned.length === 1 ? 'salita asignada' : 'salitas asignadas'}
+          </span>
+        </div>
+
+        <div className="d-flex flex-wrap gap-1 align-items-center">
+          {visibleClinics.map((clinic) => (
+            <span
+              key={clinic.id_salita}
+              className="badge bg-light text-dark border py-1 px-2 fw-normal"
+              style={{ fontSize: '11.5px' }}
+            >
+              {clinic.nombre}
+            </span>
+          ))}
+
+          {remaining > 0 && (
+            <button
+              type="button"
+              className="btn btn-link btn-sm p-0 text-decoration-none fw-semibold text-success ms-1 d-inline-flex align-items-center gap-0.5"
+              style={{ fontSize: '11.5px' }}
+              onClick={() => toggleSpecialtyExpand(rowId)}
+            >
+              {isExpanded ? (
+                <>
+                  <i className="bi bi-chevron-up" />
+                  <span>Ver menos</span>
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-chevron-down" />
+                  <span>+{remaining} más (Ver todas)</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   // Referencias para desplazamiento y foco al editar.
   const formRef = useRef<HTMLFormElement>(null);
@@ -130,6 +214,12 @@ export default function CatalogoPage({
       active = false;
     };
   }, [tipo, revision]);
+
+  // Actualización reactiva ante eventos territoriales o reconexión del socket
+  useEffect(() => {
+    if (!ready) return;
+    setRevision((v) => v + 1);
+  }, [ultimoEventoTerritorial, resyncTick]);
 
   useEffect(() => {
     const setting = clinicSettings.find(item => item.id_salita === selectedClinic);
@@ -357,6 +447,9 @@ export default function CatalogoPage({
         row.id_zona === zoneFilter
       )
   );
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
+  const paginatedRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div>
@@ -720,9 +813,10 @@ export default function CatalogoPage({
                     className="form-control"
                     type="search"
                     value={search}
-                    onChange={(e) =>
-                      setSearch(e.target.value)
-                    }
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setPage(1);
+                    }}
                     placeholder="Nombre o código"
                   />
                 </label>
@@ -734,9 +828,10 @@ export default function CatalogoPage({
                     <select
                       className="form-select"
                       value={zoneFilter}
-                      onChange={(e) =>
-                        setZoneFilter(e.target.value)
-                      }
+                      onChange={(e) => {
+                        setZoneFilter(e.target.value);
+                        setPage(1);
+                      }}
                     >
                       <option value="">Todas las zonas</option>
                       {zonas.map((zona) => (
@@ -754,9 +849,10 @@ export default function CatalogoPage({
                   <select
                     className="form-select"
                     value={status}
-                    onChange={(e) =>
-                      setStatus(e.target.value)
-                    }
+                    onChange={(e) => {
+                      setStatus(e.target.value);
+                      setPage(1);
+                    }}
                   >
                     <option value="todos">
                       Todos
@@ -782,103 +878,165 @@ export default function CatalogoPage({
                 Cargando registros…
               </p>
             ) : (
-              <div className="table-responsive">
-                <table className="table saps-responsive-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">
-                        Nombre
-                      </th>
-
-                      <th scope="col">
-                        {tipo === 'barrios'
-                          ? 'Zona'
-                          : 'Detalle'}
-                      </th>
-
-                      {tipo === 'especialidades' && <th scope="col">SAPS / salas</th>}
-                      <th scope="col">
-                        Estado
-                      </th>
-
-                      <th scope="col">
-                        Acciones
-                      </th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {filtered.map((row) => (
-                      <tr key={row.id}>
-                        <td data-label="Nombre">
-                          <strong>
+              <>
+                {/* Vista móvil compacta (< 768px) */}
+                <div className="d-md-none p-3 d-flex flex-column gap-2">
+                  {paginatedRows.map((row) => (
+                    <article
+                      key={row.id}
+                      className="bg-white border rounded-3 p-3 shadow-xs"
+                      style={{
+                        borderLeft: `4px solid ${row.activo ? '#16a34a' : '#94a3b8'}`,
+                      }}
+                    >
+                      <div className="d-flex align-items-start justify-content-between gap-2 mb-1.5">
+                        <div className="min-w-0">
+                          <h3 className="h6 fw-bold text-dark mb-0.5 text-truncate">
                             {row.nombre}
-                          </strong>
-                        </td>
-
-                        <td
-                          data-label={
-                            tipo === 'barrios'
-                              ? 'Zona'
-                              : 'Detalle'
-                          }
+                          </h3>
+                          <div className="text-muted small">
+                            {tipo === 'barrios'
+                              ? zonas.find((z) => z.id_zona === row.id_zona)?.nombre ?? 'Sin zona asignada'
+                              : row.codigo || row.descripcion || '—'}
+                          </div>
+                        </div>
+                        <span
+                          className={`badge rounded-pill flex-shrink-0 ${
+                            row.activo
+                              ? 'bg-success-subtle text-success border border-success-subtle'
+                              : 'bg-secondary-subtle text-secondary border border-secondary-subtle'
+                          }`}
                         >
+                          {row.activo ? 'Activo' : 'Inactivo'}
+                        </span>
+                      </div>
+
+                      {tipo === 'especialidades' && (
+                        <div className="small text-muted mb-2">
+                          <span className="fw-semibold text-dark">Salitas asignadas:</span>
+                          {renderAssignedClinics(row.id, true)}
+                        </div>
+                      )}
+
+                      <div className="pt-2 border-top d-flex justify-content-end">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-success text-nowrap d-inline-flex align-items-center gap-1.5 py-1 px-2.5"
+                          disabled={busy || !canEditCatalog}
+                          onClick={() => edit(row)}
+                        >
+                          <i className="bi bi-pencil" aria-hidden="true" />
+                          <span>Editar</span>
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+
+                {/* Vista escritorio (>= 768px) */}
+                <div className="d-none d-md-block table-responsive">
+                  <table className="table table-hover align-middle mb-0">
+                    <thead className="table-light">
+                      <tr>
+                        <th scope="col">
+                          Nombre
+                        </th>
+
+                        <th scope="col">
                           {tipo === 'barrios'
-                            ? zonas.find(
-                                (zona) =>
-                                  zona.id_zona ===
-                                  row.id_zona
-                              )?.nombre ??
-                              'Sin zona disponible'
-                            : row.codigo ||
-                              row.descripcion ||
-                              '—'}
-                        </td>
+                            ? 'Zona'
+                            : 'Detalle'}
+                        </th>
 
-                        {tipo === 'especialidades' && (
-                          <td data-label="SAPS / salas">
-                            {clinics.filter(clinic => clinicSettings.some(setting =>
-                              setting.id_salita === clinic.id_salita && Array.isArray(setting.valor) && setting.valor.includes(row.id)
-                            )).map(clinic => clinic.nombre).join(', ') || 'Sin SAPS asignada'}
-                          </td>
-                        )}
-                        <td data-label="Estado">
-                          <span
-                            className={`badge ${
-                              row.activo
-                                ? 'text-bg-success'
-                                : 'text-bg-secondary'
-                            }`}
-                          >
-                            {row.activo
-                              ? 'Activo'
-                              : 'Inactivo'}
-                          </span>
-                        </td>
+                        {tipo === 'especialidades' && <th scope="col" style={{ minWidth: '220px' }}>SAPS / salas</th>}
+                        <th scope="col">
+                          Estado
+                        </th>
 
-                        <td data-label="Acciones">
-                          <button
-                            type="button"
-                            className="btn btn-outline-success"
-                            disabled={busy || !canEditCatalog}
-                            onClick={() =>
-                              edit(row)
-                            }
-                          >
-                            Editar
-                          </button>
-                        </td>
+                        <th scope="col" className="text-end">
+                          Acciones
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+
+                    <tbody>
+                      {paginatedRows.map((row) => (
+                        <tr key={row.id}>
+                          <td>
+                            <strong>
+                              {row.nombre}
+                            </strong>
+                          </td>
+
+                          <td>
+                            {tipo === 'barrios'
+                              ? zonas.find(
+                                  (zona) =>
+                                    zona.id_zona ===
+                                    row.id_zona
+                                )?.nombre ??
+                                'Sin zona disponible'
+                              : row.codigo ||
+                                row.descripcion ||
+                                '—'}
+                          </td>
+
+                          {tipo === 'especialidades' && (
+                            <td>
+                              {renderAssignedClinics(row.id, false)}
+                            </td>
+                          )}
+                          <td>
+                            <span
+                              className={`badge rounded-pill ${
+                                row.activo
+                                  ? 'bg-success-subtle text-success border border-success-subtle'
+                                  : 'bg-secondary-subtle text-secondary border border-secondary-subtle'
+                              }`}
+                            >
+                              {row.activo
+                                ? 'Activo'
+                                : 'Inactivo'}
+                            </span>
+                          </td>
+
+                          <td className="text-end text-nowrap">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-success text-nowrap d-inline-flex align-items-center gap-1 py-1 px-2.5"
+                              disabled={busy || !canEditCatalog}
+                              onClick={() =>
+                                edit(row)
+                              }
+                            >
+                              <i className="bi bi-pencil" />
+                              <span>Editar</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
                 {!filtered.length && (
-                  <p className="p-3 text-muted">
+                  <p className="p-3 text-muted text-center mb-0">
                     No hay registros para estos filtros.
                   </p>
                 )}
-              </div>
+
+                {/* Controles de paginación de 15 registros */}
+                <div className="p-3 border-top">
+                  <PaginationControls
+                    page={page}
+                    totalPages={totalPages}
+                    totalItems={filtered.length}
+                    itemsPerPage={PAGE_SIZE}
+                    onPageChange={setPage}
+                    itemLabel="registros"
+                  />
+                </div>
+              </>
             )}
           </section>
         </div>

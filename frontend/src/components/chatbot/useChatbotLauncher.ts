@@ -8,14 +8,14 @@ function read(key: string): Preferences {
   try {
     const value = JSON.parse(localStorage.getItem(key) ?? 'null');
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    // En dispositivos móviles, siempre usar la posición CSS bottom-right fija para evitar tapar encabezados
+    if (isMobile) {
+      return { hidden: value?.hidden === true, position: null };
+    }
     const pos =
       Number.isFinite(value?.position?.x) && Number.isFinite(value?.position?.y)
         ? value.position
         : null;
-    // En móviles, si la posición guardada colisiona con el navbar superior (y < 72), restaurar a null para posición CSS óptima
-    if (isMobile && pos && pos.y < 72) {
-      return { hidden: value?.hidden === true, position: null };
-    }
     return {
       hidden: value?.hidden === true,
       position: pos,
@@ -46,7 +46,7 @@ export default function useChatbotLauncher(identity: string, launcher: RefObject
     const width = viewport?.width ?? window.innerWidth;
     const height = viewport?.height ?? window.innerHeight;
     const isMobile = width < 768;
-    const minTop = isMobile ? top + 72 : top + 8;
+    const minTop = isMobile ? top + height - (rect?.height ?? 56) - 160 : top + 8;
     const maxTop = isMobile
       ? top + height - (rect?.height ?? 56) - 96
       : top + height - (rect?.height ?? 56) - 8;

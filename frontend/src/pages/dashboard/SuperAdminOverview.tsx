@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getDashboardSummary, type DashboardSummary } from '../../services/dashboard.service';
+import { useAgendaSocket } from '../../context/AgendaSocketContext';
+import ConnectionStatusBadge from '../../components/ui/ConnectionStatusBadge';
 import { authError } from '../../utils/auth-errors';
 
 const timeZone = 'America/Argentina/Buenos_Aires';
@@ -31,28 +33,73 @@ export default function SuperAdminOverview({
   revision: number;
   onRefresh?: () => void;
 }) {
+  const {
+    ultimoEvento,
+    ultimoEventoSalita,
+    ultimoEventoPaciente,
+    ultimoEventoProfesional,
+    ultimoEventoTerritorial,
+    resyncTick,
+  } = useAgendaSocket();
+
   const [data, setData] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
 
+  const requestId = useRef(0);
+  const initialLoadedRef = useRef(false);
+
+  const fetchSummary = async (isBackground = false) => {
+    const currentRequest = ++requestId.current;
+
+    try {
+      if (!isBackground && !data) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
+      setError('');
+
+      const result = await getDashboardSummary();
+
+      if (currentRequest !== requestId.current) return;
+
+      setData(result);
+      initialLoadedRef.current = true;
+    } catch (cause) {
+      if (currentRequest !== requestId.current) return;
+      setError(authError(cause));
+    } finally {
+      if (currentRequest === requestId.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    }
+  };
+
   useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError('');
-    void getDashboardSummary()
-      .then((result) => {
-        if (active) setData(result);
-      })
-      .catch((cause) => {
-        if (active) setError(authError(cause));
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
+    void fetchSummary();
   }, [revision]);
+
+  // Actualización reactiva automática en tiempo real ante cualquier evento institucional
+  useEffect(() => {
+    if (!initialLoadedRef.current) return;
+    void fetchSummary(true);
+  }, [
+    ultimoEvento,
+    ultimoEventoSalita,
+    ultimoEventoPaciente,
+    ultimoEventoProfesional,
+    ultimoEventoTerritorial,
+  ]);
+
+  // Resincronización al reconectar el canal WebSocket
+  useEffect(() => {
+    if (resyncTick > 0 && initialLoadedRef.current) {
+      void fetchSummary(true);
+    }
+  }, [resyncTick]);
 
   const available = !loading && !error && data;
 
@@ -159,20 +206,28 @@ export default function SuperAdminOverview({
 
   return (
     <div className="mb-4" aria-busy={loading}>
-      {/* Encabezado ejecutivo */}
+      {/* Encabezado ejecutivo y estado en tiempo real */}
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 pb-3 border-bottom">
         <div>
-          <div className="d-flex align-items-center gap-2 mb-1">
-            <span className="badge bg-primary text-white px-2 py-1">
+          <div className="d-flex align-items-center flex-wrap gap-2 mb-1">
+            <span className="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1">
               <i className="bi bi-shield-check me-1" aria-hidden="true" />
               Superadministración
             </span>
             <span className="fw-bold text-dark fs-5">
               Panel general del sistema de salud
             </span>
+            <ConnectionStatusBadge />
+            {refreshing && (
+              <span
+                className="spinner-border spinner-border-sm text-secondary"
+                role="status"
+                title="Actualizando indicadores en tiempo real..."
+              />
+            )}
           </div>
-          <small className="text-muted">
-            {loading
+          <small className="text-muted d-block">
+            {loading && !data
               ? 'Cargando indicadores globales…'
               : error
                 ? 'Indicadores no disponibles'
@@ -190,23 +245,35 @@ export default function SuperAdminOverview({
         </div>
       )}
 
-      {/* Accesos rápidos de superadministración */}
+      {/* Accesos rápidos de superadministración con icono y texto */}
       <div className="d-flex flex-wrap gap-2 mb-4">
-        <Link to="/salitas/nueva" className="btn btn-sm btn-success d-inline-flex align-items-center gap-1">
+        <Link to="/salitas/nueva" className="btn btn-sm btn-saps d-inline-flex align-items-center gap-1.5">
           <i className="bi bi-hospital" />
-          Nueva salita
+          <span>Nueva salita</span>
         </Link>
-        <Link to="/administracion" className="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1">
+        <Link to="/salitas" className="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1.5">
+          <i className="bi bi-buildings" />
+          <span>Gestionar salitas</span>
+        </Link>
+        <Link to="/administracion" className="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1.5">
           <i className="bi bi-person-lock" />
-          Cuentas de acceso
+          <span>Cuentas de acceso</span>
         </Link>
-        <Link to="/profesionales/nuevo" className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1">
+        <Link to="/profesionales/nuevo" className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1.5">
           <i className="bi bi-person-plus" />
-          Nuevo profesional
+          <span>Nuevo profesional</span>
         </Link>
-        <Link to="/reportes" className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 ms-auto">
+        <Link to="/configuracion/zonas" className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1.5">
+          <i className="bi bi-geo-alt" />
+          <span>Zonas y barrios</span>
+        </Link>
+        <Link to="/auditoria-clinica" className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1.5">
+          <i className="bi bi-shield-check" />
+          <span>Auditoría clínica</span>
+        </Link>
+        <Link to="/reportes" className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1.5 ms-md-auto">
           <i className="bi bi-bar-chart" />
-          Ver reportes globales
+          <span>Ver reportes globales</span>
         </Link>
       </div>
 
@@ -246,8 +313,9 @@ export default function SuperAdminOverview({
           <i className="bi bi-calendar3 me-2 text-success" />
           Turnos del día {available ? `· ${data.fecha.split('-').reverse().join('/')}` : ''}
         </h2>
-        <Link to="/turnos" className="small text-success text-decoration-none fw-semibold">
-          Ver agenda global <i className="bi bi-arrow-right" />
+        <Link to="/turnos" className="small text-success text-decoration-none fw-semibold d-inline-flex align-items-center gap-1">
+          <span>Ver agenda global</span>
+          <i className="bi bi-arrow-right" />
         </Link>
       </div>
       <div className="row g-3 mb-4">
@@ -311,7 +379,7 @@ export default function SuperAdminOverview({
             )
           ) : (
             <div className="p-4 text-center text-danger small" role="alert">
-              No se pudo consultar la actividad reciente. Usá Actualizar para reintentar.
+              No se pudo consultar la actividad reciente.
             </div>
           ))}
         {!available && (

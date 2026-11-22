@@ -6,6 +6,7 @@ import {
   updateSalitaBarrio,
   deleteSalitaBarrio
 } from "../repositories/salita-barrio.repository.js";
+import { emitirCambioTerritorial } from "./socket.service.js";
 
 export const getSalitaBarrios = async () => {
   return await getAllSalitaBarrios();
@@ -27,7 +28,18 @@ export const crearSalitaBarrio = async (relacion: {
   fecha_desde: string;
   fecha_hasta?: string | null;
 }) => {
-  return await createSalitaBarrio(relacion);
+  const result = await createSalitaBarrio(relacion);
+  try {
+    emitirCambioTerritorial({
+      tipo: 'COBERTURA_ACTUALIZADA',
+      mensaje: `Cobertura territorial actualizada`,
+      id_salita: relacion.id_salita,
+      id_barrio: relacion.id_barrio,
+    });
+  } catch {
+    // Silencioso
+  }
+  return result;
 };
 
 export const actualizarSalitaBarrio = async (
@@ -40,12 +52,34 @@ export const actualizarSalitaBarrio = async (
     fecha_hasta?: string | null;
   }
 ) => {
-  return await updateSalitaBarrio(idSalita, idBarrio, relacion);
+  const result = await updateSalitaBarrio(idSalita, idBarrio, relacion);
+  try {
+    emitirCambioTerritorial({
+      tipo: 'COBERTURA_ACTUALIZADA',
+      mensaje: `Cobertura territorial modificada`,
+      id_salita: idSalita,
+      id_barrio: idBarrio,
+    });
+  } catch {
+    // Silencioso
+  }
+  return result;
 };
 
 export const eliminarSalitaBarrio = async (
   idSalita: string,
   idBarrio: string
 ) => {
-  return await deleteSalitaBarrio(idSalita, idBarrio);
+  const result = await deleteSalitaBarrio(idSalita, idBarrio);
+  try {
+    emitirCambioTerritorial({
+      tipo: 'COBERTURA_ACTUALIZADA',
+      mensaje: `Cobertura territorial dada de baja`,
+      id_salita: idSalita,
+      id_barrio: idBarrio,
+    });
+  } catch {
+    // Silencioso
+  }
+  return result;
 };

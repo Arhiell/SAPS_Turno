@@ -1,4 +1,4 @@
-﻿/* ======================================== */
+/* ======================================== */
 /* NAVEGACIÓN Y ESTRUCTURA GENERAL */
 /* ======================================== */
 
@@ -195,7 +195,7 @@
     padding:
       20px
       12px
-      calc(100px + env(safe-area-inset-bottom, 0px));
+      calc(160px + env(safe-area-inset-bottom, 0px));
   }
 
 

@@ -250,6 +250,14 @@
 
   .salitas-detail-actions {
     width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .salitas-detail-actions .btn {
+    flex: 1 1 auto;
+    justify-content: center;
   }
 }
 
@@ -303,5 +311,72 @@
 
   .salitas-detail-title h1 {
     font-size: 25px;
+  }
+}
+
+/* =========================================
+   TARJETAS MÓVILES COMPACTAS DE SALITAS
+   ========================================= */
+.salita-mobile-card {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-left: 4px solid #94a3b8;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.salita-mobile-card[data-active="true"] {
+  border-left-color: var(--saps-verde);
+}
+
+.salita-mobile-card[data-active="false"] {
+  border-left-color: #94a3b8;
+}
+
+.salita-mobile-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.1), 0 2px 4px -2px rgba(15, 23, 42, 0.1);
+}
+
+.salita-mobile-info-box {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 10px 0;
+}
+
+.salita-mobile-card-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.salita-mobile-card-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 4px;
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  min-height: 36px;
+  border-radius: 6px;
+}
+
+@media (max-width: 350px) {
+  .salita-mobile-card-actions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .salita-mobile-card-actions .btn:last-child {
+    grid-column: span 2;
   }
 }

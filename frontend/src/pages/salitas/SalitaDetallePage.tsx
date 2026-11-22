@@ -238,13 +238,14 @@ const SalitaDetallePage = () => {
         </div>
 
         <div className="salitas-detail-actions">
-          <Link className="btn btn-saps" to={`/configuracion/cobertura?salita=${salita.id_salita}`}>
-            <i className="bi bi-geo-alt me-2" />Barrios de cobertura
+          <Link className="btn btn-saps text-nowrap d-inline-flex align-items-center" to={`/configuracion/cobertura?salita=${salita.id_salita}`}>
+            <i className="bi bi-geo-alt me-2" />
+            <span>Barrios de cobertura</span>
           </Link>
 
           <button
             type="button"
-            className="btn btn-outline-success"
+            className="btn btn-outline-success text-nowrap d-inline-flex align-items-center"
             onClick={() =>
               navigate(
                 `/salitas/${salita.id_salita}/editar`,
@@ -252,21 +253,18 @@ const SalitaDetallePage = () => {
             }
           >
             <i className="bi bi-pencil me-2" />
-            Editar
+            <span>Editar</span>
           </button>
 
           {salita.activo && (
             <button
               type="button"
-              className="btn btn-outline-danger"
+              className="btn btn-outline-danger text-nowrap d-inline-flex align-items-center"
               onClick={handleDelete}
               disabled={deleting}
             >
-              <i className="bi bi-person-dash me-2" />
-
-              {deleting
-                ? 'Desactivando...'
-                : 'Desactivar'}
+              <i className="bi bi-shield-slash me-2" />
+              <span>{deleting ? 'Desactivando...' : 'Desactivar'}</span>
             </button>
           )}
 

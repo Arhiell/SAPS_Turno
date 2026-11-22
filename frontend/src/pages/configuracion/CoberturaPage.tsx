@@ -33,6 +33,8 @@ import type {
 } from '../../types/barrio.types';
 
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
+import PaginationControls from '../../components/ui/PaginationControls';
+import { useAgendaSocket } from '../../context/AgendaSocketContext';
 
 import { authError } from '../../utils/auth-errors';
 
@@ -65,10 +67,14 @@ export default function CoberturaPage() {
   const [clinics, setClinics] = useState<Salita[]>([]);
   const [barrios, setBarrios] = useState<Barrio[]>([]);
 
-  // Filtro de coberturas por salita.
+  // Filtro de coberturas por salita y paginación.
   const [filter, setFilter] = useState(
     params.get('salita') ?? ''
   );
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 15;
+
+  const { ultimoEventoTerritorial, ultimoEventoSalita, resyncTick } = useAgendaSocket();
 
   // Estados generales.
   const [loading, setLoading] = useState(true);
@@ -118,6 +124,12 @@ export default function CoberturaPage() {
       active = false;
     };
   }, [revision]);
+
+  // Actualización reactiva ante cambios territoriales o de salitas
+  useEffect(() => {
+    if (!ready) return;
+    setRevision((v) => v + 1);
+  }, [ultimoEventoTerritorial, ultimoEventoSalita, resyncTick]);
 
   // Actualiza parcialmente los datos del formulario.
   const change = (patch: Partial<Cobertura>) => {
@@ -205,12 +217,15 @@ export default function CoberturaPage() {
     }
   };
 
-  // Filtra las coberturas por la salita seleccionada.
+  // Filtra las coberturas por la salita seleccionada y pagina a 15 registros.
   const visible = rows.filter(
     (row) =>
       !filter ||
       row.id_salita === filter
   );
+
+  const totalPages = Math.ceil(visible.length / PAGE_SIZE) || 1;
+  const paginatedVisible = visible.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div>
@@ -446,9 +461,10 @@ export default function CoberturaPage() {
             <select
               className="form-select"
               value={filter}
-              onChange={(e) =>
-                setFilter(e.target.value)
-              }
+              onChange={(e) => {
+                setFilter(e.target.value);
+                setPage(1);
+              }}
             >
               <option value="">
                 Todas
@@ -474,101 +490,165 @@ export default function CoberturaPage() {
             Cargando cobertura…
           </p>
         ) : (
-          <div className="table-responsive">
-            <table className="table saps-responsive-table">
-              <thead>
-                <tr>
-                  {[
-                    'Salita',
-                    'Barrio',
-                    'Vigencia',
-                    'Estado',
-                    'Acciones',
-                  ].map((title) => (
-                    <th
-                      scope="col"
-                      key={title}
-                    >
-                      {title}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-
-              <tbody>
-                {visible.map((row) => (
-                  <tr
-                    key={`${row.id_salita}-${row.id_barrio}`}
-                  >
-                    <td data-label="Salita">
-                      {clinics.find(
-                        (clinic) =>
-                          clinic.id_salita ===
-                          row.id_salita
-                      )?.nombre ??
-                        'Salita no disponible'}
-                    </td>
-
-                    <td data-label="Barrio">
-                      {barrios.find(
-                        (barrio) =>
-                          barrio.id_barrio ===
-                          row.id_barrio
-                      )?.nombre ??
-                        'Barrio no disponible'}
-
-                      {row.es_barrio_sede && (
-                        <span className="badge text-bg-success ms-2">
-                          Sede
+          <>
+            {/* Vista móvil compacta (< 768px) */}
+            <div className="d-md-none p-3 d-flex flex-column gap-2">
+              {paginatedVisible.map((row) => (
+                <article
+                  key={`${row.id_salita}-${row.id_barrio}`}
+                  className="bg-white border rounded-3 p-3 shadow-xs position-relative"
+                  style={{
+                    borderLeft: `4px solid ${row.activo ? 'var(--saps-verde)' : '#94a3b8'}`,
+                    marginBottom: '8px',
+                  }}
+                >
+                  <div className="d-flex align-items-start justify-content-between gap-2 mb-1.5">
+                    <div className="min-w-0">
+                      <h3 className="h6 fw-bold text-dark mb-0 text-truncate">
+                        {clinics.find((c) => c.id_salita === row.id_salita)?.nombre ?? 'Salita no disponible'}
+                      </h3>
+                      <div className="d-flex align-items-center gap-1.5 mt-0.5">
+                        <i className="bi bi-geo-alt text-success small" />
+                        <span className="small text-muted text-truncate">
+                          {barrios.find((b) => b.id_barrio === row.id_barrio)?.nombre ?? 'Barrio no disponible'}
                         </span>
-                      )}
-                    </td>
+                        {row.es_barrio_sede && (
+                          <span className="badge bg-success-subtle text-success border border-success-subtle py-0.5 px-1.5 rounded-pill" style={{ fontSize: '10px' }}>
+                            Sede
+                          </span>
+                        )}
+                      </div>
+                    </div>
 
-                    <td data-label="Vigencia">
-                      {row.fecha_desde} /{' '}
-                      {row.fecha_hasta ?? 'Sin fin'}
-                    </td>
+                    <span
+                      className={`badge rounded-pill flex-shrink-0 ${
+                        row.activo
+                          ? 'bg-success-subtle text-success border border-success-subtle'
+                          : 'bg-secondary-subtle text-secondary border border-secondary-subtle'
+                      }`}
+                    >
+                      {row.activo ? 'Activa' : 'Inactiva'}
+                    </span>
+                  </div>
 
-                    <td data-label="Estado">
-                      {row.activo
-                        ? 'Activa'
-                        : 'Inactiva'}
-                    </td>
+                  <div className="small text-muted py-1 my-1">
+                    <span className="fw-semibold">Vigencia:</span> {row.fecha_desde} / {row.fecha_hasta ?? 'Sin fin'}
+                  </div>
 
-                    <td data-label="Acciones">
-                      <button
-                        className="btn btn-outline-success"
-                        disabled={busy}
-                        onClick={() => {
-                          setEditing(true);
+                  <div className="pt-2 border-top d-flex justify-content-end">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-success text-nowrap d-inline-flex align-items-center gap-1.5 py-1 px-2.5"
+                      disabled={busy}
+                      onClick={() => {
+                        setEditing(true);
+                        setForm({ ...row });
+                        setError('');
+                        setSuccess('');
+                        formRef.current?.scrollIntoView({ block: 'start' });
+                      }}
+                    >
+                      <i className="bi bi-pencil" aria-hidden="true" />
+                      <span>Editar</span>
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
 
-                          setForm({
-                            ...row,
-                          });
-
-                          setError('');
-                          setSuccess('');
-
-                          // Regresa al formulario para editar.
-                          formRef.current?.scrollIntoView({
-                            block: 'start',
-                          });
-                        }}
-                      >
-                        Editar
-                      </button>
-                    </td>
+            {/* Vista escritorio (>= 768px) */}
+            <div className="d-none d-md-block table-responsive">
+              <table className="table table-hover align-middle mb-0">
+                <thead className="table-light">
+                  <tr>
+                    <th scope="col">Salita</th>
+                    <th scope="col">Barrio</th>
+                    <th scope="col">Vigencia</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col" className="text-end">Acciones</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+
+                <tbody>
+                  {paginatedVisible.map((row) => (
+                    <tr key={`${row.id_salita}-${row.id_barrio}`}>
+                      <td>
+                        <strong>
+                          {clinics.find(
+                            (clinic) => clinic.id_salita === row.id_salita
+                          )?.nombre ?? 'Salita no disponible'}
+                        </strong>
+                      </td>
+
+                      <td>
+                        {barrios.find(
+                          (barrio) => barrio.id_barrio === row.id_barrio
+                        )?.nombre ?? 'Barrio no disponible'}
+
+                        {row.es_barrio_sede && (
+                          <span className="badge bg-success-subtle text-success border border-success-subtle ms-2">
+                            Sede
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="small text-muted">
+                        {row.fecha_desde} / {row.fecha_hasta ?? 'Sin fin'}
+                      </td>
+
+                      <td>
+                        <span
+                          className={`badge rounded-pill ${
+                            row.activo
+                              ? 'bg-success-subtle text-success border border-success-subtle'
+                              : 'bg-secondary-subtle text-secondary border border-secondary-subtle'
+                          }`}
+                        >
+                          {row.activo ? 'Activa' : 'Inactiva'}
+                        </span>
+                      </td>
+
+                      <td className="text-end text-nowrap">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-success text-nowrap d-inline-flex align-items-center gap-1.5 py-1 px-2.5"
+                          disabled={busy}
+                          onClick={() => {
+                            setEditing(true);
+                            setForm({ ...row });
+                            setError('');
+                            setSuccess('');
+                            formRef.current?.scrollIntoView({ block: 'start' });
+                          }}
+                        >
+                          <i className="bi bi-pencil" />
+                          <span>Editar</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
             {!visible.length && (
-              <p className="p-3 text-muted">
+              <p className="p-3 text-muted text-center mb-0">
                 No hay coberturas para este filtro.
               </p>
             )}
-          </div>
+
+            {/* Controles de paginación de 15 registros */}
+            <div className="p-3 border-top">
+              <PaginationControls
+                page={page}
+                totalPages={totalPages}
+                totalItems={visible.length}
+                itemsPerPage={PAGE_SIZE}
+                onPageChange={setPage}
+                itemLabel="coberturas"
+              />
+            </div>
+          </>
         )}
       </section>
     </div>

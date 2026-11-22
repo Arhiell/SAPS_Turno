@@ -18,6 +18,7 @@ import type {
   EventoPaciente,
   EventoProfesional,
   EventoSalita,
+  EventoTerritorial,
   EventoClinico,
   EstadoConexionSocket,
 } from '../types/socket.types';
@@ -28,6 +29,7 @@ interface AgendaSocketContextType {
   ultimoEventoPaciente: EventoPaciente | null;
   ultimoEventoProfesional: EventoProfesional | null;
   ultimoEventoSalita: EventoSalita | null;
+  ultimoEventoTerritorial: EventoTerritorial | null;
   ultimoEventoClinico: EventoClinico | null;
   resyncTick: number;
   notificaciones: EventoAgenda[];
@@ -42,6 +44,7 @@ const AgendaSocketContext = createContext<AgendaSocketContextType>({
   ultimoEventoPaciente: null,
   ultimoEventoProfesional: null,
   ultimoEventoSalita: null,
+  ultimoEventoTerritorial: null,
   ultimoEventoClinico: null,
   resyncTick: 0,
   notificaciones: [],
@@ -61,6 +64,7 @@ export function AgendaSocketProvider({ children }: { children: ReactNode }) {
   const [ultimoEventoPaciente, setUltimoEventoPaciente] = useState<EventoPaciente | null>(null);
   const [ultimoEventoProfesional, setUltimoEventoProfesional] = useState<EventoProfesional | null>(null);
   const [ultimoEventoSalita, setUltimoEventoSalita] = useState<EventoSalita | null>(null);
+  const [ultimoEventoTerritorial, setUltimoEventoTerritorial] = useState<EventoTerritorial | null>(null);
   const [ultimoEventoClinico, setUltimoEventoClinico] = useState<EventoClinico | null>(null);
   const [resyncTick, setResyncTick] = useState<number>(0);
   const [notificaciones, setNotificaciones] = useState<EventoAgenda[]>([]);
@@ -175,7 +179,16 @@ export function AgendaSocketProvider({ children }: { children: ReactNode }) {
       setUltimoEventoSalita(evento);
     });
 
-    // 5. Escucha de eventos clínicos mínimos
+    // 5. Escucha de eventos territoriales (zonas, barrios, cobertura)
+    socket.on('territorio:cambio', (evento: EventoTerritorial) => {
+      if (!evento || !evento.id) return;
+      if (!registerEventId(evento.id)) return;
+
+      clearSalitasCache();
+      setUltimoEventoTerritorial(evento);
+    });
+
+    // 6. Escucha de eventos clínicos mínimos
     socket.on('clinica:cambio', (evento: EventoClinico) => {
       if (!evento || !evento.id) return;
       if (!registerEventId(evento.id)) return;
@@ -214,6 +227,7 @@ export function AgendaSocketProvider({ children }: { children: ReactNode }) {
         ultimoEventoPaciente,
         ultimoEventoProfesional,
         ultimoEventoSalita,
+        ultimoEventoTerritorial,
         ultimoEventoClinico,
         resyncTick,
         notificaciones,

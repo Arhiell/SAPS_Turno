@@ -19,7 +19,7 @@ import {
   useAutoDismiss,
 } from '../../utils/useAutoDismiss';
 
-const PAGE_LIMIT = 50;
+const PAGE_LIMIT = 15;
 
 const operationBadgeClass = (op: AuditoriaClinicaRecord['tipo_operacion']): string => {
   switch (op) {
@@ -311,34 +311,38 @@ export default function AuditoriaClinicaPage() {
             </div>
           </div>
 
-          <div className="hc-card p-3 d-flex justify-content-between align-items-center">
-            <button
-              type="button"
-              className="btn btn-sm btn-outline-secondary"
-              disabled={offset === 0 || loading}
-              onClick={() => {
-                const next = Math.max(0, offset - PAGE_LIMIT);
-                setOffset(next);
-                void fetchAuditoria(next);
-              }}
-            >
-              Anterior
-            </button>
-            <span className="small text-muted">
-              Mostrando {rows.length} registros (desde #{offset + 1})
-            </span>
-            <button
-              type="button"
-              className="btn btn-sm btn-outline-secondary"
-              disabled={rows.length < PAGE_LIMIT || loading}
-              onClick={() => {
-                const next = offset + PAGE_LIMIT;
-                setOffset(next);
-                void fetchAuditoria(next);
-              }}
-            >
-              Siguiente
-            </button>
+          <div className="hc-card p-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div className="text-muted small">
+              Página <strong>{Math.floor(offset / PAGE_LIMIT) + 1}</strong> · Mostrando {rows.length} registros (desde #{offset + 1})
+            </div>
+            <div className="d-flex align-items-center gap-2 ms-auto">
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
+                disabled={offset === 0 || loading}
+                onClick={() => {
+                  const next = Math.max(0, offset - PAGE_LIMIT);
+                  setOffset(next);
+                  void fetchAuditoria(next);
+                }}
+              >
+                <i className="bi bi-chevron-left" aria-hidden="true" />
+                <span>Anterior</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
+                disabled={rows.length < PAGE_LIMIT || loading}
+                onClick={() => {
+                  const next = offset + PAGE_LIMIT;
+                  setOffset(next);
+                  void fetchAuditoria(next);
+                }}
+              >
+                <span>Siguiente</span>
+                <i className="bi bi-chevron-right" aria-hidden="true" />
+              </button>
+            </div>
           </div>
         </div>
       )}

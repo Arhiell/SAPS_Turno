@@ -84,9 +84,10 @@ export const crearSalita = async (
 
   try {
     emitirCambioSalita({
-      tipo: 'SALITA_CONFIGURACION_ACTUALIZADA',
-      mensaje: `Nueva salita creada: ${salita.nombre}`,
+      tipo: 'SALITA_CREADA',
+      mensaje: `Nueva salita creada: ${created.nombre}`,
       id_salita: created.id_salita,
+      activo: created.activo,
     });
   } catch {
     // Notificación en tiempo real es complementaria
@@ -118,10 +119,14 @@ export const actualizarSalita = async (
   );
 
   try {
+    const esCambioEstado = typeof salita.activo === 'boolean';
     emitirCambioSalita({
-      tipo: 'SALITA_CONFIGURACION_ACTUALIZADA',
-      mensaje: `Configuración de salita actualizada`,
+      tipo: esCambioEstado ? 'SALITA_ESTADO_CAMBIADO' : 'SALITA_ACTUALIZADA',
+      mensaje: esCambioEstado
+        ? `Estado de salita ${salita.activo ? 'activado' : 'desactivado'}`
+        : `Datos de salita actualizados`,
       id_salita: id,
+      activo: updated?.activo,
     });
   } catch {
     // Notificación en tiempo real es complementaria
@@ -134,7 +139,20 @@ export const actualizarSalita = async (
 export const eliminarSalita = async (
   id: string
 ) => {
-  return await deleteSalita(
+  const deleted = await deleteSalita(
     id
   );
+
+  try {
+    emitirCambioSalita({
+      tipo: 'SALITA_ESTADO_CAMBIADO',
+      mensaje: `Salita dada de baja (inactivada)`,
+      id_salita: id,
+      activo: false,
+    });
+  } catch {
+    // Notificación en tiempo real es complementaria
+  }
+
+  return deleted;
 };

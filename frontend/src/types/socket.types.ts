@@ -61,12 +61,34 @@ export interface EventoProfesional {
 export interface EventoSalita {
   id: string;
   tipo:
+    | 'SALITA_CREADA'
+    | 'SALITA_ACTUALIZADA'
+    | 'SALITA_ESTADO_CAMBIADO'
+    | 'SALITA_ELIMINADA'
     | 'SALITA_CONFIGURACION_ACTUALIZADA'
     | 'HORARIO_SALITA_ACTUALIZADO'
     | 'DISPONIBILIDAD_ACTUALIZADA'
     | 'BLOQUEO_SALITA';
   mensaje: string;
   id_salita: string;
+  activo?: boolean;
+  timestamp: string;
+}
+
+export interface EventoTerritorial {
+  id: string;
+  tipo:
+    | 'ZONA_CREADA'
+    | 'ZONA_ACTUALIZADA'
+    | 'ZONA_ELIMINADA'
+    | 'BARRIO_CREADO'
+    | 'BARRIO_ACTUALIZADO'
+    | 'BARRIO_ELIMINADO'
+    | 'COBERTURA_ACTUALIZADA';
+  mensaje: string;
+  id_zona?: string;
+  id_barrio?: string;
+  id_salita?: string;
   timestamp: string;
 }
 
