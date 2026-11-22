@@ -671,7 +671,7 @@ const TurnosPage = () => {
                       {/* Fila 1: Fecha y hora destacadas + Estado + Ref corta */}
                       <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
                         <div>
-                          <div className="d-flex align-items-center gap-1.5">
+                          <div className="d-flex align-items-center gap-2">
                             <i className="bi bi-calendar-event text-success small" />
                             <strong className="text-dark" style={{ fontSize: '14.5px' }}>
                               {dt.fecha} — {dt.hora}
@@ -706,7 +706,7 @@ const TurnosPage = () => {
 
                       {/* Fila 3: Profesional y Especialidad agrupados (y Salita si aplica) */}
                       <div className="py-1.5 px-2 my-1 border rounded-2 bg-light text-dark" style={{ fontSize: '12px' }}>
-                        <div className="d-flex align-items-center gap-1.5 text-truncate mb-0.5">
+                        <div className="d-flex align-items-center gap-2 text-truncate mb-0.5">
                           <i className="bi bi-person-badge text-primary small" />
                           <span className="fw-semibold text-truncate">
                             {turno.profesional.persona.apellidos}, {turno.profesional.persona.nombres}
@@ -832,7 +832,7 @@ const TurnosPage = () => {
                               {(turno.estado.codigo === 'SOLICITADO' || turno.estado.codigo === 'CONFIRMADO') && (
                                 <button
                                   type="button"
-                                  className="btn btn-sm btn-outline-warning text-dark d-inline-flex align-items-center gap-1"
+                                  className="btn btn-sm btn-outline-warning text-dark d-inline-flex align-items-center gap-1.5"
                                   title="Marcar llegada / en sala de espera"
                                   disabled={actionLoadingId === turno.id_turno}
                                   onClick={() =>
@@ -853,7 +853,7 @@ const TurnosPage = () => {
 
                               <button
                                 type="button"
-                                className="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1"
+                                className="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1.5"
                                 title="Ver detalle del turno"
                                 onClick={() => navigate(`/turnos/${turno.id_turno}`)}
                               >
