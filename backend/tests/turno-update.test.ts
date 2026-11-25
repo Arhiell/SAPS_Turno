@@ -9,7 +9,7 @@ afterEach(drained);
 
 test("Alta calcula datos de servidor y conserva la reserva atómica de PostgreSQL", async () => {
   queue({ table: "estados_turno", result: [state] }, ...entities(),
-    { table: "horarios_atencion", result: [horario] }, ...freeSlot(),
+    { table: "horarios_atencion", result: [horario] }, ...freeSlot(false),
     { table: "turnos", method: "POST", result: turno, check: (_, body) => {
       assert.equal(body?.id_estado, state.id_estado);
       assert.equal(body?.creado_por, user.id_usuario);
@@ -22,21 +22,21 @@ test("Alta calcula datos de servidor y conserva la reserva atómica de PostgreSQ
 });
 test("Una reserva concurrente rechazada por exclusión devuelve 409", async () => {
   queue({ table: "estados_turno", result: [state] }, ...entities(),
-    { table: "horarios_atencion", result: [horario] }, ...freeSlot(),
+    { table: "horarios_atencion", result: [horario] }, ...freeSlot(false),
     { table: "turnos", method: "POST", status: 409,
       result: { code: "23P01", message: "ex_turnos_profesional_solapados" } });
   await assert.rejects(createTurno(input, user), { statusCode: 409 });
 });
 test("Reprogramación excluye al mismo turno y usa versión sin sobrescribir otro cambio", async () => {
-  const agenda = freeSlot().map(step => step.table === "turnos"
+  const agenda = freeSlot(false).map(step => step.table === "turnos"
     ? { ...step, check: (url: URL) => assert.equal(url.searchParams.get("id_turno"), "neq." + id) } : step);
   queue({ table: "turnos", result: [turno] }, ...entities(),
     { table: "horarios_atencion", result: [horario] }, ...agenda,
-    { table: "turnos", method: "PATCH", result: [], check: (url, body) => {
-      assert.equal(url.searchParams.get("version"), "eq.1");
-      assert.equal(body?.fecha_hora_fin, "2099-10-05T13:40:00.000Z");
+    { table: "rpc/guardar_turno_agenda", method: "POST", result: null, check: (_, body) => {
+      assert.equal(body?.p_version, 1);
+      assert.equal(body?.p_datos?.fecha_hora_fin, "2099-10-05T13:40:00.000Z");
     } });
-  await assert.rejects(updateTurno(id, { fecha_hora_inicio: "2099-10-05T10:20:00-03:00" }, user), { statusCode: 409 });
+  await assert.rejects(updateTurno(id, { fecha_hora_inicio: "2099-10-05T10:20:00-03:00", motivo_reprogramacion: "Prueba" }, user), { statusCode: 409 });
 });
 test("Cancelación conserva fechas y relaciones, sin DELETE ni consultas de disponibilidad", async () => {
   const cancelled = { ...state, id_estado: "22222222-2222-4222-8222-222222222222", codigo: "CANCELADO",

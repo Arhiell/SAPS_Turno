@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { assertOwnCoverage } from './patient-coverage.service.js';
 import { validateTurnoAgenda } from './turno-agenda.service.js';
+import { canBypassOnlineSanction } from './booking-restriction.service.js';
 import {
   getTurnoScope,
   assertTurnoScope,
@@ -75,8 +76,9 @@ export const createTurno = async (
     );
   }
 
-  // Valida el horario y la disponibilidad del turno.
-  const agenda = await validateTurnoAgenda(input);
+  // Valida el horario y la disponibilidad del turno con bypass asistencial para personal autorizado (whitelist estricta).
+  const isAdministrative = canBypassOnlineSanction(user.rol);
+  const agenda = await validateTurnoAgenda(input, undefined, false, true, isAdministrative);
 
   // Genera un código público sin datos personales.
   // Respeta el límite VARCHAR(30) definido en SQL.

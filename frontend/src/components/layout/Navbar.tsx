@@ -55,7 +55,7 @@ const Navbar = () => {
             <span className="navbar-brand-divider" />
 
             <span className="navbar-brand-subtitle">
-              Salud municipal
+              Goya, Corrientes
             </span>
           </div>
         </div>

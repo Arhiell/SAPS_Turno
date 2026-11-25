@@ -422,6 +422,12 @@
     box-shadow 0.18s ease;
 }
 
+.form-select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
 .form-control:focus,
 .form-select:focus {
   border-color: var(--saps-verde);

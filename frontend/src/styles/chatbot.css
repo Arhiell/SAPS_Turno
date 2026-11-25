@@ -140,7 +140,7 @@
 }
 
 @media (max-width: 767.98px) {
-  .cora-chatbot__launcher { right: max(16px, env(safe-area-inset-right)); bottom: calc(110px + env(safe-area-inset-bottom, 0px)); }
+  .cora-chatbot__launcher { right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(74px + env(safe-area-inset-bottom, 0px)); }
   .cora-chatbot__panel {
     inset: var(--chatbot-visible-top, 0px) 0 auto; width: 100%;
     height: var(--chatbot-visible-height, 100dvh); max-height: 100dvh;

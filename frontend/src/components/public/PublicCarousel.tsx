@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useId,
   useState,
@@ -11,6 +12,10 @@ interface Props {
   slides: ReactNode[];
   autoPlay?: boolean;
   slideLabels?: string[];
+  selectLabel?: string;
+  currentIndex?: number;
+  onIndexChange?: (newIndex: number) => void;
+  className?: string;
 }
 
 // Carrusel reutilizable para contenido público.
@@ -19,11 +24,18 @@ export function PublicCarousel({
   slides,
   autoPlay = false,
   slideLabels,
+  selectLabel = 'Elegí una opción',
+  currentIndex,
+  onIndexChange,
+  className = '',
 }: Props) {
   const [
-    index,
-    setIndex,
+    internalIndex,
+    setInternalIndex,
   ] = useState(0);
+
+  const isControlled = currentIndex !== undefined;
+  const rawIndex = isControlled ? currentIndex : internalIndex;
 
   const [
     paused,
@@ -52,12 +64,22 @@ export function PublicCarousel({
   // si cambia la cantidad de diapositivas.
   const current =
     Math.min(
-      index,
+      Math.max(0, rawIndex),
       Math.max(
         0,
         slides.length - 1
       )
     );
+
+  const updateIndex = useCallback(
+    (newIndex: number) => {
+      if (!isControlled) {
+        setInternalIndex(newIndex);
+      }
+      onIndexChange?.(newIndex);
+    },
+    [isControlled, onIndexChange]
+  );
 
   // Respeta la preferencia del usuario de reducir animaciones.
   useEffect(
@@ -110,7 +132,7 @@ export function PublicCarousel({
             if (
               !document.hidden
             ) {
-              setIndex(
+              updateIndex(
                 (
                   current +
                   1
@@ -131,6 +153,7 @@ export function PublicCarousel({
       rotating,
       current,
       slides.length,
+      updateIndex,
     ]
   );
 
@@ -141,7 +164,7 @@ export function PublicCarousel({
 
   return (
     <div
-      className="carousel public-carousel"
+      className={`carousel public-carousel ${className}`.trim()}
       role="region"
       aria-roledescription="carrusel"
       aria-label={label}
@@ -177,7 +200,7 @@ export function PublicCarousel({
       {/* Selector directo de diapositivas, si se proporcionan etiquetas. */}
       {slideLabels &&
         slides.length >
-          1 && (
+          0 && (
           <div className="mb-3">
             <label
               className="form-label fw-semibold"
@@ -185,7 +208,7 @@ export function PublicCarousel({
                 selectorId
               }
             >
-              Elegí una SAPS
+              {selectLabel}
             </label>
 
             <select
@@ -199,7 +222,7 @@ export function PublicCarousel({
               onChange={(
                 event
               ) =>
-                setIndex(
+                updateIndex(
                   Number(
                     event
                       .target
@@ -260,7 +283,7 @@ export function PublicCarousel({
             className="btn btn-outline-success"
             aria-label={`Anterior: ${label}`}
             onClick={() =>
-              setIndex(
+              updateIndex(
                 (
                   current -
                   1 +
@@ -288,7 +311,7 @@ export function PublicCarousel({
             className="btn btn-outline-success"
             aria-label={`Siguiente: ${label}`}
             onClick={() =>
-              setIndex(
+              updateIndex(
                 (
                   current +
                   1
@@ -307,7 +330,7 @@ export function PublicCarousel({
           {autoPlay &&
             !reducedMotion && (
             <button
-              className="btn btn-outline-success"
+              className="btn btn-outline-success d-inline-flex align-items-center gap-2"
               onClick={() =>
                 setPaused(
                   !paused
@@ -322,13 +345,15 @@ export function PublicCarousel({
                   paused
                     ? 'bi-play-fill'
                     : 'bi-pause-fill'
-                } me-1`}
+                }`}
                 aria-hidden="true"
               />
 
-              {paused
-                ? 'Reanudar'
-                : 'Pausar'}
+              <span>
+                {paused
+                  ? 'Reanudar'
+                  : 'Pausar'}
+              </span>
             </button>
           )}
         </div>
@@ -357,7 +382,7 @@ const information = [
   [
     'bi-megaphone',
     'Enterate de campañas y novedades.',
-    'La información pública de las SAPS, en un solo lugar.',
+    'Toda la información sanitaria de Goya, en un solo lugar.',
   ],
 ];
 

@@ -242,9 +242,16 @@ export default function PersonasACargoPage() {
         )}
 
         {error && !loading && (
-          <div className="alert alert-danger d-flex align-items-center justify-content-between gap-2 mb-3" role="alert">
-            <span>{error}</span>
-            <button type="button" className="btn btn-sm btn-outline-danger" onClick={retry}>
+          <div className="alert alert-danger d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2 mb-3 p-3 rounded-3 shadow-sm" role="alert">
+            <div className="d-flex align-items-center gap-2">
+              <i className="bi bi-exclamation-triangle-fill text-danger flex-shrink-0" aria-hidden="true" />
+              <span className="small">{error}</span>
+            </div>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-danger flex-shrink-0 text-nowrap px-3 py-1 align-self-end align-self-sm-center"
+              onClick={retry}
+            >
               Reintentar
             </button>
           </div>
@@ -359,11 +366,14 @@ export default function PersonasACargoPage() {
             <span>Consultando autorizaciones…</span>
           </div>
         ) : responsiblesError ? (
-          <div className="alert alert-danger d-flex align-items-center justify-content-between gap-2 mb-3" role="alert">
-            <span>{responsiblesError}</span>
+          <div className="alert alert-danger d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2 mb-3 p-3 rounded-3 shadow-sm" role="alert">
+            <div className="d-flex align-items-center gap-2">
+              <i className="bi bi-exclamation-triangle-fill text-danger flex-shrink-0" aria-hidden="true" />
+              <span className="small">{responsiblesError}</span>
+            </div>
             <button
               type="button"
-              className="btn btn-sm btn-outline-danger"
+              className="btn btn-sm btn-outline-danger flex-shrink-0 text-nowrap px-3 py-1 align-self-end align-self-sm-center"
               onClick={() => setRevision((v) => v + 1)}
             >
               Reintentar
@@ -448,11 +458,14 @@ export default function PersonasACargoPage() {
             <span>Consultando solicitudes…</span>
           </div>
         ) : requestsError ? (
-          <div className="alert alert-danger d-flex align-items-center justify-content-between gap-2" role="alert">
-            <span>{requestsError}</span>
+          <div className="alert alert-danger d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2 p-3 rounded-3 shadow-sm" role="alert">
+            <div className="d-flex align-items-center gap-2">
+              <i className="bi bi-exclamation-triangle-fill text-danger flex-shrink-0" aria-hidden="true" />
+              <span className="small">{requestsError}</span>
+            </div>
             <button
               type="button"
-              className="btn btn-sm btn-outline-danger"
+              className="btn btn-sm btn-outline-danger flex-shrink-0 text-nowrap px-3 py-1 align-self-end align-self-sm-center"
               onClick={() => setRevision((v) => v + 1)}
             >
               Reintentar
@@ -465,7 +478,8 @@ export default function PersonasACargoPage() {
           </div>
         ) : (
           <>
-            <div className="table-responsive shadow-sm rounded-3 bg-white border">
+            {/* VISTA ESCRITORIO (>= 768px): Tabla tradicional */}
+            <div className="table-responsive shadow-sm rounded-3 bg-white border d-none d-md-block">
               <table className="table align-middle table-hover mb-0">
                 <thead className="table-light">
                   <tr>
@@ -518,6 +532,107 @@ export default function PersonasACargoPage() {
                     ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* VISTA MÓVIL (< 768px): Tarjetas individuales sin scroll horizontal */}
+            <div className="d-grid d-md-none gap-3 mb-3">
+              {requests
+                .slice((requestsPage - 1) * 15, requestsPage * 15)
+                .map((request) => {
+                  const nombreDestino = request.paciente_asociado
+                    ? `${request.paciente_asociado.apellidos}, ${request.paciente_asociado.nombres}`
+                    : null;
+
+                  return (
+                    <article
+                      key={request.id_solicitud}
+                      className="card border-0 shadow-sm p-3 bg-white rounded-3"
+                    >
+                      <div className="d-flex justify-content-between align-items-start gap-2 mb-2 pb-2 border-bottom">
+                        <div>
+                          <span className="badge bg-light text-secondary border fw-normal mb-1">
+                            {request.direccion === 'GESTIONAR_A_OTRO'
+                              ? 'Gestionar a otra persona'
+                              : 'Delegar mis turnos'}
+                          </span>
+                          {nombreDestino ? (
+                            <h3 className="h6 fw-bold text-dark mb-0">
+                              {nombreDestino}
+                            </h3>
+                          ) : (
+                            <div className="fw-semibold text-dark">
+                              DNI {request.dni_persona_destino}
+                            </div>
+                          )}
+                        </div>
+
+                        <div>
+                          {request.estado === 'PENDIENTE' ? (
+                            <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle d-inline-flex align-items-center gap-1">
+                              <i className="bi bi-clock" aria-hidden="true" />
+                              <span>Pendiente</span>
+                            </span>
+                          ) : request.estado === 'APROBADA' ? (
+                            <span className="badge bg-success-subtle text-success-emphasis border border-success-subtle d-inline-flex align-items-center gap-1">
+                              <i className="bi bi-check-circle" aria-hidden="true" />
+                              <span>Aprobada</span>
+                            </span>
+                          ) : (
+                            <span className="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle d-inline-flex align-items-center gap-1">
+                              <i className="bi bi-x-circle" aria-hidden="true" />
+                              <span>Rechazada</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="d-flex flex-column gap-1 small text-secondary">
+                        {nombreDestino && (
+                          <div className="d-flex justify-content-between py-1 border-bottom border-light">
+                            <span>DNI:</span>
+                            <strong className="text-dark">{request.dni_persona_destino}</strong>
+                          </div>
+                        )}
+                        <div className="d-flex justify-content-between py-1 border-bottom border-light">
+                          <span>Vínculo declarado:</span>
+                          <strong className="text-dark text-capitalize">{request.parentesco}</strong>
+                        </div>
+                        <div className="d-flex justify-content-between py-1 border-bottom border-light">
+                          <span>Fecha:</span>
+                          <span className="text-dark">{formatFechaHora(request.fecha_creacion)}</span>
+                        </div>
+                        {request.motivo_rechazo && (
+                          <div className="alert alert-danger py-2 px-3 small mt-2 mb-0">
+                            <strong>Motivo de rechazo:</strong> {request.motivo_rechazo}
+                          </div>
+                        )}
+                      </div>
+
+                      {request.estado === 'APROBADA' &&
+                        request.direccion === 'GESTIONAR_A_OTRO' &&
+                        request.paciente_asociado?.id_paciente && (
+                          <div className="d-flex flex-wrap gap-2 pt-2 border-top mt-2">
+                            <Link
+                              to={`/solicitar-turno?paciente=${request.paciente_asociado.id_paciente}`}
+                              className="btn btn-sm btn-saps d-inline-flex align-items-center justify-content-center gap-1 flex-grow-1 text-nowrap"
+                              style={{ minHeight: '36px' }}
+                            >
+                              <i className="bi bi-calendar-plus" aria-hidden="true" />
+                              <span>Solicitar turno</span>
+                            </Link>
+                            <Link
+                              to={`/mis-turnos?paciente=${request.paciente_asociado.id_paciente}`}
+                              className="btn btn-sm btn-outline-success d-inline-flex align-items-center justify-content-center gap-1 flex-grow-1 text-nowrap"
+                              style={{ minHeight: '36px' }}
+                            >
+                              <i className="bi bi-calendar-check" aria-hidden="true" />
+                              <span>Ver turnos</span>
+                            </Link>
+                          </div>
+                        )}
+                    </article>
+                  );
+                })}
             </div>
 
             <PaginationControls

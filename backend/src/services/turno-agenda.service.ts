@@ -75,7 +75,8 @@ export const validateTurnoAgenda = async (
   input: CreateTurnoInput,
   exclude?: string,
   allowPast = false,
-  enforceClinicSpecialty = true
+  enforceClinicSpecialty = true,
+  isAdministrative = false
 ) => {
   const start = new Date(
     input.fecha_hora_inicio
@@ -203,8 +204,8 @@ export const validateTurnoAgenda = async (
     );
   }
 
-  // Verifica que el paciente no tenga sanciones vigentes.
-  if (!allowPast) {
+  // Verifica que el paciente no tenga sanciones vigentes (solo para reservas online autogestionadas por paciente)
+  if (!allowPast && !isAdministrative) {
     await assertPatientCanBook(
       input.id_paciente
     );

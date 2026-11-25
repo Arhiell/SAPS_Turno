@@ -249,22 +249,32 @@ export default function PatientBookingSlots({
       {/* Mensaje de error y opción de reintento. */}
       {error && (
         <div
-          className="alert alert-danger d-flex align-items-center justify-content-between gap-2"
+          className="alert alert-danger d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2 p-3 mb-3 rounded-3 shadow-sm"
           role="alert"
         >
-          <span>{error}</span>
+          <div className="d-flex align-items-center gap-2">
+            <i className="bi bi-exclamation-triangle-fill text-danger flex-shrink-0" aria-hidden="true" />
+            <span className="small">{error}</span>
+          </div>
 
           <button
             type="button"
-            className="btn btn-sm btn-outline-danger"
-            disabled={busy}
+            className="btn btn-sm btn-outline-danger flex-shrink-0 text-nowrap px-3 py-1 align-self-end align-self-sm-center"
+            disabled={busy || loading}
             onClick={() =>
               setRevision(
                 (v) => v + 1
               )
             }
           >
-            Reintentar
+            {loading ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-1" aria-hidden="true" />
+                <span>Reintentando…</span>
+              </>
+            ) : (
+              'Reintentar'
+            )}
           </button>
         </div>
       )}

@@ -17,6 +17,8 @@ import type {
 } from '../../types/turno.types';
 
 import TurnoCard from '../../components/ui/TurnoCard';
+import CancelAppointment from '../../components/ui/CancelAppointment';
+import InasistenciaStatusBanner from '../../components/ui/InasistenciaStatusBanner';
 import useManagedPatients from '../../context/useManagedPatients';
 import ManagedPatientSelector from '../../components/ui/ManagedPatientSelector';
 import PaginationControls from '../../components/ui/PaginationControls';
@@ -183,6 +185,9 @@ export default function PatientAppointmentsPage() {
       {/* FILTROS */}
       <ManagedPatientSelector selection={selection} />
 
+      {/* Banner de estado de inasistencias y advertencias del paciente seleccionado */}
+      <InasistenciaStatusBanner idPaciente={selection.id} refreshKey={revision} />
+
       <div className="row g-3 mb-4">
         {/* Filtro por período. */}
         <div className="col-12 col-sm-6">
@@ -272,20 +277,32 @@ export default function PatientAppointmentsPage() {
 
       {error && (
         <div
-          className="alert alert-danger"
+          className="alert alert-danger d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2 p-3 mb-3 rounded-3 shadow-sm"
           role="alert"
         >
-          {error}{' '}
+          <div className="d-flex align-items-center gap-2">
+            <i className="bi bi-exclamation-triangle-fill text-danger flex-shrink-0" aria-hidden="true" />
+            <span className="small">{error}</span>
+          </div>
 
           <button
-            className="btn btn-outline-danger"
+            type="button"
+            className="btn btn-sm btn-outline-danger flex-shrink-0 text-nowrap px-3 py-1 align-self-end align-self-sm-center"
+            disabled={loading}
             onClick={() =>
               setRevision(
                 (v) => v + 1
               )
             }
           >
-            Reintentar
+            {loading ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-1" aria-hidden="true" />
+                <span>Reintentando…</span>
+              </>
+            ) : (
+              'Reintentar'
+            )}
           </button>
         </div>
       )}
@@ -342,7 +359,7 @@ export default function PatientAppointmentsPage() {
                       <th scope="col" style={{ minWidth: '120px' }}>Estado</th>
                       <th scope="col" style={{ minWidth: '160px' }}>Motivo</th>
                       <th scope="col" style={{ minWidth: '140px' }}>Solicitado por</th>
-                      <th scope="col" style={{ width: '130px', minWidth: '130px', textAlign: 'center' }}>Acciones</th>
+                      <th scope="col" style={{ width: '220px', minWidth: '220px', textAlign: 'center' }}>Acciones</th>
                     </tr>
                   </thead>
 
@@ -399,17 +416,26 @@ export default function PatientAppointmentsPage() {
                             </span>
                           </td>
 
-                          {/* Acceso al detalle. */}
-                          <td className="text-center" style={{ width: '130px', minWidth: '130px' }}>
-                            <Link
-                              className="btn btn-sm btn-outline-success d-inline-flex align-items-center justify-content-center gap-1 text-nowrap"
-                              style={{ minHeight: '36px', whiteSpace: 'nowrap' }}
-                              to={`/mis-turnos/${t.id_turno}`}
-                              title="Ver detalle completo del turno"
-                            >
-                              <i className="bi bi-eye" aria-hidden="true" />
-                              <span>Ver detalle</span>
-                            </Link>
+                          {/* Acceso al detalle y cancelación. */}
+                          <td className="text-center" style={{ width: '220px', minWidth: '220px' }}>
+                            <div className="d-flex align-items-center justify-content-center gap-2">
+                              <Link
+                                className="btn btn-sm btn-outline-success d-inline-flex align-items-center justify-content-center gap-1 text-nowrap"
+                                style={{ minHeight: '36px', whiteSpace: 'nowrap' }}
+                                to={`/mis-turnos/${t.id_turno}`}
+                                title="Ver detalle completo del turno"
+                              >
+                                <i className="bi bi-eye" aria-hidden="true" />
+                                <span>Ver detalle</span>
+                              </Link>
+                              <CancelAppointment
+                                turno={t}
+                                compact
+                                onCancelled={() =>
+                                  setRevision((v) => v + 1)
+                                }
+                              />
+                            </div>
                           </td>
                         </tr>
                       )

@@ -61,6 +61,30 @@ export const rethrowTurnoError = (error: unknown): never => {
     );
   }
 
+  // Detecta requerimiento de contexto de operador en modificaciones de agenda.
+  if (
+    hasDatabaseCode(error, 'P0001') &&
+    message === 'OPERATOR_CONTEXT_REQUIRED'
+  ) {
+    throw new AppError(
+      'Las modificaciones de agenda requieren un operador autenticado mediante el procedimiento oficial.',
+      403,
+      'OPERATOR_CONTEXT_REQUIRED'
+    );
+  }
+
+  // Detecta operador no autorizado o sin permisos de gestión de agenda.
+  if (
+    hasDatabaseCode(error, 'P0001') &&
+    message === 'UNAUTHORIZED_OPERATOR'
+  ) {
+    throw new AppError(
+      'El operador no tiene permisos para modificar la agenda del turno.',
+      403,
+      'UNAUTHORIZED_OPERATOR'
+    );
+  }
+
   // Traduce los errores de validación definidos en los triggers.
   if (
     hasDatabaseCode(error, "P0001") &&

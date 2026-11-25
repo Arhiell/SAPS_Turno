@@ -491,7 +491,7 @@
 .patient-detail-status {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   padding: 10px 14px;
   border-radius: 12px;
   background: rgba(34, 92, 200, 0.08);

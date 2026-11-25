@@ -134,14 +134,17 @@ export default function PatientCoverageCard({
           </div>
         ) : error ? (
           <div
-            className="alert alert-danger"
+            className="alert alert-danger d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2 p-3 mb-0 rounded-3 shadow-sm"
             role="alert"
           >
-            {error}{' '}
+            <div className="d-flex align-items-center gap-2">
+              <i className="bi bi-exclamation-triangle-fill text-danger flex-shrink-0" aria-hidden="true" />
+              <span className="small">{error}</span>
+            </div>
 
             <button
               type="button"
-              className="btn btn-outline-danger"
+              className="btn btn-sm btn-outline-danger flex-shrink-0 text-nowrap px-3 py-1 align-self-end align-self-sm-center"
               onClick={retry}
             >
               Reintentar

@@ -1,4 +1,3 @@
-
 import { Router } from 'express';
 
 import chatbotRoutes from './chatbot.routes.js';
@@ -39,6 +38,7 @@ import disponibilidadRoutes from './disponibilidad.routes.js';
 import turnoRoutes from './turno.routes.js';
 import historialTurnoRoutes from './historial-turno.routes.js';
 import sancionRoutes from './sancion.routes.js';
+import inasistenciaPoliticaRoutes from './inasistencia-politica.routes.js';
 
 import notificacionRoutes from './notificacion.routes.js';
 import accessManagementRoutes from './access-management.routes.js';
@@ -101,8 +101,9 @@ router.use('/disponibilidad', disponibilidadRoutes);
 router.use('/turnos', turnoRoutes);
 router.use('/', historialTurnoRoutes);
 
-// Gestión de sanciones por inasistencia.
+// Gestión de sanciones por inasistencia y política progresiva.
 router.use('/sanciones', sancionRoutes);
+router.use('/inasistencias', inasistenciaPoliticaRoutes);
 
 // Notificaciones internas del usuario.
 router.use('/notificaciones', notificacionRoutes);

@@ -16,6 +16,7 @@ export const turno = { ...input, id_horario: id, id_estado: id, estado: state, i
   fecha_hora_inicio: "2099-10-05T13:00:00.000Z", fecha_hora_fin: "2099-10-05T13:20:00.000Z" };
 // Todos los accesos de estas pruebas se interceptan antes de salir del proceso.
 export const entities = () => [
+  { table: "configuracion", result: [] },
   { table: "pacientes", result: [row] },
   { table: "profesionales", result: [{ activo: true }] },
   { table: "salitas", result: [{ activo: true }] },
@@ -23,8 +24,10 @@ export const entities = () => [
   { table: "profesional_especialidad", result: [{ id_especialidad: id, activo: true, fecha_desde: "2020-01-01", fecha_hasta: null }] },
   { table: "profesional_salita", result: [{ id_salita: id, activo: true, fecha_desde: "2020-01-01", fecha_hasta: null }] }
 ];
-export const freeSlot = () => [
+export const freeSlot = (includeSanction = true) => [
+  { table: "cierres_calendario", result: [] },
   { table: "bloqueos_agenda", result: [] },
   { table: "turnos", result: [] }, { table: "turnos", result: [] },
-  { table: "turnos", result: [] }, { table: "sanciones", result: [] }
+  { table: "turnos", result: [] },
+  ...(includeSanction ? [{ table: "sanciones", result: [] }] : [])
 ];

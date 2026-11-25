@@ -12,6 +12,7 @@ import {
 } from "./turno-access.service.js";
 
 import { validateTurnoAgenda } from "./turno-agenda.service.js";
+import { canBypassOnlineSanction } from "./booking-restriction.service.js";
 import { AppError } from "../utils/app-error.js";
 
 import type { TurnoRow } from "../types/turno.types.js";
@@ -32,6 +33,7 @@ import {
 
 import { findPatientById } from "../repositories/patient-read.repository.js";
 import { emitirCambioAgenda } from "./socket.service.js";
+import { procesarInasistenciaTurno } from "./inasistencia-politica.service.js";
 
 // Verifica que el turno permita modificaciones.
 const assertEditable = (turno: TurnoRow) => {
@@ -171,10 +173,14 @@ export const updateTurno = async (
     candidate.id_salita
   );
 
-  // Revalida la agenda excluyendo únicamente el turno actual.
+  // Revalida la agenda excluyendo únicamente el turno actual (con bypass asistencial si el rol está autorizado).
+  const isAdministrative = canBypassOnlineSanction(user.rol);
   const agenda = await validateTurnoAgenda(
     candidate,
-    id
+    id,
+    false,
+    true,
+    isAdministrative
   );
 
   // Guarda la reprogramación con control de versión.
@@ -265,6 +271,25 @@ export const updateTurno = async (
   return updated;
 };
 
+/**
+ * Clasifica la cancelación según el actor y la anticipación horaria.
+ * Ni cancelaciones anticipadas, ni tardías, ni administrativas generan inasistencias o sanciones.
+ */
+export const clasificarCancelacion = (
+  fechaHoraInicio: string,
+  userRol: string,
+  ahora: Date = new Date()
+): { tipo: 'ANTICIPADA' | 'TARDIA' | 'ADMINISTRATIVA'; generaInasistencia: false } => {
+  if (userRol !== 'PACIENTE') {
+    return { tipo: 'ADMINISTRATIVA', generaInasistencia: false };
+  }
+  const hoursUntil = (Date.parse(fechaHoraInicio) - ahora.getTime()) / (1000 * 60 * 60);
+  return {
+    tipo: hoursUntil >= 24 ? 'ANTICIPADA' : 'TARDIA',
+    generaInasistencia: false,
+  };
+};
+
 // Modifica el estado de un turno según los permisos del usuario.
 export const changeTurnoStatus = async (
   id: string,
@@ -344,7 +369,8 @@ export const changeTurnoStatus = async (
       },
       id,
       current.ocupa_agenda,
-      !current.ocupa_agenda
+      !current.ocupa_agenda,
+      canBypassOnlineSanction(user.rol)
     );
 
     // Verifica que la duración del turno no haya cambiado.
@@ -359,6 +385,13 @@ export const changeTurnoStatus = async (
     }
   }
 
+  // Clasificación de cancelación según actor y anticipación (sin generar sanciones)
+  let tipo_cancelacion: 'ANTICIPADA' | 'TARDIA' | 'ADMINISTRATIVA' | null = null;
+  if (state.codigo === "CANCELADO") {
+    const clasificacion = clasificarCancelacion(current.fecha_hora_inicio, user.rol);
+    tipo_cancelacion = clasificacion.tipo;
+  }
+
   // Actualiza el estado y registra los datos de cancelación.
   const updated = requireUpdated(
     await patchTurno(
@@ -371,11 +404,21 @@ export const changeTurnoStatus = async (
               motivo_cancelacion: input.motivo_cancelacion ?? null,
               cancelado_por: user.id_usuario,
               fecha_cancelacion: new Date().toISOString(),
+              tipo_cancelacion,
             }
           : {}),
       }
     )
   );
+
+  // Procesa inasistencias bajo la política progresiva (1-2-3 en 90 días)
+  if (state.codigo === "NO_ASISTIO") {
+    try {
+      await procesarInasistenciaTurno(updated.id_turno, user);
+    } catch (err) {
+      console.error("Error al procesar política progresiva de inasistencia:", err);
+    }
+  }
 
   // Notifica la cancelación utilizando el código del catálogo.
   if (

@@ -73,6 +73,7 @@ export const anularSancion = async (
       anulada: true,
       motivo_anulacion: motivo,
       anulada_por: idUsuario ?? null,
+      fecha_anulacion: new Date().toISOString(),
     })
     .eq("id_sancion", id)
     .eq("anulada", false)

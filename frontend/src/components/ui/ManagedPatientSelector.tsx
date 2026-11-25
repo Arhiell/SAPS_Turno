@@ -18,8 +18,18 @@ export default function ManagedPatientSelector({ selection, disabled = false }: 
       </select>
     </label>
     {selection.loading && <p role="status">Cargando personas a cargo…</p>}
-    {selection.error && <div className="alert alert-danger" role="alert">{selection.error}{' '}
-      <button className="btn btn-sm btn-outline-danger" disabled={disabled} onClick={selection.retry}>Reintentar</button>
-    </div>}
+    {selection.error && (
+      <div className="alert alert-danger d-flex align-items-center justify-content-between gap-2 p-2" role="alert">
+        <span className="small">{selection.error}</span>
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-danger flex-shrink-0 text-nowrap px-3 py-1"
+          disabled={disabled || selection.loading}
+          onClick={selection.retry}
+        >
+          {selection.loading ? 'Reintentando…' : 'Reintentar'}
+        </button>
+      </div>
+    )}
   </div>;
 }

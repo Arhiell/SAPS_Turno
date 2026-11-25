@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import axios from 'axios';
 
 import { getPatientProfessionals } from '../../services/profesionales.service';
 import { getPatientAvailableDates, type PatientAvailableDates } from '../../services/turnos.service';
@@ -47,6 +49,7 @@ export default function PatientBookingForm({
   // Almacena los mensajes de error.
   const [error, setError] = useState('');
   const [datesError, setDatesError] = useState('');
+  const [pendingConflict, setPendingConflict] = useState<string | null>(null);
 
   // Permite actualizar la información de la agenda.
   const [revision, setRevision] = useState(0);
@@ -146,6 +149,7 @@ export default function PatientBookingForm({
     let active = true;
 
     setDatesError('');
+    setPendingConflict(null);
     setCalendar([]);
 
     // Limpia las fechas cuando falta seleccionar una atención.
@@ -179,11 +183,48 @@ export default function PatientBookingForm({
             : result.fechas[0] ?? ''
         );
       })
-      .catch((cause) => {
+      .catch((cause: unknown) => {
         if (active) {
           setDate('');
           setDates([]);
           setCalendar([]);
+
+          if (axios.isAxiosError(cause)) {
+            const status = cause.response?.status;
+            const data = cause.response?.data as { code?: string; message?: string } | undefined;
+
+            if (
+              status === 409 &&
+              (data?.code === 'SPECIALTY_APPOINTMENT_PENDING' ||
+                data?.message?.toLowerCase().includes('pendiente'))
+            ) {
+              setPendingConflict(
+                data?.message ||
+                  'Ya tenés un turno pendiente en esta especialidad.'
+              );
+              setDatesError('');
+              return;
+            }
+
+            if (status === 409) {
+              setDatesError(
+                data?.message ||
+                  'La atención seleccionada no cuenta con cupos disponibles para las fechas habilitadas.'
+              );
+              setPendingConflict(null);
+              return;
+            }
+
+            if (!cause.response || cause.code === 'ERR_NETWORK') {
+              setDatesError(
+                'No pudimos conectar con el servidor. Verificá tu conexión a internet.'
+              );
+              setPendingConflict(null);
+              return;
+            }
+          }
+
+          setPendingConflict(null);
           setDatesError(authError(cause));
         }
       })
@@ -234,23 +275,72 @@ export default function PatientBookingForm({
         </p>
       )}
 
-      {/* Muestra los errores y permite reintentar la operación. */}
-      {(error || datesError) && (
+      {/* Alerta clara y orientadora si ya tiene un turno pendiente en esta especialidad */}
+      {pendingConflict && (
         <div
-          className="alert alert-danger d-flex align-items-center justify-content-between gap-2"
+          className="alert alert-warning border border-warning-subtle rounded-3 p-3 mb-3 shadow-sm"
+          role="status"
+        >
+          <div className="d-flex align-items-start gap-3">
+            <i className="bi bi-info-circle-fill text-warning flex-shrink-0 fs-5 mt-0" aria-hidden="true" />
+            <div className="flex-grow-1">
+              <strong className="d-block text-dark mb-1">
+                Turno pendiente en esta especialidad
+              </strong>
+              <p className="mb-2 text-secondary small">
+                {pendingConflict} Podrás reservar un nuevo turno una vez completado o cancelado el turno actual.
+              </p>
+              <div className="d-flex flex-wrap gap-2 mt-2">
+                <Link
+                  to={patientId ? `/mis-turnos?paciente=${patientId}` : '/mis-turnos'}
+                  className="btn btn-sm btn-outline-dark d-inline-flex align-items-center gap-1 text-nowrap"
+                >
+                  <i className="bi bi-calendar-check" aria-hidden="true" />
+                  <span>Ver mis turnos</span>
+                </Link>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 text-nowrap"
+                  onClick={() => {
+                    setSpecialty('');
+                    setProfessional('');
+                    setPendingConflict(null);
+                  }}
+                >
+                  <i className="bi bi-arrow-repeat" aria-hidden="true" />
+                  <span>Elegir otra atención</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Muestra los errores genéricos y permite reintentar la operación con espaciado adecuado. */}
+      {(error || datesError) && !pendingConflict && (
+        <div
+          className="alert alert-danger d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2 p-3 mb-3 rounded-3 shadow-sm"
           role="alert"
         >
-          <span>{error || datesError}</span>
+          <div className="d-flex align-items-center gap-2">
+            <i className="bi bi-exclamation-triangle-fill text-danger flex-shrink-0" aria-hidden="true" />
+            <span className="text-dark small">{error || datesError}</span>
+          </div>
 
           <button
             type="button"
-            className="btn btn-sm btn-outline-danger"
-            disabled={busy}
-            onClick={() =>
-              setRevision((value) => value + 1)
-            }
+            className="btn btn-sm btn-outline-danger flex-shrink-0 text-nowrap px-3 py-1 align-self-end align-self-sm-center"
+            disabled={busy || loadingDates || loading}
+            onClick={() => setRevision((value) => value + 1)}
           >
-            Reintentar
+            {loadingDates || loading ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-1" aria-hidden="true" />
+                <span>Reintentando…</span>
+              </>
+            ) : (
+              'Reintentar'
+            )}
           </button>
         </div>
       )}

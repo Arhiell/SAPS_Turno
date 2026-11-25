@@ -7,6 +7,7 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 import "./styles/variables.css";
 import "./index.css";
 import "./App.css";
+import "./styles/icon-spacing.css";
 import "./styles/turnos.css";
 import "./styles/layout.css";
 import "./styles/pacientes.css";

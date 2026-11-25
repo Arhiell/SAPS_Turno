@@ -5,6 +5,7 @@ import { useAgendaSocket } from '../../context/AgendaSocketContext';
 import { getTurnos } from '../../services/turnos.service';
 import { getNotificaciones } from '../../services/notificaciones.service';
 import CancelAppointment from '../../components/ui/CancelAppointment';
+import InasistenciaStatusBanner from '../../components/ui/InasistenciaStatusBanner';
 import { getEstadoClass } from '../../utils/turno-status';
 import { formatFechaHora } from '../../utils/agenda-display';
 import type { Turno } from '../../types/turno.types';
@@ -121,7 +122,7 @@ export default function PatientOverview({
             ¡Hola, {profile?.nombres || user?.nombre_usuario}!
           </h1>
           <p className="text-muted mb-0">
-            Portal de atención y turnos en salud municipal.
+            Portal de atención y turnos · CORA.
           </p>
         </div>
 
@@ -145,13 +146,24 @@ export default function PatientOverview({
       </div>
 
       {error && (
-        <div className="alert alert-danger d-flex align-items-center justify-content-between gap-2 mb-4" role="alert">
-          <span>{error}</span>
-          <button type="button" className="btn btn-sm btn-outline-danger" onClick={onRefresh}>
-            Reintentar
+        <div className="alert alert-danger d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2 mb-4 p-3 rounded-3 shadow-sm" role="alert">
+          <div className="d-flex align-items-center gap-2">
+            <i className="bi bi-exclamation-triangle-fill text-danger flex-shrink-0" aria-hidden="true" />
+            <span className="small">{error}</span>
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-danger flex-shrink-0 text-nowrap px-3 py-1 align-self-end align-self-sm-center"
+            disabled={loading}
+            onClick={onRefresh}
+          >
+            {loading ? 'Reintentando…' : 'Reintentar'}
           </button>
         </div>
       )}
+
+      {/* Banner de estado de inasistencias y advertencias institucionales */}
+      <InasistenciaStatusBanner idPaciente={profile?.id_paciente} refreshKey={revision} />
 
       {/* Próximo turno (prioridad principal con altura reservada para CLS 0) */}
       <div className="card border-0 shadow-sm mb-4 overflow-hidden">

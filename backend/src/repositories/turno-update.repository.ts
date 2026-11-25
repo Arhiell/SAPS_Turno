@@ -19,6 +19,10 @@ type TurnoEditable = Pick<
   | "motivo_cancelacion"
   | "cancelado_por"
   | "fecha_cancelacion"
+  | "tipo_cancelacion"
+  | "rectificado_por"
+  | "motivo_rectificacion"
+  | "fecha_rectificacion"
 >;
 
 export type TurnoPatch = {

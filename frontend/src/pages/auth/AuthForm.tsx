@@ -39,7 +39,7 @@ export default function AuthForm({
             <div>
               <strong>CORA</strong>
               <span>
-                Conexión y Organización de la Red de Atención
+                Goya, Corrientes
               </span>
             </div>
           </div>
@@ -47,7 +47,7 @@ export default function AuthForm({
           <div className="auth-identity-main">
             <div className="auth-identity-copy">
               <span className="auth-eyebrow">
-                SALUD PÚBLICA · GOYA
+                SALUD Y COMUNIDAD · GOYA
               </span>
 
               <h2>
@@ -58,7 +58,7 @@ export default function AuthForm({
 
               <p>
                 Un mismo lugar para acompañar tu atención y organizar
-                tus turnos en las salas municipales de salud.
+                tus turnos en los centros de salud de Goya.
               </p>
 
               <div className="auth-identity-detail">
@@ -147,7 +147,7 @@ export default function AuthForm({
       </div>
 
       <p className="auth-page-footer">
-        CORA · Salud municipal
+        CORA · Goya
       </p>
     </main>
   );

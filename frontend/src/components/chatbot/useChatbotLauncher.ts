@@ -46,14 +46,20 @@ export default function useChatbotLauncher(identity: string, launcher: RefObject
     const width = viewport?.width ?? window.innerWidth;
     const height = viewport?.height ?? window.innerHeight;
     const isMobile = width < 768;
-    const minTop = isMobile ? top + height - (rect?.height ?? 56) - 160 : top + 8;
+    const btnW = rect?.width ?? 56;
+    const btnH = rect?.height ?? 56;
+
+    // Respeta barras de navegación fijas superior/inferior y safe areas
+    const minTop = isMobile ? top + 64 : top + 16;
     const maxTop = isMobile
-      ? top + height - (rect?.height ?? 56) - 96
-      : top + height - (rect?.height ?? 56) - 8;
+      ? top + height - btnH - 74
+      : top + height - btnH - 16;
+    const minLeft = left + (isMobile ? 12 : 16);
+    const maxLeft = left + width - btnW - (isMobile ? 12 : 16);
 
     return {
-      x: Math.max(left + 8, Math.min(position.x, left + width - (rect?.width ?? 56) - 8)),
-      y: Math.max(minTop, Math.min(position.y, maxTop)),
+      x: Math.max(minLeft, Math.min(position.x, maxLeft)),
+      y: Math.max(minTop, Math.min(position.y, Math.max(minTop, maxTop))),
     };
   };
 

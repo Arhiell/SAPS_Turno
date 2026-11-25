@@ -1,42 +1,56 @@
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 export default function PrivacyPolicyPage() {
-  return <article className="card p-3 p-md-4 mx-auto" style={{ maxWidth: 960 }} aria-labelledby="privacy-policy-title">
-    <h1 id="privacy-policy-title" className="h3">Política de privacidad</h1>
-    <p className="text-muted">Información sobre tus datos y el almacenamiento del sitio.</p>
+  const { isAuthenticated } = useAuth();
 
-    <div className="alert alert-warning" role="note">
-      <strong>Versión de prueba.</strong> Este contenido es un borrador informativo pendiente de validación institucional. La política definitiva todavía no fue publicada.
-    </div>
+  return (
+    <article className="card p-3 p-md-4 mx-auto my-4" style={{ maxWidth: 960 }} aria-labelledby="privacy-policy-title">
+      <h1 id="privacy-policy-title" className="h3">Política de privacidad</h1>
+      <p className="text-muted">Información sobre tus datos y el almacenamiento del sitio.</p>
 
-    <section aria-labelledby="privacy-data-title">
-      <h2 id="privacy-data-title" className="h5">Uso de tus datos</h2>
-      <p>CORA utiliza los datos que ingresás para gestionar tu cuenta, tu perfil, tus turnos y los servicios de atención disponibles. Según el trámite, estos pueden incluir datos de identificación, contacto y cobertura de salud.</p>
-      <p>La información disponible en el sistema depende del rol y los permisos de cada cuenta. Este aviso no reemplaza la información ni los consentimientos específicos que correspondan a la atención de salud.</p>
-    </section>
+      <div className="alert alert-warning" role="note">
+        <strong>Versión institucional.</strong> Este documento describe los criterios de tratamiento de datos personales y privacidad aplicados por CORA (Conexión y Organización de la Red de Atención) en el ámbito de la salud pública municipal de Goya, Corrientes.
+      </div>
 
-    <section aria-labelledby="privacy-storage-title">
-      <h2 id="privacy-storage-title" className="h5">Almacenamiento en tu navegador y cookies</h2>
-      <p>El sitio utiliza almacenamiento local para mantener tu sesión, recordar la lectura del aviso y conservar ajustes de la interfaz. Algunos mensajes temporales se guardan solo durante la sesión de navegación.</p>
-      <p>Este almacenamiento no es lo mismo que las cookies. No se identificaron cookies de analítica o publicidad propias en el frontend revisado. El acceso con Google, cuando está disponible, utiliza servicios externos que pueden emplear sus propias cookies y tecnologías.</p>
-      <p>Podés gestionar los datos del sitio desde tu navegador. Si los eliminás, podrías cerrar tu sesión y volver a ver el aviso de privacidad.</p>
-    </section>
+      <section aria-labelledby="privacy-data-title">
+        <h2 id="privacy-data-title" className="h5">Uso de tus datos</h2>
+        <p>CORA utiliza los datos que ingresás para gestionar tu cuenta, tu perfil de paciente o profesional, tus turnos y los servicios de atención sanitaria disponibles. Según el trámite, estos pueden incluir datos de identificación (DNI, nombre, apellido), contacto (correo, teléfono) y cobertura de salud (salita asignada por domicilio).</p>
+        <p>La información disponible en el sistema depende del rol y los permisos de cada cuenta. Este aviso no reemplaza la información ni los consentimientos específicos que correspondan a la atención de salud médica presencial.</p>
+      </section>
 
-    <section aria-labelledby="privacy-services-title">
-      <h2 id="privacy-services-title" className="h5">Servicios externos</h2>
-      <p>Algunas funciones utilizan servicios externos, como el acceso con Google y la ayuda del asistente mediante Gemini. El asistente muestra sus propias aclaraciones: no ingreses datos personales ni clínicos en sus consultas.</p>
-    </section>
+      <section aria-labelledby="privacy-storage-title">
+        <h2 id="privacy-storage-title" className="h5">Almacenamiento en tu navegador y seguridad</h2>
+        <p>El sitio utiliza almacenamiento local seguro para mantener tu sesión activa, recordar la lectura de avisos y conservar ajustes de la interfaz. Algunos datos temporales se resguardan únicamente durante la sesión activa de navegación.</p>
+        <p>Este almacenamiento no se comparte con terceros con fines comerciales ni publicitarios. El acceso institucional con Google, cuando está habilitado, utiliza los protocolos de autenticación oficiales de dicho proveedor.</p>
+        <p>Podés gestionar y limpiar los datos del sitio desde las opciones de privacidad de tu navegador web en cualquier momento.</p>
+      </section>
 
-    <section aria-labelledby="privacy-acknowledgement-title">
-      <h2 id="privacy-acknowledgement-title" className="h5">Qué significa «Entendido»</h2>
-      <p>El botón cierra el aviso y guarda únicamente su versión y la fecha de lectura en este navegador. No habilita publicidad, seguimiento ni tratamientos adicionales de tus datos. Consultar esta página no registra la lectura del aviso.</p>
-    </section>
+      <section aria-labelledby="privacy-services-title">
+        <h2 id="privacy-services-title" className="h5">Servicios y asistencia</h2>
+        <p>Las funciones de orientación y asistente virtual de CORA están diseñadas para guiar al usuario en el uso de la plataforma. Recordá no ingresar información médica sensible ni contraseñas en el asistente de chat.</p>
+      </section>
 
-    <section aria-labelledby="privacy-contact-title">
-      <h2 id="privacy-contact-title" className="h5">Consultas sobre tus datos</h2>
-      <p>La versión definitiva deberá identificar a la entidad responsable, el canal oficial para solicitar acceso, corrección o eliminación de datos, los plazos de conservación y las condiciones de intervención de proveedores externos. Estos datos están pendientes de confirmación.</p>
-    </section>
+      <section aria-labelledby="privacy-contact-title">
+        <h2 id="privacy-contact-title" className="h5">Atención y consultas</h2>
+        <p>Ante cualquier duda sobre la administración de tus datos personales en el sistema de salud municipal, podés concurrir a tu salita de atención primaria más cercana o consultar en el portal oficial de la Municipalidad de Goya.</p>
+      </section>
 
-    <div><Link to="/mi-perfil" className="btn btn-outline-success">Ir a mi perfil</Link></div>
-  </article>;
+      <div className="d-flex flex-wrap gap-2 pt-3 border-top">
+        <Link to="/" className="btn btn-outline-secondary">
+          <i className="bi bi-arrow-left me-1" aria-hidden="true" />
+          Volver al inicio
+        </Link>
+        {isAuthenticated ? (
+          <Link to="/mi-perfil" className="btn btn-success">
+            Ir a mi perfil
+          </Link>
+        ) : (
+          <Link to="/login" className="btn btn-success">
+            Iniciar sesión
+          </Link>
+        )}
+      </div>
+    </article>
+  );
 }

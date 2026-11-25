@@ -1,0 +1,71 @@
+/* ==========================================================================
+   CORA · Sistema compartido de espaciado entre iconos y textos
+
+   Criterio unificado:
+   - Botones .................. 8 px  (0.5rem)
+   - Badges y etiquetas ....... 6 px  (0.375rem)
+   - Menús desplegables ....... 8 px  (0.5rem)
+
+   1) Utilidades fraccionarias que el código ya usa (me-1.5, ms-1.5, gap-1.5,
+      mt-0.5...) y que Bootstrap 5 no define, por lo que se ignoraban y
+      dejaban iconos pegados al texto. Se limitan a margen horizontal, gap y
+      ajuste fino vertical de iconos; NO se definen utilidades de padding ni
+      márgenes verticales grandes para no alterar las dimensiones de
+      botones, tarjetas y contenedores existentes.
+   2) Reglas de baja especificidad (:where) para botones, badges y menús con
+      icono. Solo actúan cuando el icono NO trae un margen manual, así no se
+      duplica la separación ni se tocan componentes ya bien espaciados.
+   ========================================================================== */
+
+/* ---------- 1) Escala fraccionaria (0.5 / 1.5) ---------- */
+.gap-0\.5 { gap: 0.125rem !important; }
+.gap-1\.5 { gap: 0.375rem !important; }
+
+.me-0\.5 { margin-right: 0.125rem !important; }
+.me-1\.5 { margin-right: 0.375rem !important; }
+.ms-1\.5 { margin-left: 0.375rem !important; }
+
+.mt-0\.5 { margin-top: 0.125rem !important; }
+
+/* ---------- 2) Iconos junto a texto: no se comprimen en contenedores flex ---------- */
+:where(.btn, .badge, .dropdown-item) > .bi,
+.d-flex > .bi,
+.d-inline-flex > .bi {
+  flex-shrink: 0;
+}
+
+/* ---------- 3) Botones con icono sin margen propio: 8 px ---------- */
+:where(.btn):has(> .bi:not(.me-1, .me-2, .me-3, .ms-1, .ms-2, .ms-3, .me-0\.5, .me-1\.5, .ms-1\.5), > svg) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+/* Botones que ya declaran gap-1 / gap-1.5 con icono usan los 8 px estándar. */
+.btn.d-inline-flex.gap-1:has(> .bi:not(.me-1, .me-2, .me-3, .ms-1, .ms-2, .ms-3, .me-0\.5, .me-1\.5, .ms-1\.5)),
+.btn.d-inline-flex.gap-1\.5:has(> .bi:not(.me-1, .me-2, .me-3, .ms-1, .ms-2, .ms-3, .me-0\.5, .me-1\.5, .ms-1\.5)),
+.btn.d-flex.gap-1:has(> .bi:not(.me-1, .me-2, .me-3, .ms-1, .ms-2, .ms-3, .me-0\.5, .me-1\.5, .ms-1\.5)),
+.btn.d-flex.gap-1\.5:has(> .bi:not(.me-1, .me-2, .me-3, .ms-1, .ms-2, .ms-3, .me-0\.5, .me-1\.5, .ms-1\.5)) {
+  gap: 0.5rem !important;
+}
+
+/* Botones con icono + margin me-1 (4 px, demasiado ajustado) y sin gap propio:
+   se llevan a los 8 px estándar. Si el botón ya usa gap, no se toca. */
+.btn:not([class*="gap-"]) > .bi.me-1 {
+  margin-right: 0.5rem !important;
+}
+
+/* ---------- 4) Badges con icono sin margen propio: 6 px ---------- */
+:where(.badge):has(> .bi:not(.me-1, .me-2, .ms-1, .ms-2, .me-0\.5, .me-1\.5, .ms-1\.5), > svg) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+/* ---------- 5) Menús desplegables con icono sin margen propio: 8 px ---------- */
+:where(.dropdown-item):has(> .bi:not(.me-1, .me-2, .me-3)) {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}

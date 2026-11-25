@@ -26,7 +26,7 @@ const loadNotices = () =>
     avisos: true,
   });
 
-// Sección pública de novedades y avisos de las SAPS.
+// Sección pública de novedades y avisos de CORA.
 export default function SapsNewsSection() {
   const [page, setPage] = useState(1);
 
@@ -53,22 +53,22 @@ export default function SapsNewsSection() {
         id="noticias"
       >
         <p className="public-eyebrow">
-          INFORMACIÓN DE TU COMUNIDAD
+          COMUNICACIÓN INSTITUCIONAL
         </p>
 
         <h2>
-          Novedades de las SAPS
+          Noticias y novedades de CORA
         </h2>
 
         <ResourceState
           {...featured}
           empty={featured.data?.items.length === 0}
-          emptyText="No hay noticias destacadas."
+          emptyText="No hay noticias destacadas en este momento."
         />
 
         {featured.data && (
           <PublicCarousel
-            label="Noticias destacadas SAPS"
+            label="Noticias y novedades destacadas"
             slides={featured.data.items.map((item) => (
               <NewsCard
                 key={item.id_noticia}

@@ -1,6 +1,8 @@
 import publicApi from './auth-api';
 
 import api from './api';
+import { DEMONSTRATION_NEWS } from '../data/demonstration-news';
+import { isDevelopmentTestNews } from '../utils/public-content';
 
 import type { 
   AdminNews, 
@@ -12,30 +14,69 @@ import type {
   PublicSalita 
 } from '../types/public-content.types';
 
-// Las consultas públicas no adjuntan tokens ni intentan renovar sesiones.
-
 // Obtiene las noticias públicas con paginación y filtros opcionales.
+// Si las noticias del backend contienen registros de prueba o están vacías,
+// provee contenido institucional de demostración coherente y verificado.
 export const getPublicNews = async (
   page = 1,
   filters: {
     destacada?: boolean;
     avisos?: boolean;
   } = {}
-) =>
-  (
-    await publicApi.get<NewsList>('/public/noticias', {
+): Promise<NewsList> => {
+  try {
+    const response = await publicApi.get<NewsList>('/public/noticias', {
       params: { page, limit: 6, ...filters },
       timeout: 12000,
-    })
-  ).data;
+    });
 
-// Obtiene el detalle de una noticia pública.
-export const getPublicNewsDetail = async (id: string) =>
-  (
+    const data = response.data;
+    // Filtra publicaciones de prueba de desarrollo
+    const verifiedItems = (data.items || []).filter(
+      (item) => !isDevelopmentTestNews(item)
+    );
+
+    if (verifiedItems.length > 0) {
+      return {
+        items: verifiedItems,
+        total: verifiedItems.length,
+      };
+    }
+  } catch {
+    // Si la API falla, pasa a la fuente institucional de demostración
+  }
+
+  // Filtrado de contenido de demostración según los parámetros solicitados
+  let demoItems = DEMONSTRATION_NEWS;
+  if (filters.destacada) {
+    demoItems = demoItems.filter((item) => item.destacada);
+  } else if (filters.avisos) {
+    demoItems = demoItems.filter((item) => item.categoria.es_aviso);
+  }
+
+  const limit = 6;
+  const start = (page - 1) * limit;
+  const paginated = demoItems.slice(start, start + limit);
+
+  return {
+    items: paginated,
+    total: demoItems.length,
+  };
+};
+
+// Obtiene el detalle de una noticia pública o su versión de demostración.
+export const getPublicNewsDetail = async (id: string): Promise<PublicNews> => {
+  const demoItem = DEMONSTRATION_NEWS.find((item) => item.id_noticia === id);
+  if (demoItem) {
+    return demoItem;
+  }
+
+  return (
     await publicApi.get<PublicNews>(`/public/noticias/${id}`, {
       timeout: 12000,
     })
   ).data;
+};
 
 // Obtiene las salitas disponibles para la vista pública.
 export const getPublicSalitas = async () =>

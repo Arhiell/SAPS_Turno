@@ -144,7 +144,7 @@ export default function AccountPasswordForm() {
       </h2>
 
       <p className="text-muted">
-        Actualizá tu contraseña de acceso a SAPS.
+        Actualizá tu contraseña de acceso a CORA.
       </p>
 
       {/* Muestra los errores de validación o actualización. */}

@@ -78,12 +78,13 @@ export default function PasswordCreationFields({
 
   return (
     <div className="password-creation-section w-100">
-      {/* Distribución en 2 columnas en pantallas medianas y grandes, 1 columna en móviles */}
+      {/* Distribución en 2 columnas en pantallas grandes (desktop), 1 columna en móviles y tablet */}
       <div className="row g-2 g-md-3">
         {/* Columna 1: Contraseña */}
-        <div className="col-12 col-md-6">
+        <div className="col-12 col-lg-6">
           <label className="form-label mb-1" htmlFor={passwordId}>
-            {passwordLabel} {required && '*'}
+            {passwordLabel}
+            {required && <span className="text-danger ms-1" aria-hidden="true">*</span>}
           </label>
           <div className="auth-password position-relative">
             <input
@@ -135,9 +136,10 @@ export default function PasswordCreationFields({
         </div>
 
         {/* Columna 2: Confirmar contraseña */}
-        <div className="col-12 col-md-6">
+        <div className="col-12 col-lg-6">
           <label className="form-label mb-1" htmlFor={confirmationId}>
-            {confirmationLabel} {required && '*'}
+            {confirmationLabel}
+            {required && <span className="text-danger ms-1" aria-hidden="true">*</span>}
           </label>
           <div className="auth-password position-relative">
             <input

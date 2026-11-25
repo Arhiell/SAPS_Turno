@@ -32,16 +32,16 @@ test("Fecha pasada se rechaza sin consultar ni escribir", async () => {
   await assert.rejects(validateTurnoAgenda({ ...input, fecha_hora_inicio: "2020-01-01T10:00:00Z" }), { statusCode: 400 });
 });
 test("Paciente y profesional inexistentes producen 404", async () => {
-  queue({ table: "pacientes", result: [] });
+  queue({ table: "configuracion", result: [] }, { table: "pacientes", result: [] });
   await assert.rejects(validateTurnoAgenda(input), { statusCode: 404 });
-  queue(entities()[0]!, { table: "profesionales", result: [] });
+  queue({ table: "configuracion", result: [] }, entities()[1]!, { table: "profesionales", result: [] });
   await assert.rejects(validateTurnoAgenda(input), { statusCode: 404 });
 });
 test("Entidades inactivas o asociaciones vencidas impiden reservar", async () => {
-  queue(entities()[0]!, { table: "profesionales", result: [{ activo: false }] });
+  queue({ table: "configuracion", result: [] }, entities()[1]!, { table: "profesionales", result: [{ activo: false }] });
   await assert.rejects(validateTurnoAgenda(input), { statusCode: 400 });
   const steps = entities();
-  steps[4] = { table: "profesional_especialidad", result: [] };
+  steps[5] = { table: "profesional_especialidad", result: [] };
   queue(...steps);
   await assert.rejects(validateTurnoAgenda(input), { statusCode: 400 });
 });
@@ -54,7 +54,7 @@ test("Rechaza día, vigencia, franja, horario inactivo y bloques no alineados", 
   }
 });
 test("Consulta bloqueos globales, parciales y completos con solapamiento real", async () => {
-  queue(...entities(), { table: "horarios_atencion", result: [horario] }, {
+  queue(...entities(), { table: "horarios_atencion", result: [horario] }, { table: "cierres_calendario", result: [] }, {
     table: "bloqueos_agenda", result: [{ id_bloqueo: id }], check: url => {
       const filter = url.searchParams.get("or")!;
       assert.ok(filter.includes("id_profesional.is.null"));
@@ -66,11 +66,11 @@ test("Consulta bloqueos globales, parciales y completos con solapamiento real", 
   await assert.rejects(validateTurnoAgenda(input), { statusCode: 409 });
 });
 test("Detecta superposición profesional, paciente y turno abierto de especialidad", async () => {
-  for (const index of [1, 2, 3]) {
+  for (const index of [2, 3, 4]) {
     const steps = freeSlot().slice(0, index);
     queue(...entities(), { table: "horarios_atencion", result: [horario] }, ...steps,
       { table: "turnos", result: [{ id_turno: id }], check: url => {
-        if (index !== 3) {
+        if (index !== 4) {
           assert.equal(url.searchParams.get("fecha_hora_inicio"), "lt.2099-10-05T13:20:00.000Z");
           assert.equal(url.searchParams.get("fecha_hora_fin"), "gt.2099-10-05T13:00:00.000Z");
         }
@@ -79,7 +79,7 @@ test("Detecta superposición profesional, paciente y turno abierto de especialid
   }
 });
 test("Sanción vigente y cupo completo devuelven 409", async () => {
-  queue(...entities(), { table: "horarios_atencion", result: [horario] }, ...freeSlot().slice(0, 4),
+  queue(...entities(), { table: "horarios_atencion", result: [horario] }, ...freeSlot().slice(0, 5),
     { table: "sanciones", result: [{ id_sancion: id }] });
   await assert.rejects(validateTurnoAgenda(input), { statusCode: 409 });
   queue(...entities(), { table: "horarios_atencion", result: [{ ...horario, cupo_maximo_diario: 1 }] },

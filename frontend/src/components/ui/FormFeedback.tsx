@@ -129,14 +129,11 @@ export function FloatingFeedbackToast({
   onAction,
   onDismiss,
 }: FloatingFeedbackToastProps) {
-  // Si no hay mensaje real, nunca renderizar un cartel flotante vacío
-  if (!message || !message.trim()) {
-    return null;
-  }
+  const hasMessage = Boolean(message && message.trim());
 
   // Garantiza auto-cierre estricto a los 15 segundos para no quedar flotando
   useEffect(() => {
-    if (!onDismiss) return;
+    if (!hasMessage || !onDismiss) return;
     const timer = window.setTimeout(() => {
       onDismiss();
     }, 15_000);
@@ -144,7 +141,12 @@ export function FloatingFeedbackToast({
     return () => {
       window.clearTimeout(timer);
     };
-  }, [message, onDismiss]);
+  }, [hasMessage, onDismiss]);
+
+  // Si no hay mensaje real, nunca renderizar un cartel flotante vacío
+  if (!hasMessage) {
+    return null;
+  }
 
   const isAssertive = variant === 'error';
   const config = variantStyles[variant] ?? variantStyles.info;

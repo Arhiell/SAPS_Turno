@@ -168,6 +168,11 @@ const AppRoutes = () => {
               path="/noticias/:id"
               element={<PublicNewsDetailPage />}
             />
+
+            <Route
+              path="/privacidad"
+              element={<PrivacyPolicyPage />}
+            />
           </Route>
 
           {/* Rutas de autenticación y recuperación de acceso. */}

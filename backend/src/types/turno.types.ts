@@ -26,6 +26,10 @@ export interface TurnoRow {
   motivo_cancelacion: string | null;
   fecha_cancelacion: string | null;
   cancelado_por: string | null;
+  tipo_cancelacion?: 'ANTICIPADA' | 'TARDIA' | 'ADMINISTRATIVA' | null;
+  rectificado_por?: string | null;
+  motivo_rectificacion?: string | null;
+  fecha_rectificacion?: string | null;
   ocupa_agenda: boolean;
   impide_otro_misma_especialidad: boolean;
   version: number;

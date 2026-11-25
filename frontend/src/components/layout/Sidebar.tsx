@@ -14,7 +14,7 @@ const Sidebar = () => {
     <aside className="sidebar">
       <div className="sidebar-brand">
         <h2>CORA</h2>
-        <p>Salud municipal</p>
+        <p>Goya, Corrientes</p>
       </div>
 
       <nav

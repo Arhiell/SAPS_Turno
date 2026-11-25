@@ -296,7 +296,7 @@ export default function NewsEditorFields({
         >
           <option value="">
             {global
-              ? 'Global · Todas las SAPS'
+              ? 'Global · Todas las salitas'
               : 'Seleccioná tu salita'}
           </option>
 

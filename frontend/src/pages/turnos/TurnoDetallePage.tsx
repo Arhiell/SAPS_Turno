@@ -10,6 +10,8 @@ import {
 } from 'react-router-dom';
 
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
+import RectificarInasistenciaModal from '../../components/ui/RectificarInasistenciaModal';
+import TurnoJustificacionCard from '../../components/ui/TurnoJustificacionCard';
 import { FloatingFeedbackToast } from '../../components/ui/FormFeedback';
 import { useAgendaSocket } from '../../context/AgendaSocketContext';
 import ConnectionStatusBadge from '../../components/ui/ConnectionStatusBadge';
@@ -95,6 +97,9 @@ const TurnoDetallePage = () => {
     useState<string | null>(null);
 
   const [copiedCode, setCopiedCode] =
+    useState(false);
+
+  const [rectificarOpen, setRectificarOpen] =
     useState(false);
 
   const { ultimoEvento, resyncTick } = useAgendaSocket();
@@ -577,6 +582,15 @@ const TurnoDetallePage = () => {
               </div>
             </div>
           </div>
+
+          {/* Justificación médica presentada por el paciente (si existe) */}
+          <div className="mt-3">
+            <TurnoJustificacionCard
+              idTurno={turno.id_turno}
+              isStaff
+              onUpdated={() => void loadTurno(true)}
+            />
+          </div>
         </div>
 
         <div className="col-xl-4">
@@ -648,10 +662,23 @@ const TurnoDetallePage = () => {
               )}
 
               {isFinal && (
-                <div className="turno-final-message py-2.5 px-3">
-                  <i className="bi bi-lock me-2 text-secondary" />
-                  Este turno tiene un estado final y no admite modificaciones.
-                </div>
+                <>
+                  <div className="turno-final-message py-2.5 px-3">
+                    <i className="bi bi-lock me-2 text-secondary" />
+                    Este turno tiene un estado final y no admite modificaciones comunes.
+                  </div>
+                  {turno.estado.codigo === 'NO_ASISTIO' && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-primary d-inline-flex align-items-center justify-content-center mt-2"
+                      disabled={changingStatus}
+                      onClick={() => setRectificarOpen(true)}
+                    >
+                      <i className="bi bi-arrow-counterclockwise me-1.5" />
+                      Rectificar inasistencia errónea
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -680,6 +707,17 @@ const TurnoDetallePage = () => {
           </div>
         </div>
       </div>
+
+      <RectificarInasistenciaModal
+        idTurno={turno.id_turno}
+        codigoTurno={turno.codigo_turno}
+        isOpen={rectificarOpen}
+        onClose={() => setRectificarOpen(false)}
+        onSuccess={() => {
+          setMessage('Inasistencia rectificada correctamente a ATENDIDO.');
+          void loadTurno(true);
+        }}
+      />
     </div>
   );
 };

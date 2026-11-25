@@ -20,6 +20,8 @@ import type {
 } from '../../types/turno.types';
 
 import TurnoCard from '../../components/ui/TurnoCard';
+import TurnoJustificacionCard from '../../components/ui/TurnoJustificacionCard';
+import JustificarInasistenciaModal from '../../components/ui/JustificarInasistenciaModal';
 import { useAgendaSocket } from '../../context/AgendaSocketContext';
 import { formatFechaHora } from '../../utils/agenda-display';
 
@@ -95,6 +97,11 @@ export default function PatientAppointmentDetailPage() {
     revision,
     setRevision,
   ] = useState(0);
+
+  const [
+    justificarOpen,
+    setJustificarOpen,
+  ] = useState(false);
 
   // Sincronización automática en segundo plano ante cambios del turno
   const { ultimoEvento, resyncTick } = useAgendaSocket();
@@ -219,14 +226,6 @@ export default function PatientAppointmentDetailPage() {
                 <span className="text-muted small ms-2">· DNI {turno.paciente.persona.dni}</span>
               )}
             </div>
-            {turno.codigo_turno && (
-              <div className="text-sm-end">
-                <span className="text-muted small d-block">Código de identificación:</span>
-                <span className="badge bg-white text-dark border font-monospace px-2 py-1">
-                  {turno.codigo_turno}
-                </span>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -254,20 +253,32 @@ export default function PatientAppointmentDetailPage() {
       {/* Error al cargar el turno. */}
       {error && (
         <div
-          className="alert alert-danger"
+          className="alert alert-danger d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2 p-3 mb-3 rounded-3 shadow-sm"
           role="alert"
         >
-          {error}{' '}
+          <div className="d-flex align-items-center gap-2">
+            <i className="bi bi-exclamation-triangle-fill text-danger flex-shrink-0" aria-hidden="true" />
+            <span className="small">{error}</span>
+          </div>
 
           <button
-            className="btn btn-outline-danger"
+            type="button"
+            className="btn btn-sm btn-outline-danger flex-shrink-0 text-nowrap px-3 py-1 align-self-end align-self-sm-center"
+            disabled={loading}
             onClick={() =>
               setRevision(
                 (v) => v + 1
               )
             }
           >
-            Reintentar
+            {loading ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-1" aria-hidden="true" />
+                <span>Reintentando…</span>
+              </>
+            ) : (
+              'Reintentar'
+            )}
           </button>
         </div>
       )}
@@ -289,14 +300,66 @@ export default function PatientAppointmentDetailPage() {
             }
           />
 
-          {/* Motivo registrado si el turno
-              fue cancelado. */}
+          {/* Motivo registrado si el turno fue cancelado. */}
           {turno.motivo_cancelacion && (
-            <p className="alert alert-info mt-3">
-              Motivo de cancelación:{' '}
-              {turno.motivo_cancelacion}
-            </p>
+            <div className="alert alert-info mt-3 d-flex align-items-start gap-2">
+              <i className="bi bi-info-circle flex-shrink-0 mt-1" aria-hidden="true" />
+              <div>
+                <strong>Motivo de cancelación:</strong> {turno.motivo_cancelacion}
+              </div>
+            </div>
           )}
+
+          {/* Aviso informativo si el horario ya pasó y no se puede cancelar. */}
+          {Date.parse(turno.fecha_hora_inicio) <= Date.now() && !turno.estado.es_estado_final && (
+            <div className="alert alert-light border mt-3 small text-secondary d-flex align-items-center gap-2">
+              <i className="bi bi-info-circle flex-shrink-0 text-muted" aria-hidden="true" />
+              <span>
+                El horario programado para este turno ya transcurrió o está en curso. Para consultas o reprogramaciones, comunicate con la salita.
+              </span>
+            </div>
+          )}
+
+          {/* Información y gestión de inasistencia para el paciente */}
+          {turno.estado.codigo === 'NO_ASISTIO' && (
+            <div className="alert alert-warning mt-3 border-warning-subtle shadow-sm p-3 rounded-3">
+              <div className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-3">
+                <div className="d-flex align-items-start gap-2">
+                  <i className="bi bi-person-x-fill fs-4 text-warning flex-shrink-0" aria-hidden="true" />
+                  <div>
+                    <strong className="d-block text-dark">Inasistencia registrada en este turno</strong>
+                    <span className="small text-secondary">
+                      Si tuviste un motivo justificado (reposo médico, guardia médica o fuerza mayor), podés presentar tu justificación para que la salita revise el caso.
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-warning text-dark flex-shrink-0 text-nowrap d-inline-flex align-items-center gap-1.5"
+                  onClick={() => setJustificarOpen(true)}
+                >
+                  <i className="bi bi-file-earmark-medical" aria-hidden="true" />
+                  <span>Justificar inasistencia</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Tarjeta de justificación médica (si existe) */}
+          <div className="mt-3">
+            <TurnoJustificacionCard
+              idTurno={turno.id_turno}
+              onUpdated={() => setRevision((v) => v + 1)}
+            />
+          </div>
+
+          {/* Modal de justificación */}
+          <JustificarInasistenciaModal
+            idTurno={turno.id_turno}
+            isOpen={justificarOpen}
+            onClose={() => setJustificarOpen(false)}
+            onSuccess={() => setRevision((v) => v + 1)}
+          />
 
           {/* =================================
               HISTORIAL DE CAMBIOS
@@ -310,13 +373,17 @@ export default function PatientAppointmentDetailPage() {
             {historyError ? (
               // Error específico del historial.
               <div
-                className="alert alert-danger"
+                className="alert alert-danger d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2 p-3 mb-3 rounded-3 shadow-sm"
                 role="alert"
               >
-                {historyError}{' '}
+                <div className="d-flex align-items-center gap-2">
+                  <i className="bi bi-exclamation-triangle-fill text-danger flex-shrink-0" aria-hidden="true" />
+                  <span className="small">{historyError}</span>
+                </div>
 
                 <button
-                  className="btn btn-outline-danger"
+                  type="button"
+                  className="btn btn-sm btn-outline-danger flex-shrink-0 text-nowrap px-3 py-1 align-self-end align-self-sm-center"
                   onClick={() =>
                     setRevision(
                       (v) => v + 1
