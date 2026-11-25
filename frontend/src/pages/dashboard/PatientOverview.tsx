@@ -1,3 +1,4 @@
+import { turnoLink } from '../../utils/turno-link';
 import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -225,7 +226,7 @@ export default function PatientOverview({
 
                 <div className="col-12 col-md-4 d-flex flex-column flex-sm-row flex-md-column gap-2 justify-content-end">
                   <Link
-                    to={`/mis-turnos/${nextTurno.id_turno}`}
+                    to={turnoLink(nextTurno, true)}
                     className="btn btn-outline-success btn-sm d-inline-flex align-items-center justify-content-center gap-1 text-nowrap"
                     style={{ minHeight: '38px' }}
                   >

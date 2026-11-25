@@ -1,3 +1,4 @@
+import { turnoLink } from '../../utils/turno-link';
 import {
   useEffect,
   useState,
@@ -205,7 +206,7 @@ export default function PatientBookingSlots({
 
       // Redirige al detalle del turno creado.
       navigate(
-        `/mis-turnos/${response.data.turno.id_turno}`,
+        turnoLink(response.data.turno, true),
         {
           state: {
             created: true,

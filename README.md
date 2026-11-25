@@ -77,7 +77,7 @@ El sistema está compuesto por una **aplicación cliente SPA (React 19)** y una 
 | 📈 **Dashboard administrativo** | Métricas consolidadas en tiempo real para `SUPER_ADMIN`: totales de entidades, turnos del día, distribución territorial y registro de actividad reciente. |
 | 🛡️ **Auditoría inmutable** | Auditoría operativa de cambios y registro inmutable protegido por disparadores SQL para la auditoría de accesos a historias clínicas (`auditoria_clinica` y `auditoria_accesos_auditoria`). |
 | 📰 **Portal público y novedades** | Página de inicio pública para la comunidad, guía interactiva de uso, cartelera de noticias municipales y buscador informativo de salitas. |
-| 💬 **Asistente virtual CORA** | Prototipo optativo de orientación funcional y navegación basado en Gemini API, desconectado de datos clínicos privados. |
+| 💬 **Asistente virtual CORA** | Guías de navegación revisadas según el rol, sin acceso a registros privados, operaciones ni servicios externos de IA. |
 
 ---
 
@@ -213,7 +213,7 @@ sequenceDiagram
 | **Seguridad** | Argon2id · JOSE (JWT) · Google Auth Library · Helmet | Criptografía, gestión de sesiones, tokens de renovación y cabeceras seguras. |
 | **Tiempo real** | Socket.IO | Notificaciones bidireccionales de eventos de agenda e interacciones asistenciales. |
 | **Comunicaciones**| Nodemailer · Servidor SMTP | Despacho de correos de verificación, códigos de recuperación y avisos de turnos. |
-| **Integraciones** | API ArgentinaDatos · RSS Municipal · Gemini API | Feriados nacionales automáticos, noticias locales y asistente de ayuda optativo. |
+| **Integraciones** | API ArgentinaDatos · RSS Municipal | Feriados nacionales automáticos y noticias locales. El asistente utiliza documentación funcional revisada. |
 | **Exportaciones** | PDFKit · ExcelJS · docx | Generación dinámica de reportes en PDF, hojas de cálculo Excel y documentos Word. |
 
 ---
@@ -352,10 +352,8 @@ MAIL_FROM_EMAIL=tu_correo@gmail.com
 # Integración con Google (OAuth)
 GOOGLE_CLIENT_ID=tu_cliente_id_de_google.apps.googleusercontent.com
 
-# Asistente Virtual CORA (Optativo)
+# Asistente CORA: guías de uso revisadas, sin clave de IA externa (optativo)
 CHATBOT_ENABLED=false
-GEMINI_API_KEY=tu_clave_api_gemini
-GEMINI_MODEL=gemini-2.5-flash
 ```
 
 ### 4. Configuración del entorno del Frontend

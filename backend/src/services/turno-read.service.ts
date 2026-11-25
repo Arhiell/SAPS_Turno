@@ -1,5 +1,7 @@
 import { 
   findTurnoById, 
+  findTurnoByCode,
+  findTurnoIdsByShortCode,
   findPatientIdsForTurnoSearch,
   findTurnos, 
   findTurnoState } from "../repositories/turno-read.repository.js";
@@ -28,7 +30,18 @@ export const getTurno = async (id: string, user: AuthenticatedUser) => {
   const own = ["PACIENTE", "PROFESIONAL"].includes(user.rol) ? await getOwnEntity(user) : null;
   const scope = own ? null : await getTurnoScope(user);
  
-  const turno = await findTurnoById(id);
+  let turno;
+  let codigoUrl: string | undefined;
+  if (/^[A-Z0-9]{6}$/i.test(id)) {
+    const matches = await findTurnoIdsByShortCode(id.toUpperCase());
+    if (matches.length > 1) throw new AppError(
+      'La referencia corta coincide con varios turnos. Abrí el turno desde el listado.', 409
+    );
+    turno = matches[0] ? await findTurnoById(String(matches[0].id_turno)) : null;
+    codigoUrl = id.toUpperCase();
+  } else {
+    turno = await (id.startsWith('T-') ? findTurnoByCode(id) : findTurnoById(id));
+  }
   
   if (!turno) throw new AppError(
     "Turno no encontrado",
@@ -41,8 +54,16 @@ export const getTurno = async (id: string, user: AuthenticatedUser) => {
     throw new AppError("No tiene permisos sobre este turno", 403);
   }
 
+  if (/^T-(?:[a-f0-9]{28}|[23456789A-HJ-NP-Z]{8})$/i.test(turno.codigo_turno) && !codigoUrl) {
+    const shortCode = turno.codigo_turno.slice(-6).toUpperCase();
+    const matches = await findTurnoIdsByShortCode(shortCode);
+    codigoUrl = matches.length === 1 && matches[0]?.id_turno === turno.id_turno
+      ? shortCode : turno.codigo_turno;
+  }
+  const result = codigoUrl ? { ...turno, codigo_url: codigoUrl } : turno;
+
   // Las notas internas no tienen una política de publicación al paciente.
-  return user.rol === 'PACIENTE' ? { ...turno, observaciones: null, cancelado_por: null } : turno;
+  return user.rol === 'PACIENTE' ? { ...result, observaciones: null, cancelado_por: null } : result;
 };
 
 

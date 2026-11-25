@@ -1,3 +1,4 @@
+import { turnoLink, turnoReference } from '../../utils/turno-link';
 import ValidatedInput from '../../components/ui/ValidatedInput';
 import { authError } from '../../utils/auth-errors';
 import {
@@ -69,8 +70,16 @@ const ReprogramarTurnoPage = () => {
 
   const navigate = useNavigate();
 
+  const [resolvedReference, setResolvedReference] = useState('');
+
   const [turno, setTurno] =
     useState<Turno | null>(null);
+
+  useEffect(() => {
+    if (turno && id === resolvedReference && id !== turnoReference(turno)) {
+      navigate(`${turnoLink(turno)}/reprogramar`, { replace: true });
+    }
+  }, [id, turno, resolvedReference, navigate]);
 
   const [professionals, setProfessionals] =
     useState<Professional[]>([]);
@@ -146,6 +155,7 @@ const ReprogramarTurnoPage = () => {
           turnoResponse.data.turno;
 
         setTurno(currentTurno);
+        setResolvedReference(id);
 
         setProfessionals(
           professionalsResponse.data.filter(
@@ -263,7 +273,7 @@ const ReprogramarTurnoPage = () => {
             selectedSpecialty,
             selectedSalita,
             undefined,
-            id,
+            turno?.id_turno,
           );
 
         setAvailability(response);
@@ -280,7 +290,7 @@ const ReprogramarTurnoPage = () => {
 
     void loadAvailability();
   }, [
-    id,
+    turno?.id_turno,
     fecha,
     selectedProfessional,
     selectedSpecialty,
@@ -364,7 +374,7 @@ const ReprogramarTurnoPage = () => {
       const fechaHoraInicio =
         `${fecha}T${selectedSlot.hora_inicio}:00-03:00`;
 
-      await reprogramarTurno(id, {
+      await reprogramarTurno(turno.id_turno, {
         motivo_reprogramacion: motivo.trim(),
         version: turno.version,
         id_profesional:
@@ -380,7 +390,7 @@ const ReprogramarTurnoPage = () => {
           fechaHoraInicio,
       });
 
-      navigate(`/turnos/${id}`, {
+      navigate(turnoLink(turno), {
         replace: true,
         state: {
           message:
@@ -442,7 +452,7 @@ const ReprogramarTurnoPage = () => {
         message="¿Querés cambiar la fecha y el horario de este turno?"
         detail={
           <>
-            <div className="fw-semibold">Turno {turno.codigo_turno}</div>
+            <div className="fw-semibold">Turno {turnoReference(turno)}</div>
             <div className="text-muted small mt-1">
               Nuevo horario: {fecha} · {selectedSlot?.hora_inicio} - {selectedSlot?.hora_fin}
             </div>
@@ -464,7 +474,7 @@ const ReprogramarTurnoPage = () => {
           type="button"
           className="btn btn-link text-decoration-none p-0 mb-3"
           onClick={() =>
-            navigate(`/turnos/${id}`)
+            navigate(turno ? turnoLink(turno) : '/turnos')
           }
         >
           <i className="bi bi-arrow-left me-2" />
@@ -504,7 +514,7 @@ const ReprogramarTurnoPage = () => {
               </small>
 
               <strong>
-                {turno.codigo_turno}
+                {turnoReference(turno)}
               </strong>
             </div>
 

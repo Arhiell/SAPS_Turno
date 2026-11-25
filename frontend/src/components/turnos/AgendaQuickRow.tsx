@@ -1,3 +1,4 @@
+import { turnoLink } from '../../utils/turno-link';
 
 import { useEffect, useState } from 'react';
 
@@ -304,7 +305,7 @@ export default function AgendaQuickRow({
       {user?.rol !== 'RECEPCION' && (
         <a
           className="small d-inline-block mt-2"
-          href={`/turnos/${turno.id_turno}`}
+          href={turnoLink(turno)}
           target="_blank"
           rel="noreferrer"
         >

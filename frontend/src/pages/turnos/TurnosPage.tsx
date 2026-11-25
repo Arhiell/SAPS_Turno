@@ -1,3 +1,4 @@
+import { turnoLink } from '../../utils/turno-link';
 import { getEstadoClass, formatShortRef } from '../../utils/turno-status';
 import {
   useEffect,
@@ -749,7 +750,7 @@ const TurnosPage = () => {
                           type="button"
                           className="btn btn-sm btn-outline-success d-inline-flex align-items-center justify-content-center gap-1.5 flex-fill py-1.5 px-2"
                           title="Ver detalle del turno"
-                          onClick={() => navigate(`/turnos/${turno.id_turno}`)}
+                          onClick={() => navigate(turnoLink(turno))}
                         >
                           <i className="bi bi-eye" />
                           <span className="fw-medium">Ver detalle</span>
@@ -855,7 +856,7 @@ const TurnosPage = () => {
                                 type="button"
                                 className="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1.5"
                                 title="Ver detalle del turno"
-                                onClick={() => navigate(`/turnos/${turno.id_turno}`)}
+                                onClick={() => navigate(turnoLink(turno))}
                               >
                                 <i className="bi bi-eye" />
                                 <span>Ver</span>

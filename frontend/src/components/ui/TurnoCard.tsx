@@ -1,3 +1,4 @@
+import { turnoLink } from '../../utils/turno-link';
 import type { Turno } from '../../types/turno.types';
 import { getEstadoClass } from '../../utils/turno-status';
 import { formatFechaHora } from '../../utils/agenda-display';
@@ -94,7 +95,7 @@ export default function TurnoCard({
               <Link
                 className="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-1 text-nowrap"
                 style={{ minHeight: '40px', whiteSpace: 'nowrap' }}
-                to={`/mis-turnos/${turno.id_turno}`}
+                to={turnoLink(turno, true)}
               >
                 <i className="bi bi-eye" aria-hidden="true" />
                 <span>Ver detalle</span>

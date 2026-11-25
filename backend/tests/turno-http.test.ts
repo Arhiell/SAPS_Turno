@@ -25,6 +25,29 @@ const auth = (role = "SUPER_ADMIN") => [
   { table: "roles", result: [{ codigo: role, activo: true }] }
 ];
 
+test('GET acepta códigos cortos sin mayúsculas y conserva la consulta por UUID', async () => {
+  const verifiedAuth = () => [
+    { table: 'usuarios', result: [{ ...user, id_rol: id, id_persona: id, activo: true, email_verificado: true }] },
+    auth()[1]!,
+  ];
+  for (const reference of ['t-7k9m2x4p', id]) {
+    queue(...verifiedAuth(), { table: 'turnos', result: [turno], check: url => {
+      assert.equal(url.searchParams.get(reference === id ? 'id_turno' : 'codigo_turno'),
+        reference === id ? `eq.${id}` : 'eq.T-7K9M2X4P');
+    } });
+    assert.equal(await call('GET', '/' + reference), 200);
+  }
+  const legacyCode = 'T-a6ba0b34df6d4bdbaf398b9518e4';
+  queue(...verifiedAuth(), { table: 'turnos', result: [{ id_turno: id }] },
+    { table: 'turnos', result: [{ ...turno, codigo_turno: legacyCode }] });
+  assert.equal(await call('GET', '/9518e4'), 200);
+  queue(...verifiedAuth(), { table: 'turnos', result: [{ ...turno, codigo_turno: legacyCode }] },
+    { table: 'turnos', result: [{ id_turno: id }] });
+  assert.equal(await call('GET', '/' + legacyCode), 200);
+  queue(...verifiedAuth());
+  assert.equal(await call('GET', '/T-invalid'), 400);
+});
+
 test("Turnos devuelve 403 a PACIENTE y PROFESIONAL aunque el JWT declare SUPER_ADMIN", async () => {
   for (const role of ["PACIENTE", "PROFESIONAL"]) {
     queue(...auth(role));

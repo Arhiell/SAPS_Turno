@@ -28,6 +28,7 @@ export type AgendaChange =
 export type AffectedTurno = Pick<
   Turno,
   | 'id_turno'
+  | 'codigo_turno'
   | 'version'
   | 'fecha_hora_inicio'
   | 'fecha_hora_fin'

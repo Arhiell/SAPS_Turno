@@ -12,12 +12,13 @@ import useChatbotLauncher from './useChatbotLauncher';
 
 const welcome: ChatbotMessage = { id: 0, author: 'assistant',
   text: '¡Hola! Soy el Asistente CORA. Puedo explicarte cómo usar las funciones de tu panel. Cada consulta se responde por separado.' };
-const roles = ['SUPER_ADMIN', 'ADMIN_SALITA', 'PROFESIONAL', 'PACIENTE'];
+const roles = ['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION', 'PROFESIONAL', 'PACIENTE'];
 const suggestions: Record<string, string[]> = {
   SUPER_ADMIN: ['¿Cómo registro un paciente?', '¿Cómo creo un turno?', '¿Dónde consulto las salitas?'],
   ADMIN_SALITA: ['¿Cómo busco un paciente?', '¿Cómo creo un turno?', '¿Dónde consulto los reportes?'],
-  PROFESIONAL: ['¿Cómo veo mi agenda de hoy?', '¿Cómo registro una inasistencia?', '¿Dónde veo mis notificaciones?'],
-  PACIENTE: ['¿Cómo solicito un turno?', '¿Cómo cancelo un turno?', '¿Cómo modifico mi perfil?'],
+  RECEPCION: ['¿Cómo creo un turno?', '¿Cómo reviso una justificación?', '¿Dónde veo las solicitudes de vinculación?'],
+  PROFESIONAL: ['¿Cómo veo mi agenda de hoy?', '¿Qué diferencia hay entre borrador y firma?', '¿Dónde veo las derivaciones?'],
+  PACIENTE: ['¿Por qué no puedo reservar un turno?', '¿Cómo justifico una inasistencia?', '¿Dónde veo mi historia clínica?'],
 };
 
 const storedIdentity = () => {
@@ -181,10 +182,11 @@ function ChatbotPanel({ identity, role, embedded }: { identity: string; role: st
     setBusy(true);
     setError('');
     setDraft('');
-    setMessages(previous => [...previous, { id: ++sequence.current, author: 'user' as const, text: message }].slice(-20));
     try {
       const reply = await sendChatbotMessage(message, ticket.signal);
+      // Las consultas rechazadas por privacidad no se agregan al historial visible.
       if (ticket.isCurrent()) setMessages(previous => [...previous,
+        { id: ++sequence.current, author: 'user' as const, text: message },
         { id: ++sequence.current, author: 'assistant' as const, text: reply }].slice(-20));
     } catch (cause) {
       if (ticket.isCurrent()) setError(chatbotErrorMessage(cause));
@@ -214,13 +216,13 @@ function ChatbotPanel({ identity, role, embedded }: { identity: string; role: st
         role={embedded ? 'region' : 'dialog'} aria-modal={!embedded && mobile ? true : undefined} aria-labelledby="cora-chatbot-title">
         <header className="cora-chatbot__header">
           <span className="cora-chatbot__avatar"><i className="bi bi-robot" aria-hidden="true" /></span>
-          <div><h2 id="cora-chatbot-title">Asistente CORA</h2><p>Ayuda sobre tu panel con IA de Gemini</p></div>
+          <div><h2 id="cora-chatbot-title">Asistente CORA</h2><p>Guía para navegar y usar tu panel</p></div>
           {!embedded && <button aria-label="Cerrar Asistente CORA" onClick={close}><i className="bi bi-x-lg" aria-hidden="true" /></button>}
         </header>
         <div className="cora-chatbot__privacy">
           <i className="bi bi-shield-check" aria-hidden="true" />
           <p id="cora-chatbot-privacy">
-            Asistente académico. No ingreses datos personales ni clínicos. Las consultas se procesan mediante IA externa.{' '}
+            Solo ayuda sobre las páginas. No ingreses datos personales ni clínicos.{' '}
             <button type="button" aria-expanded={privacyExpanded} aria-controls="cora-chatbot-privacy-details"
               onClick={() => setPrivacyExpanded(value => !value)}>
               {privacyExpanded ? 'Menos información' : 'Más información'}
@@ -244,9 +246,10 @@ function ChatbotPanel({ identity, role, embedded }: { identity: string; role: st
           <section id="cora-chatbot-privacy-details" className="cora-chatbot__privacy-details"
             aria-labelledby="cora-chatbot-privacy-title" hidden={!privacyExpanded}>
             <h3 id="cora-chatbot-privacy-title">Sobre tu privacidad</h3>
-            <p>Prototipo académico. Solo ayuda sobre CORA; no es un servicio sanitario.
-              No ingreses datos personales ni clínicos. Google procesa preguntas funcionales predefinidas;
-              tu texto libre no se envía a Gemini. Los filtros no garantizan anonimización.</p>
+            <p>El servidor recibe tu pregunta para elegir una guía de uso revisada.
+              El asistente no consulta pacientes, turnos ni historias clínicas y no realiza operaciones.
+              Estas consultas no se envían a servicios de IA externos.
+              No ingreses datos personales, clínicos, contraseñas ni códigos de acceso.</p>
           </section>
           <div className="cora-chatbot__messages" role="log" aria-label="Conversación con el Asistente CORA"
             aria-live="polite" aria-relevant="additions">
@@ -258,7 +261,7 @@ function ChatbotPanel({ identity, role, embedded }: { identity: string; role: st
             </div>}
           </div>
           {messages.length === 1 && <div className="cora-chatbot__suggestions" aria-label="Preguntas sugeridas">
-            {suggestions[role]?.map(question => <button key={question} disabled={busy} onClick={() => void send(undefined, question)}>{question}</button>)}
+            {['¿Por dónde empiezo a usar mi panel?', ...(suggestions[role] ?? [])].map(question => <button key={question} disabled={busy} onClick={() => void send(undefined, question)}>{question}</button>)}
           </div>}
           {error && <p className="cora-chatbot__error" role="alert"><i className="bi bi-exclamation-circle" aria-hidden="true" />{error}</p>}
         </div>

@@ -1,3 +1,4 @@
+import { turnoLink } from '../../utils/turno-link';
 import {
   useEffect,
   useState,
@@ -422,7 +423,7 @@ export default function PatientAppointmentsPage() {
                               <Link
                                 className="btn btn-sm btn-outline-success d-inline-flex align-items-center justify-content-center gap-1 text-nowrap"
                                 style={{ minHeight: '36px', whiteSpace: 'nowrap' }}
-                                to={`/mis-turnos/${t.id_turno}`}
+                                to={turnoLink(t, true)}
                                 title="Ver detalle completo del turno"
                               >
                                 <i className="bi bi-eye" aria-hidden="true" />

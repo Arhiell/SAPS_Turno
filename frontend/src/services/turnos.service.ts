@@ -86,7 +86,7 @@ export const getTurnos = async (
   return promise;
 };
 
-// Obtiene los datos de un turno por su identificador.
+// Resuelve el código público o un UUID de los enlaces anteriores.
 export const getTurnoById = async (
   id: string
 ): Promise<TurnoResponse> => {
