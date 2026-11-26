@@ -1,3 +1,4 @@
+import { turnoLink } from '../../utils/turno-link';
 import { useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getAdminSalitas } from '../../services/salitas.service';
@@ -556,7 +557,7 @@ export default function RecepcionOverview({
                             <button
                               type="button"
                               className="btn btn-sm btn-outline-secondary"
-                              onClick={() => navigate(`/turnos/${t.id_turno}`)}
+                              onClick={() => navigate(turnoLink(t))}
                               title="Ver ficha del turno"
                             >
                               <i className="bi bi-eye" />

@@ -1,4 +1,5 @@
-import nodemailer from "nodemailer";
+import nodemailer, { type Transporter } from "nodemailer";
+import type SMTPTransport from "nodemailer/lib/smtp-transport/index.js";
 import { env } from "../config/env.js";
 
 type SendEmailInput = {
@@ -8,32 +9,137 @@ type SendEmailInput = {
   html?: string;
 };
 
-const transporter = nodemailer.createTransport({
-  host: env.MAIL_HOST,
-  port: env.MAIL_PORT,
-  secure: env.MAIL_SECURE,
-  auth: {
-    user: env.MAIL_USER,
-    pass: env.MAIL_PASSWORD,
-  },
-});
+type EmailSendResult = {
+  accepted: string[];
+  rejected: string[];
+  messageId?: string;
+};
+
+let smtpTransporter: Transporter | null = null;
+
+const getSmtpTransporter = (): Transporter => {
+  if (!smtpTransporter) {
+    const smtpOptions: SMTPTransport.Options & { family?: number } = {
+      host: env.MAIL_HOST,
+      port: env.MAIL_PORT,
+      secure: env.MAIL_SECURE,
+      family: 4,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+      auth: {
+        user: env.MAIL_USER,
+        pass: env.MAIL_PASSWORD,
+      },
+    };
+    smtpTransporter = nodemailer.createTransport(smtpOptions);
+  }
+  return smtpTransporter;
+};
+
+const escapeHtml = (raw: string): string =>
+  raw
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const sendViaBrevo = async ({
+  to,
+  subject,
+  text,
+  html,
+}: SendEmailInput): Promise<EmailSendResult> => {
+  const apiKey = env.BREVO_API_KEY;
+  if (!apiKey) {
+    throw new Error("BREVO_API_KEY no está configurada.");
+  }
+
+  const recipient = to.trim();
+  const htmlContent =
+    html ??
+    (text
+      ? `<div style="font-family: Arial, sans-serif; white-space: pre-wrap;">${escapeHtml(text)}</div>`
+      : "<p></p>");
+
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "api-key": apiKey,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      sender: {
+        name: env.MAIL_FROM_NAME,
+        email: env.MAIL_FROM_EMAIL,
+      },
+      to: [{ email: recipient }],
+      subject,
+      htmlContent,
+      ...(text ? { textContent: text } : {}),
+    }),
+  });
+
+  if (!response.ok) {
+    const errorDetail = await response.text().catch(() => "");
+    const message = `[email][Brevo] Error HTTP ${response.status} ${response.statusText} al enviar correo a ${recipient}: ${errorDetail || "sin detalle"}`;
+    console.error(message);
+    throw new Error(message);
+  }
+
+  const payload = (await response.json().catch(() => ({}))) as {
+    messageId?: string;
+  };
+
+  return {
+    accepted: [recipient],
+    rejected: [],
+    ...(payload.messageId ? { messageId: payload.messageId } : {}),
+  };
+};
 
 export const sendEmail = async ({
   to,
   subject,
   text,
   html,
-}: SendEmailInput) => {
-  return transporter.sendMail({
+}: SendEmailInput): Promise<EmailSendResult> => {
+  const recipient = to.trim();
+
+  if (env.BREVO_API_KEY) {
+    return sendViaBrevo({
+      to: recipient,
+      subject,
+      ...(text !== undefined ? { text } : {}),
+      ...(html !== undefined ? { html } : {}),
+    });
+  }
+
+  const result = await getSmtpTransporter().sendMail({
     from: {
       name: env.MAIL_FROM_NAME,
       address: env.MAIL_FROM_EMAIL,
     },
-    to,
+    to: recipient,
     subject,
     text,
     html,
   });
+
+  const accepted = Array.isArray(result.accepted)
+    ? result.accepted.map(String)
+    : [];
+  const rejected = Array.isArray(result.rejected)
+    ? result.rejected.map(String)
+    : [];
+
+  return {
+    accepted,
+    rejected,
+    ...(result.messageId ? { messageId: result.messageId } : {}),
+  };
 };
 
 export const sendAuthEmail = async (to: string, path: "verificar-email" | "restablecer-contrasena", token: string) => {

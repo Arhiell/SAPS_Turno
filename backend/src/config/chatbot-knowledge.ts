@@ -1,12 +1,16 @@
 import type { ChatbotRole } from './chatbot.config.js';
 import { normalizeChatbotText } from '../utils/chatbot-privacy.js';
+import { chatbotHelpArticles } from './chatbot-help-articles.js';
 
 const admins: ChatbotRole[] = ['SUPER_ADMIN', 'ADMIN_SALITA'];
-const all: ChatbotRole[] = [...admins, 'PROFESIONAL', 'PACIENTE'];
+const operators: ChatbotRole[] = [...admins, 'RECEPCION'];
+const all: ChatbotRole[] = [...operators, 'PROFESIONAL', 'PACIENTE'];
 export interface ChatbotArticle {
   id: string;
   roles: ChatbotRole[];
   keywords: string[];
+  patterns?: RegExp[];
+  priority?: number;
   question: string;
   content: string;
   sources: string[];
@@ -14,6 +18,7 @@ export interface ChatbotArticle {
 
 // Solo documentación: nunca se interpolan registros, nombres, IDs ni texto libre del usuario.
 export const chatbotKnowledge: ChatbotArticle[] = [
+  ...chatbotHelpArticles,
   {
     id: 'personas-a-cargo', roles: [...admins, 'PACIENTE'],
     keywords: ['tutor', 'tutores', 'hijo', 'hijos', 'padres', 'abuelo', 'abuelos', 'menor', 'responsable', 'cargo'],
@@ -22,13 +27,13 @@ export const chatbotKnowledge: ChatbotArticle[] = [
     sources: ['frontend/src/pages/pacientes/PersonasACargoPage.tsx', 'frontend/src/components/ui/PatientTutorsPanel.tsx', 'backend/src/services/patient-managed.service.ts'],
   },
   {
-    id: 'pacientes', roles: admins, keywords: ['paciente', 'pacientes', 'tutor', 'tutores'],
+    id: 'pacientes', roles: operators, keywords: ['paciente', 'pacientes', 'tutor', 'tutores'],
     question: '¿Cómo registro y busco pacientes en CORA?',
     content: 'En Pacientes (/pacientes), usá Buscar para buscar por DNI, apellido o nombre completo dentro del sistema. No escribas esos datos en el asistente. Para crear, ingresá a /pacientes/nuevo, completá los campos obligatorios, usá Registrar paciente y confirmá en el diálogo Registrar paciente. Desde el listado podés abrir el detalle. La gestión se limita al alcance autorizado de tu cuenta. Desde Tutores y responsables en el detalle del paciente se registra el responsable por DNI, previa verificacion del vinculo y del permiso para gestionar turnos.',
     sources: ['frontend/src/pages/pacientes/PacientesPage.tsx', 'frontend/src/pages/pacientes/NuevoPacientePage.tsx', 'frontend/src/pages/pacientes/PacienteDetallePage.tsx'],
   },
   {
-    id: 'turnos-admin', roles: admins, keywords: ['turno', 'turnos', 'cancelar', 'reprogramar', 'reserva', 'reservar'],
+    id: 'turnos-admin', roles: operators, keywords: ['turno', 'turnos', 'cancelar', 'reprogramar', 'reserva', 'reservar'],
     question: '¿Cómo gestiono turnos desde administración?',
     content: 'En Turnos (/turnos) consultá el listado y sus filtros. Para registrar, abrí /turnos/nuevo, seleccioná Paciente, Especialidad, Profesional, Salita, fecha y horario disponible; usá Confirmar turno y después Crear turno en el diálogo. Las opciones dependen de asignaciones y disponibilidad. En el detalle del turno están las acciones autorizadas, como confirmar, cancelar con motivo o reprogramar; esta última abre /turnos/:id/reprogramar. No es posible reservar sin disponibilidad válida. Para consultar los turnos de hoy usá los filtros de fecha del listado.',
     sources: ['frontend/src/pages/turnos/NuevoTurnoPage.tsx', 'frontend/src/pages/turnos/TurnosPage.tsx', 'frontend/src/pages/turnos/TurnoDetallePage.tsx', 'frontend/src/pages/turnos/ReprogramarTurnoPage.tsx'],
@@ -64,7 +69,7 @@ export const chatbotKnowledge: ChatbotArticle[] = [
     sources: ['frontend/src/pages/notificaciones/MisNotificacionesPage.tsx', 'frontend/src/components/layout/NotificationBell.tsx'],
   },
   {
-    id: 'comunicaciones', roles: admins, keywords: ['enviar notificacion', 'crear notificacion', 'programar notificacion', 'administrar notificaciones', 'contenido', 'noticia', 'noticias'],
+    id: 'comunicaciones', roles: operators, keywords: ['enviar notificacion', 'crear notificacion', 'programar notificacion', 'administrar notificaciones', 'contenido', 'noticia', 'noticias'],
     question: '¿Dónde administro comunicaciones y contenido público?',
     content: 'Administrar notificaciones (/notificaciones) ofrece el historial; /notificaciones/nueva permite preparar una comunicación y /notificaciones/programadas muestra las programadas. El formulario define audiencia y programación autorizadas. Contenido público (/contenido) administra publicaciones; /contenido/nueva crea una publicación y /contenido/:id/editar la edita. El asistente no envía comunicaciones ni publica contenido.',
     sources: ['frontend/src/pages/notificaciones/NuevaNotificacionPage.tsx', 'frontend/src/pages/contenido/NewsAdminPage.tsx', 'frontend/src/routes/AppRoutes.tsx'],
@@ -76,22 +81,22 @@ export const chatbotKnowledge: ChatbotArticle[] = [
     sources: ['frontend/src/pages/pacientes/MiPerfilPage.tsx', 'frontend/src/pages/auth/AdminProfilePage.tsx', 'frontend/src/components/ui/AccountSecuritySection.tsx'],
   },
   {
-    id: 'reportes', roles: admins, keywords: ['reporte', 'reportes', 'estadistica', 'estadisticas', 'exportar', 'pdf', 'excel'],
+    id: 'reportes', roles: operators, keywords: ['reporte', 'reportes', 'estadistica', 'estadisticas', 'exportar', 'pdf', 'excel'],
     question: '¿Dónde consulto y exporto reportes?',
     content: 'Abrí Reportes (/reportes). Seleccioná el período y los filtros disponibles para consultar resúmenes, información por especialidad y profesional o agenda diaria. Las opciones de exportación dependen del reporte y pueden ofrecer PDF, Excel o Word. ADMIN_SALITA consulta únicamente su alcance autorizado. El asistente no accede a reportes ni devuelve estadísticas reales.',
     sources: ['frontend/src/pages/reportes/ReportesPage.tsx', 'backend/src/routes/reporte.routes.ts'],
   },
   {
-    id: 'configuracion', roles: admins, keywords: ['configuracion', 'horario', 'horarios', 'disponibilidad', 'bloqueo', 'bloqueos', 'parametro', 'parametros'],
+    id: 'configuracion', roles: operators, keywords: ['configuracion', 'horario', 'horarios', 'disponibilidad', 'bloqueo', 'bloqueos', 'parametro', 'parametros'],
     question: '¿Dónde configuro horarios, disponibilidad, bloqueos y parámetros?',
     content: 'En Configuración (/configuracion), Horarios y disponibilidad (/configuracion/horarios) permite configurar días, franjas, duración y vigencia. Bloqueos de agenda (/configuracion/bloqueos) permite cierres de día completo o por franja. Parámetros (/configuracion/parametros) muestra los ajustes permitidos según el rol. Las asignaciones profesionales condicionan las opciones. El asistente no cambia estas configuraciones.',
     sources: ['frontend/src/pages/configuracion/HorariosPage.tsx', 'frontend/src/pages/configuracion/BloqueosPage.tsx', 'frontend/src/pages/configuracion/ParametrosPage.tsx'],
   },
   {
-    id: 'inasistencia', roles: ['SUPER_ADMIN', 'ADMIN_SALITA', 'PACIENTE'], keywords: ['inasistencia', 'asistio', 'sancion', 'sanciones', 'suspension'],
+    id: 'inasistencia', roles: all, keywords: ['inasistencia', 'asistio', 'sancion', 'sanciones', 'suspension', 'advertencia', 'advertencias', 'restriccion'],
     question: '¿Qué significa una inasistencia y su restricción de reservas?',
-    content: 'NO_ASISTIO indica que no se registró asistencia al turno. La interfaz puede informar una sanción que impide nuevas reservas, con motivo y vencimiento; no equivale a bloquear la cuenta y no cancela por sí misma reservas existentes. La migración del repositorio define siete días para la sanción automática, pero tener ese archivo no confirma que se haya aplicado en la base. Consultá a la administración ante dudas sobre una restricción particular. El asistente no consulta ni modifica sanciones.',
-    sources: ['README.md', 'frontend/src/components/ui/PatientBookingForm.tsx', 'backend/src/services/booking-restriction.service.ts'],
+    content: 'No asistió indica una inasistencia registrada. La política progresiva prevista considera las faltas injustificadas dentro de una ventana de 90 días: primera advertencia informativa, segunda advertencia formal y, al llegar a la tercera, restricción de nuevas reservas online durante siete días. Una justificación queda sujeta a revisión. La restricción online no equivale a bloquear toda la cuenta ni a cancelar por sí sola los turnos existentes; la atención presencial se gestiona en la salita. Revisá los avisos que muestra tu panel y consultá allí por tu situación concreta: Cora no consulta si tenés faltas, restricciones ni fechas de vencimiento.',
+    sources: ['backend/src/services/inasistencia-politica.service.ts', 'backend/src/services/booking-restriction.service.ts', 'frontend/src/components/ui/InasistenciaStatusBanner.tsx'],
   },
   {
     id: 'ayuda', roles: all, keywords: ['cora', 'ayuda', 'hola', 'funciona', 'funciones', 'navegar', 'inicio'],
@@ -102,11 +107,16 @@ export const chatbotKnowledge: ChatbotArticle[] = [
 ];
 
 export const selectChatbotArticle = (message: string, role: ChatbotRole) => {
-  const normalized = normalizeChatbotText(message);
-  const scored = chatbotKnowledge.map(article => ({ article,
-    score: Math.max(0, ...article.keywords.filter(word =>
-      new RegExp(`\\b${word}\\b`).test(normalized)).map(word => word.length)),
-  })).filter(item => item.score > 0).sort((a, b) => b.score - a.score);
+  const normalized = normalizeChatbotText(message).replace(/\s+/g, ' ');
+  const scored = chatbotKnowledge.map(article => {
+    const matched = article.keywords.map(normalizeChatbotText).filter(word => {
+      const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return new RegExp(`\\b${escaped}\\b`).test(normalized);
+    });
+    const phraseScore = Math.max(0, ...matched.map(word => word.split(' ').length * 10 + word.length));
+    const intentScore = article.patterns?.some(pattern => pattern.test(normalized)) ? 1000 : 0;
+    return { article, score: phraseScore + intentScore + (intentScore ? article.priority ?? 0 : 0) };
+  }).filter(item => item.score > 0).sort((a, b) => b.score - a.score);
   // Se elige la intención antes de comprobar permisos: no se sustituye una función prohibida por otra.
   const bestScore = scored[0]?.score;
   return scored.find(item => item.score === bestScore && item.article.roles.includes(role))?.article;

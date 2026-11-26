@@ -1,4 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
+import { turnoLink } from '../../utils/turno-link';
+import { useAuth } from '../../context/AuthContext';
 
 import {
   getAgendaAvailability,
@@ -42,6 +44,8 @@ export default function AgendaQuickRow({
   revision,
   onChoose,
 }: Props) {
+  const { user } = useAuth();
+
   // Ventana de días de búsqueda y fecha específica opcional
   const [dias, setDias] = useState<number>(30);
   const [fechaEspecifica, setFechaEspecifica] = useState<string>('');
@@ -426,6 +430,18 @@ export default function AgendaQuickRow({
             </button>
           </div>
         </div>
+      )}
+      {/* Permite consultar el detalle del turno según el rol. */}
+      {user?.rol !== 'RECEPCION' && (
+        <a
+          className="small d-inline-block mt-2 text-decoration-none"
+          href={turnoLink(turno)}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <i className="bi bi-box-arrow-up-right me-1" />
+          Ver detalle (otra pestaña)
+        </a>
       )}
     </article>
   );

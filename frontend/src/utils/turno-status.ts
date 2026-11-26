@@ -12,9 +12,7 @@ export const getEstadoClass = (estado: string) => {
   return `turno-badge${variants[estado] ? ` turno-badge-${variants[estado]}` : ''}`;
 };
 
-// Genera una referencia corta discreta de 6 caracteres a partir del código o UUID del turno (ej: #D9ACD7).
+// Referencia visible de seis caracteres; el código interno se conserva completo.
 export const formatShortRef = (idOrCode?: string | null): string => {
-  if (!idOrCode) return '';
-  const clean = idOrCode.replace(/[^a-zA-Z0-9]/g, '');
-  return clean.slice(-6).toUpperCase();
+  return (idOrCode || '').replace(/[^a-zA-Z0-9]/g, '').slice(-6).toUpperCase();
 };

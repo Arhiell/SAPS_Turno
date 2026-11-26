@@ -1,6 +1,6 @@
 import { env } from './env.js';
 
-export const CHATBOT_ROLES = ['SUPER_ADMIN', 'ADMIN_SALITA', 'PROFESIONAL', 'PACIENTE'] as const;
+export const CHATBOT_ROLES = ['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION', 'PROFESIONAL', 'PACIENTE'] as const;
 export type ChatbotRole = typeof CHATBOT_ROLES[number];
 
 export const chatbotLimits = {

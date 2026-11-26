@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-
 import { assertOwnCoverage } from './patient-coverage.service.js';
 import { validateTurnoAgenda } from './turno-agenda.service.js';
 import { canBypassOnlineSanction } from './booking-restriction.service.js';
@@ -80,15 +78,11 @@ export const createTurno = async (
   const isAdministrative = canBypassOnlineSanction(user.rol);
   const agenda = await validateTurnoAgenda(input, undefined, false, true, isAdministrative);
 
-  // Genera un código público sin datos personales.
-  // Respeta el límite VARCHAR(30) definido en SQL.
+  // Conserva el código interno original; el detalle resuelve su referencia visible.
   const turno = await insertTurno({
     ...input,
     ...agenda,
     id_estado: state.id_estado,
-    codigo_turno: `T-${randomUUID()
-      .replaceAll('-', '')
-      .slice(0, 28)}`,
     creado_por: user.id_usuario,
   });
 

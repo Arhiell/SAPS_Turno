@@ -96,6 +96,23 @@ export const findTurnoById = async (
   return data;
 };
 
+export const findTurnoByCode = async (code: string) => {
+  const { data, error } = await supabase.from('turnos').select(turnoSelect)
+    .eq('codigo_turno', code).returns<TurnoRow[]>().maybeSingle();
+  if (error) throw error;
+  return data;
+};
+
+// Un sufijo solo es utilizable cuando identifica exactamente un turno.
+// Admite los códigos internos originales y los enlaces completos de ocho caracteres.
+export const findTurnoIdsByShortCode = async (code: string) => {
+  const { data, error } = await supabase.from('turnos').select('id_turno')
+    .or(`codigo_turno.eq.${code},codigo_turno.ilike.T-${'_'.repeat(22)}${code},codigo_turno.ilike.T-__${code}`)
+    .limit(2);
+  if (error) throw error;
+  return data ?? [];
+};
+
 // Busca un estado de turno activo mediante su código.
 export const findTurnoState = async (
   code: string

@@ -1,11 +1,14 @@
+import { turnoLink, turnoReference } from '../../utils/turno-link';
 import {
   useEffect,
+  useRef,
   useState,
 } from 'react';
 
 import {
   Link,
   useParams,
+  useNavigate,
   useLocation,
 } from 'react-router-dom';
 
@@ -57,10 +60,13 @@ export default function PatientAppointmentDetailPage() {
   // Permite consultar el estado enviado
   // durante la navegación.
   const location = useLocation();
+  const navigate = useNavigate();
 
   // ========================================
   // ESTADO DE LA PÁGINA
   // ========================================
+
+  const [resolvedReference, setResolvedReference] = useState('');
 
   const [
     turno,
@@ -105,13 +111,21 @@ export default function PatientAppointmentDetailPage() {
 
   // Sincronización automática en segundo plano ante cambios del turno
   const { ultimoEvento, resyncTick } = useAgendaSocket();
+  const handledSocketEvent = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (turno && id === resolvedReference && id !== turnoReference(turno)) {
+      navigate(turnoLink(turno, true), { replace: true, state: location.state });
+    }
+  }, [id, turno, resolvedReference, navigate, location.state]);
 
   useEffect(() => {
     if (!ultimoEvento || !id) return;
-    if (ultimoEvento.id_turno === id) {
+    if (ultimoEvento.id_turno === turno?.id_turno && handledSocketEvent.current !== ultimoEvento.id) {
+      handledSocketEvent.current = ultimoEvento.id;
       setRevision((v) => v + 1);
     }
-  }, [ultimoEvento, id]);
+  }, [ultimoEvento, id, turno?.id_turno]);
 
   useEffect(() => {
     if (resyncTick > 0) {
@@ -152,6 +166,7 @@ export default function PatientAppointmentDetailPage() {
           return;
         }
 
+        setResolvedReference(id);
         setTurno(
           response.data.turno
         );
@@ -159,7 +174,7 @@ export default function PatientAppointmentDetailPage() {
         // El historial se carga de forma independiente.
         try {
           const rows =
-            await getTurnoHistory(id);
+            await getTurnoHistory(response.data.turno.id_turno);
 
           if (active) {
             setHistory(

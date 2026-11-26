@@ -3,7 +3,7 @@ import type {
 } from "express";
 
 import { 
-  turnoIdSchema, 
+  turnoReferenceSchema,
   turnoQuerySchema 
 } from "../validators/turno-query.validator.js";
 
@@ -23,7 +23,7 @@ export const listTurnosController: RequestHandler = async (req, res) => {
   );
 };
 export const getTurnoController: RequestHandler = async (req, res) => {
-  const { id } = turnoIdSchema.parse(req.params);
+  const { id } = turnoReferenceSchema.parse(req.params);
   res.json(
     { 
       success: true, 

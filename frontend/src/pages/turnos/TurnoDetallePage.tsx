@@ -1,6 +1,8 @@
-import { getEstadoClass, formatShortRef } from '../../utils/turno-status';
+import { turnoLink, turnoReference } from '../../utils/turno-link';
+import { getEstadoClass } from '../../utils/turno-status';
 import {
   useEffect,
+  useRef,
   useState,
 } from 'react';
 
@@ -70,6 +72,8 @@ const TurnoDetallePage = () => {
   const { id } =
     useParams();
 
+  const [resolvedReference, setResolvedReference] = useState('');
+
   const [turno, setTurno] =
     useState<Turno | null>(
       null,
@@ -103,6 +107,7 @@ const TurnoDetallePage = () => {
     useState(false);
 
   const { ultimoEvento, resyncTick } = useAgendaSocket();
+  const handledSocketEvent = useRef<string | null>(null);
 
   useAutoDismiss(message, setMessage, 15_000, Boolean(message));
   useAutoDismiss(error, setError, 15_000, Boolean(error));
@@ -128,6 +133,7 @@ const TurnoDetallePage = () => {
             id,
           );
 
+        setResolvedReference(id);
         setTurno(
           response.data.turno,
         );
@@ -146,11 +152,18 @@ const TurnoDetallePage = () => {
     void loadTurno();
   }, [id]);
 
-  // Actualización reactiva ante eventos de WebSocket correspondientes a este turno
+  // Reemplaza enlaces anteriores sin agregar entradas al historial del navegador.
+  useEffect(() => {
+    if (turno && id === resolvedReference && id !== turnoReference(turno)) {
+      navigate(turnoLink(turno), { replace: true });
+    }
+  }, [id, turno, resolvedReference, navigate]);
+
   useEffect(() => {
     if (!ultimoEvento || !id) return;
 
-    if (ultimoEvento.id_turno === id) {
+    if (ultimoEvento.id_turno === turno?.id_turno && handledSocketEvent.current !== ultimoEvento.id) {
+      handledSocketEvent.current = ultimoEvento.id;
       if (ultimoEvento.estado) {
         setTurno((prev) =>
           prev
@@ -167,7 +180,7 @@ const TurnoDetallePage = () => {
       }
       void loadTurno(true);
     }
-  }, [ultimoEvento, id]);
+  }, [ultimoEvento, id, turno?.id_turno]);
 
   // Resincronización ante reconexión del socket
   useEffect(() => {
@@ -200,7 +213,7 @@ const TurnoDetallePage = () => {
         setError('');
 
         await changeTurnoStatus(
-          id,
+          turno.id_turno,
           {
             estado:
               'CANCELADO',
@@ -233,7 +246,7 @@ const TurnoDetallePage = () => {
   };
 
   const confirmStatusChange = async () => {
-    if (!id || !statusTarget) return;
+    if (!turno || !statusTarget) return;
 
       try {
         setChangingStatus(
@@ -243,7 +256,7 @@ const TurnoDetallePage = () => {
         setError('');
 
         await changeTurnoStatus(
-          id,
+          turno.id_turno,
           {
             estado:
               statusTarget,
@@ -286,7 +299,7 @@ const TurnoDetallePage = () => {
       return;
     }
 
-    navigate(`/turnos/${id}/reprogramar`);
+    navigate(`${turnoLink(turno)}/reprogramar`);
   };
 
   const handleCopyCode = async (textToCopy: string) => {
@@ -340,7 +353,7 @@ const TurnoDetallePage = () => {
     turno.fecha_hora_inicio,
     turno.fecha_hora_fin,
   );
-  const shortRef = formatShortRef(turno.codigo_turno || turno.id_turno);
+  const shortRef = turnoReference(turno);
   const pacienteNombre = `${turno.paciente.persona.apellidos}, ${turno.paciente.persona.nombres}`;
 
   const getStatusModalInfo = () => {
@@ -490,7 +503,7 @@ const TurnoDetallePage = () => {
                   className="btn btn-link text-secondary p-0 ms-1 border-0"
                   style={{ fontSize: '0.85rem', lineHeight: 1 }}
                   onClick={() => void handleCopyCode(`#${shortRef}`)}
-                  title={`Copiar código #${shortRef}\nUUID completo: ${turno.codigo_turno || turno.id_turno}`}
+                  title={`Copiar código #${shortRef}`}
                   aria-label="Copiar código de turno"
                 >
                   <i className={copiedCode ? "bi bi-check2 text-success" : "bi bi-copy"} />
@@ -727,7 +740,7 @@ const TurnoDetallePage = () => {
 
       <RectificarInasistenciaModal
         idTurno={turno.id_turno}
-        codigoTurno={turno.codigo_turno}
+        codigoTurno={turnoReference(turno)}
         isOpen={rectificarOpen}
         onClose={() => setRectificarOpen(false)}
         onSuccess={() => {

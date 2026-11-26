@@ -91,6 +91,7 @@ export interface TurnoEspecialidad {
 export interface Turno {
   id_turno: string;
   codigo_turno: string;
+  codigo_url?: string;
 
   // Relaciones del turno.
   id_paciente: string;

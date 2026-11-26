@@ -13,6 +13,16 @@ export const turnoIdSchema = z
   })
   .strict();
 
+// El detalle admite códigos públicos y los enlaces UUID anteriores.
+export const turnoReferenceSchema = z.object({
+  id: z.union([
+    z.string().uuid(),
+    z.string().regex(/^[A-Z0-9]{6}$/i).transform(value => value.toUpperCase()),
+    z.string().regex(/^T-(?:[23456789A-HJ-NP-Z]{8}|[a-f0-9]{28})$/i)
+      .transform(value => value.length === 10 ? value.toUpperCase() : `T-${value.slice(2).toLowerCase()}`),
+  ]),
+}).strict();
+
 // ========================================
 // ESTADO DEL TURNO
 // ========================================
