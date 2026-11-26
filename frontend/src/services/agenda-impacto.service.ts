@@ -50,6 +50,30 @@ export interface AgendaProposal {
   } | null;
 }
 
+export interface SlotDisponibilidadOpcion {
+  id_horario: string;
+  fecha_hora_inicio: string;
+  fecha_hora_fin: string;
+  hora_inicio: string;
+  hora_fin: string;
+}
+
+export interface GrupoFechaDisponibilidad {
+  fecha: string;
+  fecha_formateada: string;
+  dia_semana: string;
+  slots: SlotDisponibilidadOpcion[];
+}
+
+export interface AgendaAvailabilityResponse {
+  version: number;
+  dias: number;
+  fecha_consultada?: string;
+  total_disponibles: number;
+  opciones: SlotDisponibilidadOpcion[];
+  agrupadas_por_fecha: GrupoFechaDisponibilidad[];
+}
+
 // Representa el resultado de confirmar una reprogramación.
 export interface AgendaResult {
   id_turno: string;
@@ -57,10 +81,22 @@ export interface AgendaResult {
   mensaje: string;
 }
 
-export const getAgendaAvailability = async (cambio: AgendaChange, id_turno: string, fecha: string) =>
-  (await api.post<{ opciones: NonNullable<AgendaProposal['destino']>[]; version: number }>(
-    '/turnos/reprogramacion/disponibilidad', { cambio, id_turno, fecha },
-  )).data;
+export const getAgendaAvailability = async (
+  cambio: AgendaChange,
+  id_turno: string,
+  params: { fecha?: string; dias?: number } | string
+): Promise<AgendaAvailabilityResponse> => {
+  const payload =
+    typeof params === 'string'
+      ? { cambio, id_turno, fecha: params }
+      : { cambio, id_turno, fecha: params.fecha, dias: params.dias };
+
+  const response = await api.post<AgendaAvailabilityResponse>(
+    '/turnos/reprogramacion/disponibilidad',
+    payload
+  );
+  return response.data;
+};
 
 // Identifica errores de conflicto relacionados con la agenda.
 export const isAgendaConflict = (error: unknown) =>

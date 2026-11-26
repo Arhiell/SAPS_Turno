@@ -37,12 +37,38 @@ export const rectificarInasistenciaSchema = z.object({
 
 export const justificacionesQuerySchema = z.object({
   id_paciente: uuidSchema.optional(),
+  id_salita: uuidSchema.optional(),
   estado: z.enum(['PENDIENTE', 'APROBADA', 'RECHAZADA']).optional(),
+  fecha_desde: z.iso.date().optional(),
+  fecha_hasta: z.iso.date().optional(),
+  search: z.string().trim().max(150).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export const advertenciasQuerySchema = z.object({
+  id_paciente: uuidSchema.optional(),
+  id_salita: uuidSchema.optional(),
+  nivel: z.enum(['PRIMERA_ADVERTENCIA', 'ADVERTENCIA_FORMAL', 'RESTRICCION']).optional(),
+  anulada: z.enum(['true', 'false']).optional(),
+  fecha_desde: z.iso.date().optional(),
+  fecha_hasta: z.iso.date().optional(),
+  search: z.string().trim().max(150).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export const anularAdvertenciaSchema = z.object({
+  motivo_anulacion: z
+    .string()
+    .trim()
+    .min(5, 'Debe especificar el motivo de anulación (al menos 5 caracteres)')
+    .max(1000, 'El motivo de anulación es demasiado largo'),
 });
 
 export type CrearJustificacionInput = z.infer<typeof crearJustificacionSchema>;
 export type EvaluarJustificacionInput = z.infer<typeof evaluarJustificacionSchema>;
 export type RectificarInasistenciaInput = z.infer<typeof rectificarInasistenciaSchema>;
 export type JustificacionesQuery = z.infer<typeof justificacionesQuerySchema>;
+export type AdvertenciasQuery = z.infer<typeof advertenciasQuerySchema>;
+export type AnularAdvertenciaInput = z.infer<typeof anularAdvertenciaSchema>;

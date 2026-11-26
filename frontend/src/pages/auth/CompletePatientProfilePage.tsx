@@ -1,6 +1,7 @@
 import ZonaBarrioSelect from '../../components/ui/ZonaBarrioSelect';
 import {
   useEffect,
+  useMemo,
   useState,
   type FormEvent,
 } from 'react';
@@ -18,12 +19,20 @@ import {
 } from '../../context/AuthContext';
 
 import {
+  coveredClinics,
+} from '../../context/usePatientCoverage';
+
+import {
   completePatientProfile,
 } from '../../services/auth.service';
 
 import {
   getBarrios,
 } from '../../services/barrios.service';
+
+import {
+  getCoberturas,
+} from '../../services/configuracion.service';
 
 import {
   getSalitas,
@@ -36,6 +45,10 @@ import type {
 import type {
   Barrio,
 } from '../../types/barrio.types';
+
+import type {
+  Cobertura,
+} from '../../types/configuracion.types';
 
 import type {
   Salita,
@@ -61,6 +74,9 @@ export default function CompletePatientProfilePage() {
 
   const [salitas, setSalitas] =
     useState<Salita[]>([]);
+
+  const [coberturas, setCoberturas] =
+    useState<Cobertura[]>([]);
 
   // Estados de carga y mensajes.
   const [busy, setBusy] =
@@ -91,23 +107,24 @@ export default function CompletePatientProfilePage() {
       id_salita_asignada: '',
     });
 
-  // Obtiene las salitas correspondientes al barrio seleccionado.
-  const salitasDisponibles =
-    salitas.filter(
-      (salita) =>
-        salita.id_barrio ===
-        form.id_barrio
-    );
+  // Obtiene las salitas con cobertura territorial vigente para el barrio seleccionado.
+  const salitasDisponibles = useMemo(() => {
+    if (!form.id_barrio) {
+      return [];
+    }
+    return coveredClinics(form.id_barrio, salitas, coberturas);
+  }, [form.id_barrio, salitas, coberturas]);
 
-  // Carga los barrios y las salitas disponibles.
+  // Carga los barrios, las salitas y la cobertura territorial disponible.
   useEffect(() => {
     let active = true;
 
     void Promise.all([
       getBarrios(),
       getSalitas(),
+      getCoberturas(),
     ])
-      .then(([b, s]) => {
+      .then(([b, s, c]) => {
         if (active) {
           setBarrios(
             b.data.barrios
@@ -118,6 +135,8 @@ export default function CompletePatientProfilePage() {
               (item) => item.activo
             )
           );
+
+          setCoberturas(c);
         }
       })
       .catch((cause) => {
@@ -415,11 +434,19 @@ export default function CompletePatientProfilePage() {
                 <ZonaBarrioSelect
                   barrios={barrios}
                   value={form.id_barrio}
-                  onChange={(id_barrio) => setForm((current) => ({
-                    ...current,
-                    id_barrio,
-                    id_salita_asignada: '',
-                  }))}
+                  onChange={(id_barrio) => {
+                    const eligible = coveredClinics(id_barrio, salitas, coberturas);
+                    setForm((current) => ({
+                      ...current,
+                      id_barrio,
+                      id_salita_asignada:
+                        eligible.length === 1
+                          ? eligible[0].id_salita
+                          : eligible.some((s) => s.id_salita === current.id_salita_asignada)
+                            ? current.id_salita_asignada
+                            : '',
+                    }));
+                  }}
                 />
               </div>
 

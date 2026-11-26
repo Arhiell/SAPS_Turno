@@ -281,3 +281,138 @@
     border-right: 0;
   }
 }
+
+/* =================================================== */
+/* GESTIÓN DE INASISTENCIAS - PESTAÑAS ADAPTABLES     */
+/* =================================================== */
+
+.inasistencias-tabs {
+  width: 100%;
+  margin-bottom: 1.5rem;
+  background-color: #fff;
+  border-radius: 0.5rem 0.5rem 0 0;
+  border-bottom: 1px solid var(--saps-borde, #dee2e6);
+  padding: 4px 4px 0 4px;
+}
+
+/* En resoluciones de escritorio y tablet (>= 768px): estrictamente 1 fila sin scrollbars */
+@media (min-width: 768px) {
+  .inasistencias-tabs {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .inasistencias-tabs .nav-item {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    display: flex !important;
+  }
+}
+
+.inasistencias-tabs .nav-link {
+  width: 100%;
+  height: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 6px 4px;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  color: var(--saps-texto-secundario, #6c757d);
+  background: transparent;
+  border: 1px solid transparent;
+  border-top-left-radius: 0.375rem;
+  border-top-right-radius: 0.375rem;
+  transition: all 0.15s ease-in-out;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.inasistencias-tabs .nav-link:hover:not(.active) {
+  color: var(--saps-azul, #0d6efd);
+  background-color: rgba(13, 110, 253, 0.04);
+  border-color: rgba(13, 110, 253, 0.1) rgba(13, 110, 253, 0.1) transparent;
+}
+
+.inasistencias-tabs .nav-link:focus-visible {
+  outline: 2px solid var(--saps-azul, #0d6efd);
+  outline-offset: -2px;
+}
+
+.inasistencias-tabs .nav-link.active {
+  color: var(--saps-azul, #0d6efd) !important;
+  font-weight: 600;
+  background-color: #fff;
+  border-color: var(--saps-borde, #dee2e6) var(--saps-borde, #dee2e6) #fff;
+  border-bottom-width: 2px;
+  border-bottom-color: #fff;
+  position: relative;
+  box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.inasistencias-tabs .tab-icon {
+  font-size: 0.95rem;
+  margin-right: 0.35rem;
+  flex-shrink: 0;
+}
+
+.inasistencias-tabs .tab-label {
+  display: inline;
+  overflow-wrap: break-word;
+}
+
+.inasistencias-tabs .tab-badge {
+  font-size: 0.7rem;
+  padding: 0.2em 0.5em;
+  margin-left: 0.3rem;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+/* En pantallas móviles (< 768px): distribución en cuadrícula compacta sin desbordes */
+@media (max-width: 767.98px) {
+  .inasistencias-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 6px;
+    background-color: #f8f9fa;
+    border-radius: 0.5rem;
+    border: 1px solid var(--saps-borde, #dee2e6);
+  }
+
+  .inasistencias-tabs .nav-item {
+    flex: 1 1 calc(33.333% - 4px);
+    min-width: calc(33.333% - 4px);
+    display: flex;
+  }
+
+  .inasistencias-tabs .nav-link {
+    min-height: 48px;
+    font-size: 0.75rem;
+    padding: 6px 3px;
+    border-radius: 0.375rem;
+    background-color: #fff;
+    border: 1px solid var(--saps-borde, #dee2e6);
+  }
+
+  .inasistencias-tabs .nav-link.active {
+    background-color: var(--saps-azul, #0d6efd);
+    color: #fff !important;
+    border-color: var(--saps-azul, #0d6efd);
+  }
+
+  .inasistencias-tabs .nav-link.active .tab-icon,
+  .inasistencias-tabs .nav-link.active .tab-label {
+    color: #fff !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .inasistencias-tabs .nav-item {
+    flex: 1 1 calc(50% - 4px);
+    min-width: calc(50% - 4px);
+  }
+}

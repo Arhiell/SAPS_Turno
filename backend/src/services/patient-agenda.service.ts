@@ -14,6 +14,7 @@ import { getAllHorarios } from '../repositories/horario-atencion.repository.js';
 import { assertBookingDate, bookingWindow } from '../utils/booking-window.js';
 import { agendaDateTime } from '../utils/turno-time.js';
 import { AppError } from '../utils/app-error.js';
+import { formatProfesionalNombre } from '../utils/profesional-format.js';
 
 import type { AuthenticatedUser } from '../types/auth.types.js';
 import type { DisponibilidadQuery } from '../validators/disponibilidad.validator.js';
@@ -41,7 +42,9 @@ export const getPatientProfessionals = async (
     assertBookingDate(date);
   }
 
-  const dates = date ? [date] : bookingWindow().fechas;
+  const window = bookingWindow();
+  const dates = date ? [date] : window.fechas;
+  const isDateFilter = Boolean(date);
 
   // Obtiene el paciente y verifica sus restricciones.
   const patient = await resolveManagedPatient(user, patientId, date);
@@ -73,13 +76,16 @@ export const getPatientProfessionals = async (
     ),
   ]);
 
-  // Filtra profesionales con asignaciones vigentes.
+  // Filtra profesionales con asignaciones vigentes a la salita del paciente.
   return professionals
     .filter((p) =>
       p.salitas.some((s) =>
-        dates.some((day) =>
-          vigente(s, day)
-        )
+        s.id_salita === patient.id_salita_asignada &&
+        (isDateFilter
+          ? vigente(s, date!)
+          : s.activo &&
+            s.fecha_desde <= window.hasta &&
+            (!s.fecha_hasta || s.fecha_hasta >= window.desde))
       )
     )
     .map((p) => ({
@@ -87,42 +93,62 @@ export const getPatientProfessionals = async (
       matricula: p.matricula,
       persona: p.persona,
 
-      // Conserva especialidades activas con horarios vigentes.
+      // Conserva especialidades activas con agenda vigente en la salita.
       especialidades: p.especialidades
-        .filter(
-          (e) =>
-            e.especialidad?.activo &&
-            (
-              clinicSpecialties === null ||
-              clinicSpecialties.includes(
-                e.id_especialidad
-              )
-            ) &&
-            dates.some(
-              (date) =>
-                vigente(e, date) &&
-                p.salitas.some((s) =>
-                  vigente(s, date)
-                ) &&
-                schedules.some(
-                  (h) =>
-                    h.activo &&
-                    h.id_profesional ===
-                      p.id_profesional &&
-                    h.id_especialidad ===
-                      e.id_especialidad &&
-                    h.dia_semana ===
-                      agendaDateTime(
-                        `${date}T12:00:00-03:00`
-                      ).weekday &&
-                    h.vigencia_desde <= date &&
-                    (
-                      !h.vigencia_hasta ||
-                      h.vigencia_hasta >= date
-                    )
-                )
-            )
-        )
+        .filter((e) => {
+          if (!e.especialidad?.activo) return false;
+          if (
+            clinicSpecialties !== null &&
+            !clinicSpecialties.includes(e.id_especialidad)
+          ) {
+            return false;
+          }
+
+          const espVigente = isDateFilter
+            ? vigente(e, date!)
+            : e.activo &&
+              e.fecha_desde <= window.hasta &&
+              (!e.fecha_hasta || e.fecha_hasta >= window.desde);
+          if (!espVigente) return false;
+
+          const salitaVigente = p.salitas.some((s) =>
+            s.id_salita === patient.id_salita_asignada &&
+            (isDateFilter
+              ? vigente(s, date!)
+              : s.activo &&
+                s.fecha_desde <= window.hasta &&
+                (!s.fecha_hasta || s.fecha_hasta >= window.desde))
+          );
+          if (!salitaVigente) return false;
+
+          if (isDateFilter) {
+            const targetWeekday = agendaDateTime(
+              `${date!}T12:00:00-03:00`
+            ).weekday;
+            return schedules.some(
+              (h) =>
+                h.activo &&
+                h.id_profesional === p.id_profesional &&
+                h.id_especialidad === e.id_especialidad &&
+                (!h.id_salita || h.id_salita === patient.id_salita_asignada) &&
+                h.dia_semana === targetWeekday &&
+                h.vigencia_desde <= date! &&
+                (!h.vigencia_hasta || h.vigencia_hasta >= date!)
+            );
+          }
+
+          // Para consulta general de la salita: muestra profesionales con agenda vigente
+          // aunque su próximo día de atención no coincida con los días restantes de la semana actual
+          return schedules.some(
+            (h) =>
+              h.activo &&
+              h.id_profesional === p.id_profesional &&
+              h.id_especialidad === e.id_especialidad &&
+              (!h.id_salita || h.id_salita === patient.id_salita_asignada) &&
+              h.vigencia_desde <= window.hasta &&
+              (!h.vigencia_hasta || h.vigencia_hasta >= window.desde)
+          );
+        })
         .map((e) => ({
           id_especialidad: e.id_especialidad,
           nombre: e.especialidad.nombre,
@@ -155,16 +181,33 @@ export const getPatientAvailability = async (
   );
 
   // Impide solicitar otro turno pendiente de la misma especialidad.
-  if (
-    await findOpenTurno(
-      patient.id_paciente,
-      query.id_especialidad
-    )
-  ) {
+  const openTurno = await findOpenTurno(
+    patient.id_paciente,
+    query.id_especialidad
+  );
+  if (openTurno) {
+    const raw = openTurno as Record<string, any>;
+    const fechaHora = raw.fecha_hora_inicio ? agendaDateTime(raw.fecha_hora_inicio) : null;
+    const profesionalNombre = raw.profesional
+      ? formatProfesionalNombre(raw.profesional)
+      : undefined;
+
     throw new AppError(
-      'Ya tenés un turno pendiente de esta especialidad. Podrás solicitar otro cuando sea atendido o cancelado.',
+      'Ya tenés un turno pendiente. Para solicitar otro, primero debés resolver el actual.',
       409,
-      'SPECIALTY_APPOINTMENT_PENDING'
+      'PACIENTE_TURNO_PENDIENTE',
+      {
+        turno_pendiente: {
+          id_turno: raw.id_turno,
+          fecha: fechaHora?.date,
+          hora: fechaHora?.time?.slice(0, 5),
+          especialidad: raw.especialidad?.nombre,
+          profesional: profesionalNombre,
+          salita: raw.salita?.nombre,
+          estado: raw.estado?.nombre || 'En espera',
+          estado_codigo: raw.estado?.codigo || 'EN_ESPERA',
+        },
+      }
     );
   }
 
@@ -333,9 +376,77 @@ export const getPatientAvailableDates = async (
     }
   }
 
+  const DIAS_SEMANA_NOMBRES = [
+    '',
+    'lunes',
+    'martes',
+    'miércoles',
+    'jueves',
+    'viernes',
+    'sábado',
+    'domingo',
+  ];
+
+  const profSchedules = schedules.filter(
+    (s) =>
+      s.activo &&
+      s.id_profesional === query.id_profesional &&
+      s.id_especialidad === query.id_especialidad &&
+      (!s.id_salita || s.id_salita === query.id_salita) &&
+      s.vigencia_desde <= window.hasta &&
+      (!s.vigencia_hasta || s.vigencia_hasta >= window.desde)
+  );
+
+  const diasAtencion = [
+    ...new Set(profSchedules.map((s) => s.dia_semana)),
+  ].sort((a, b) => a - b);
+
+  let proxima_disponibilidad: {
+    dias_atencion: number[];
+    dias_atencion_nombres: string[];
+    proxima_fecha?: string;
+    proxima_apertura: string;
+    mensaje: string;
+  } | null = null;
+
+  if (!fechas.length && profSchedules.length > 0) {
+    const nombresDias = diasAtencion
+      .map((d) => DIAS_SEMANA_NOMBRES[d])
+      .filter(Boolean)
+      .join(', ');
+
+    let proximaFecha: string | undefined;
+    for (let offset = 1; offset <= 14; offset++) {
+      const candidateDate = new Date(
+        Date.parse(`${window.desde}T12:00:00Z`) + offset * 86400000
+      )
+        .toISOString()
+        .slice(0, 10);
+      const dow = agendaDateTime(`${candidateDate}T12:00:00-03:00`).weekday;
+      if (diasAtencion.includes(dow)) {
+        proximaFecha = candidateDate;
+        break;
+      }
+    }
+
+    const horaApertura = window.proxima_apertura.slice(11, 16);
+    const mensaje = nombresDias
+      ? `El profesional atiende habitualmente los días ${nombresDias}. Los turnos de la próxima semana se habilitan el sábado a las ${horaApertura} hs.`
+      : `No quedan turnos disponibles en el período habilitado. La próxima semana se habilitará el sábado a las ${horaApertura} hs.`;
+
+    proxima_disponibilidad = {
+      dias_atencion: diasAtencion,
+      dias_atencion_nombres: diasAtencion.map((d) => DIAS_SEMANA_NOMBRES[d] || ''),
+      ...(proximaFecha ? { proxima_fecha: proximaFecha } : {}),
+      proxima_apertura: window.proxima_apertura,
+      mensaje,
+    };
+  }
+
   return {
     fechas,
     dias,
     ventana: window,
+    proxima_disponibilidad,
   };
 };

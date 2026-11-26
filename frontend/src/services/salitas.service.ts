@@ -2,10 +2,26 @@ import api from './api';
 
 import type {
   CreateSalitaRequest,
+  Salita,
   SalitaResponse,
   SalitasResponse,
   UpdateSalitaRequest,
 } from '../types/salita.types';
+import type { Barrio } from '../types/barrio.types';
+import type { Zona, Cobertura } from '../types/configuracion.types';
+
+export interface CoberturaTerritorialData {
+  salitas: Salita[];
+  zonas: Zona[];
+  barrios: Barrio[];
+  coberturas: (Cobertura & { id_salita_barrio?: string })[];
+}
+
+export interface CoberturaTerritorialResponse {
+  success: boolean;
+  message?: string;
+  data: CoberturaTerritorialData;
+}
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
 
@@ -115,5 +131,16 @@ export const deleteSalita = async (
   );
 
   clearSalitasCache();
+  return response.data;
+};
+
+export const getCoberturaTerritorial = async (
+  idSalita?: string,
+): Promise<CoberturaTerritorialResponse> => {
+  const url = idSalita
+    ? `/salitas/${idSalita}/cobertura-territorial`
+    : '/salitas/cobertura-territorial';
+
+  const response = await api.get<CoberturaTerritorialResponse>(url);
   return response.data;
 };

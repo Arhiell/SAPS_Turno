@@ -55,6 +55,17 @@ export default function PatientBookingSlots({
   // Mensaje de error.
   const [error, setError] = useState('');
 
+  // Detalle de turno pendiente conflictivo.
+  const [pendingTurno, setPendingTurno] = useState<{
+    id_turno?: string;
+    fecha?: string;
+    hora?: string;
+    especialidad?: string;
+    profesional?: string;
+    salita?: string;
+    estado?: string;
+  } | null>(null);
+
   // Permite volver a consultar los horarios.
   const [revision, setRevision] = useState(0);
 
@@ -88,6 +99,7 @@ export default function PatientBookingSlots({
 
     setLoading(true);
     setError('');
+    setPendingTurno(null);
     setSlots([]);
 
     void getDisponibilidad(
@@ -134,7 +146,18 @@ export default function PatientBookingSlots({
       })
       .catch((cause) => {
         if (active) {
-          setError(authError(cause));
+          const data = (cause as any)?.response?.data;
+          if (
+            data?.code === 'PACIENTE_TURNO_PENDIENTE' ||
+            data?.code === 'SPECIALTY_APPOINTMENT_PENDING' ||
+            data?.data?.turno_pendiente
+          ) {
+            setPendingTurno(data?.data?.turno_pendiente || {});
+            setError('');
+          } else {
+            setPendingTurno(null);
+            setError(authError(cause));
+          }
         }
       })
       .finally(() => {
@@ -213,9 +236,18 @@ export default function PatientBookingSlots({
         }
       );
     } catch (cause) {
-      setError(
-        authError(cause)
-      );
+      const data = (cause as any)?.response?.data;
+      if (
+        data?.code === 'PACIENTE_TURNO_PENDIENTE' ||
+        data?.code === 'SPECIALTY_APPOINTMENT_PENDING' ||
+        data?.data?.turno_pendiente
+      ) {
+        setPendingTurno(data?.data?.turno_pendiente || {});
+        setError('');
+      } else {
+        setPendingTurno(null);
+        setError(authError(cause));
+      }
 
       // Limpia el horario seleccionado
       // para obligar a elegir uno nuevamente.
@@ -246,8 +278,79 @@ export default function PatientBookingSlots({
         </div>
       )}
 
+      {/* Aviso estructurado si ya tiene un turno pendiente */}
+      {pendingTurno && (
+        <div className="card border-warning bg-warning bg-opacity-10 shadow-sm p-3 p-md-4 mb-4 rounded-3" role="alert">
+          <div className="d-flex align-items-start gap-3">
+            <div className="bg-warning text-dark rounded-circle p-2 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 40, height: 40 }}>
+              <i className="bi bi-clock-history fs-5" aria-hidden="true" />
+            </div>
+            <div className="flex-grow-1">
+              <h4 className="h5 fw-bold text-dark mb-1">Ya tenés un turno pendiente</h4>
+              <p className="text-secondary small mb-3">
+                Actualmente tenés un turno en espera. Primero debés resolver ese turno antes de solicitar uno nuevo.
+              </p>
+
+              {(pendingTurno.fecha || pendingTurno.hora || pendingTurno.especialidad || pendingTurno.profesional || pendingTurno.estado) && (
+                <div className="bg-white rounded-2 p-3 border border-warning-subtle mb-3">
+                  <div className="row g-2 small">
+                    {pendingTurno.fecha && (
+                      <div className="col-sm-6">
+                        <span className="text-muted">Fecha: </span>
+                        <strong className="text-dark">{pendingTurno.fecha}</strong>
+                      </div>
+                    )}
+                    {pendingTurno.hora && (
+                      <div className="col-sm-6">
+                        <span className="text-muted">Hora: </span>
+                        <strong className="text-dark">{pendingTurno.hora} hs</strong>
+                      </div>
+                    )}
+                    {pendingTurno.especialidad && (
+                      <div className="col-sm-6">
+                        <span className="text-muted">Especialidad: </span>
+                        <strong className="text-dark">{pendingTurno.especialidad}</strong>
+                      </div>
+                    )}
+                    {pendingTurno.profesional && (
+                      <div className="col-sm-6">
+                        <span className="text-muted">Profesional: </span>
+                        <strong className="text-dark">{pendingTurno.profesional}</strong>
+                      </div>
+                    )}
+                    {pendingTurno.salita && (
+                      <div className="col-sm-6">
+                        <span className="text-muted">Salita: </span>
+                        <strong className="text-dark">{pendingTurno.salita}</strong>
+                      </div>
+                    )}
+                    {pendingTurno.estado && (
+                      <div className="col-sm-6">
+                        <span className="text-muted">Estado: </span>
+                        <span className="badge bg-warning text-dark">{pendingTurno.estado}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="d-flex gap-2 flex-wrap">
+                <button
+                  type="button"
+                  className="btn btn-dark btn-sm d-inline-flex align-items-center gap-1.5"
+                  onClick={() => navigate(pendingTurno.id_turno ? `/mis-turnos/${pendingTurno.id_turno}` : (patientId ? `/mis-turnos?paciente=${patientId}` : '/mis-turnos'))}
+                >
+                  <i className="bi bi-calendar-check" />
+                  Ir a Mis turnos
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Mensaje de error y opción de reintento. */}
-      {error && (
+      {error && !pendingTurno && (
         <div
           className="alert alert-danger d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2 p-3 mb-3 rounded-3 shadow-sm"
           role="alert"

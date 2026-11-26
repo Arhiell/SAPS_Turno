@@ -89,8 +89,8 @@ export const TurnoJustificacionCard: React.FC<TurnoJustificacionCardProps> = ({
     <div className="card border-0 shadow-sm mb-3">
       <div className="card-header bg-white py-2 px-3 border-bottom d-flex align-items-center justify-content-between">
         <h6 className="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
-          <i className="bi bi-file-earmark-medical text-primary" aria-hidden="true" />
-          Justificación médica de inasistencia
+          <i className="bi bi-file-earmark-text text-primary" aria-hidden="true" />
+          Solicitud de justificación de inasistencia
         </h6>
         {getStatusBadge()}
       </div>
@@ -123,7 +123,7 @@ export const TurnoJustificacionCard: React.FC<TurnoJustificacionCardProps> = ({
           <div className="p-2 rounded bg-light border mt-2 small">
             <div>
               <strong>Resolución:</strong>{' '}
-              {justificacion.estado === 'APROBADA' ? 'Falta médica justificada y excluida.' : 'Falta no justificada.'}
+              {justificacion.estado === 'APROBADA' ? 'Inasistencia justificada y excluida del cómputo.' : 'Inasistencia no justificada.'}
             </div>
             {justificacion.motivo_resolucion && (
               <div>

@@ -320,15 +320,27 @@ export const changeTurnoStatus = async (
 
   const current = await getTurno(id, user);
 
-  // Impide registrar atención o inasistencia antes del turno.
+  // Impide registrar atención antes del inicio del turno.
   if (
-    ['ATENDIDO', 'NO_ASISTIO'].includes(input.estado) &&
+    input.estado === 'ATENDIDO' &&
     Date.parse(current.fecha_hora_inicio) > Date.now()
   ) {
     throw new AppError(
-      'No se puede registrar atención o inasistencia antes del inicio del turno.',
+      'No se puede registrar atención antes del inicio del turno.',
       409
     );
+  }
+
+  // Impide registrar inasistencia si el turno aún no finalizó o no se cumplió el tiempo de espera.
+  if (input.estado === 'NO_ASISTIO') {
+    const finTurno = Date.parse(current.fecha_hora_fin || current.fecha_hora_inicio);
+    if (Number.isFinite(finTurno) && finTurno > Date.now()) {
+      throw new AppError(
+        'Todavía no se puede registrar la inasistencia. El horario asignado para este turno todavía no ha finalizado. Podrás registrar la inasistencia una vez que haya terminado el horario de atención correspondiente.',
+        409,
+        'TURNO_AUN_NO_INASISTIBLE'
+      );
+    }
   }
 
   // Impide que el paciente cancele un turno que ya comenzó.

@@ -12,10 +12,13 @@ import {
   countPendingJustificacionesByPatient,
   findJustificaciones,
   updateJustificacionDecision,
+  findAdvertenciasAdmin,
+  anularAdvertenciaAdmin,
 } from '../repositories/inasistencia-politica.repository.js';
-import { findTurnoById } from '../repositories/turno-read.repository.js';
+import { findTurnoById, findPatientIdsForTurnoSearch } from '../repositories/turno-read.repository.js';
 import { patchTurno } from '../repositories/turno-update.repository.js';
 import { getTurno, getTurnoState } from './turno-read.service.js';
+import { getTurnoScope, assertTurnoScope } from './turno-access.service.js';
 import { resolveManagedPatient } from './patient-managed.service.js';
 import { anularSancion } from '../repositories/sancion.repository.js';
 import { findTurnoSanction } from '../repositories/turno-agenda.repository.js';
@@ -27,6 +30,7 @@ import type {
   EvaluarJustificacionInput,
   RectificarInasistenciaInput,
   JustificacionesQuery,
+  AdvertenciasQuery,
 } from '../validators/inasistencia-politica.validator.js';
 
 const VENTANA_DIAS_DEFAULT = 90;
@@ -326,6 +330,344 @@ export const obtenerEstadoInasistenciasPaciente = async (patientId: string) => {
     })),
     aviso_asistencial:
       'Las restricciones de reserva aplican exclusivamente al portal web. Podés concurrir presencialmente a tu salita o solicitar atención médica de urgencia en cualquier momento.',
+  };
+};
+
+/**
+ * Consulta de justificaciones para administración con filtrado por salita y scope
+ */
+export const obtenerJustificacionesAdmin = async (
+  query: JustificacionesQuery,
+  user: AuthenticatedUser
+) => {
+  const scope = await getTurnoScope(user);
+  if (query.id_salita) {
+    assertTurnoScope(scope, query.id_salita);
+  }
+
+  const patientIds = query.search
+    ? await findPatientIdsForTurnoSearch(query.search, scope)
+    : null;
+
+  if (query.search && patientIds?.length === 0) {
+    return {
+      data: [],
+      pagination: {
+        total: 0,
+        page: query.page,
+        limit: query.limit,
+        totalPages: 0,
+      },
+    };
+  }
+
+  return findJustificaciones({
+    id_paciente: query.id_paciente,
+    id_salita: query.id_salita,
+    estado: query.estado,
+    fecha_desde: query.fecha_desde,
+    fecha_hasta: query.fecha_hasta,
+    patientIds,
+    scope,
+    page: query.page,
+    limit: query.limit,
+  });
+};
+
+/**
+ * Consulta de advertencias para administración con filtrado por salita y scope
+ */
+export const obtenerAdvertenciasAdmin = async (
+  query: AdvertenciasQuery,
+  user: AuthenticatedUser
+) => {
+  const scope = await getTurnoScope(user);
+  if (query.id_salita) {
+    assertTurnoScope(scope, query.id_salita);
+  }
+
+  const patientIds = query.search
+    ? await findPatientIdsForTurnoSearch(query.search, scope)
+    : null;
+
+  if (query.search && patientIds?.length === 0) {
+    return {
+      data: [],
+      pagination: {
+        total: 0,
+        page: query.page,
+        limit: query.limit,
+        totalPages: 0,
+      },
+    };
+  }
+
+  return findAdvertenciasAdmin({
+    id_paciente: query.id_paciente,
+    id_salita: query.id_salita,
+    nivel: query.nivel,
+    anulada: query.anulada ? query.anulada === 'true' : undefined,
+    fecha_desde: query.fecha_desde,
+    fecha_hasta: query.fecha_hasta,
+    patientIds,
+    scope,
+    page: query.page,
+    limit: query.limit,
+  });
+};
+
+/**
+ * Anula una advertencia administrativamente
+ */
+export const anularAdvertenciaOperativa = async (
+  id_advertencia: string,
+  motivo: string,
+  user: AuthenticatedUser
+) => {
+  const rolesAutorizados = ['SUPER_ADMIN', 'ADMIN_SALITA'];
+  if (!rolesAutorizados.includes(user.rol)) {
+    throw new AppError('Solo administradores pueden anular advertencias', 403);
+  }
+
+  const { data: advertencia } = await supabase
+    .from('advertencias_inasistencia')
+    .select('*, turno:turnos!inner(id_salita)')
+    .eq('id_advertencia', id_advertencia)
+    .maybeSingle();
+
+  if (!advertencia) {
+    // Si no está en advertencias_inasistencia, verificar si es una sanción / restricción (Nivel 3)
+    const { data: sancion } = await supabase
+      .from('sanciones')
+      .select('*, turno:turnos(id_salita)')
+      .eq('id_sancion', id_advertencia)
+      .maybeSingle();
+
+    if (!sancion) {
+      throw new AppError('Advertencia o restricción no encontrada', 404);
+    }
+
+    if (sancion.anulada) {
+      throw new AppError('La restricción ya se encuentra anulada', 400);
+    }
+
+    const scope = await getTurnoScope(user);
+    if (sancion.turno?.id_salita) {
+      assertTurnoScope(scope, sancion.turno.id_salita);
+    }
+
+    const sancionAnulada = await anularSancion(id_advertencia, motivo, user.id_usuario);
+    return sancionAnulada;
+  }
+
+  if (advertencia.anulada) {
+    throw new AppError('La advertencia ya se encuentra anulada', 400);
+  }
+
+  const scope = await getTurnoScope(user);
+  assertTurnoScope(scope, advertencia.turno.id_salita);
+
+  const anulada = await anularAdvertenciaAdmin(id_advertencia, motivo, user.id_usuario);
+  return anulada;
+};
+
+/**
+ * Consulta de inasistencias registradas enriquecidas con conteo 90 días y estado de justificación
+ */
+export const obtenerInasistenciasAdmin = async (
+  query: {
+    id_salita?: string | undefined;
+    id_profesional?: string | undefined;
+    id_especialidad?: string | undefined;
+    fecha_desde?: string | undefined;
+    fecha_hasta?: string | undefined;
+    search?: string | undefined;
+    page?: number | undefined;
+    limit?: number | undefined;
+  },
+  user: AuthenticatedUser
+) => {
+  const scope = await getTurnoScope(user);
+  if (query.id_salita) {
+    assertTurnoScope(scope, query.id_salita);
+  }
+
+  const patientIds = query.search
+    ? await findPatientIdsForTurnoSearch(query.search, scope)
+    : null;
+
+  if (query.search && patientIds?.length === 0) {
+    return {
+      data: [],
+      pagination: {
+        total: 0,
+        page: query.page ?? 1,
+        limit: query.limit ?? 20,
+        totalPages: 0,
+      },
+    };
+  }
+
+  const page = Math.max(1, query.page ?? 1);
+  const limit = Math.min(100, Math.max(1, query.limit ?? 20));
+  const offset = (page - 1) * limit;
+
+  let dbQuery = supabase
+    .from('turnos')
+    .select(
+      `
+      id_turno,
+      codigo_turno,
+      id_paciente,
+      id_profesional,
+      id_especialidad,
+      id_salita,
+      fecha_hora_inicio,
+      fecha_hora_fin,
+      observaciones,
+      rectificado_por,
+      motivo_rectificacion,
+      fecha_rectificacion,
+      estado:estados_turno!inner(id_estado, codigo, nombre),
+      paciente:pacientes!inner(
+        id_paciente,
+        persona:personas(dni, nombres, apellidos)
+      ),
+      profesional:profesionales(
+        id_profesional,
+        matricula,
+        persona:personas(nombres, apellidos)
+      ),
+      salita:salitas(id_salita, nombre),
+      especialidad:especialidades(id_especialidad, nombre),
+      justificaciones:inasistencias_justificaciones(
+        id_justificacion,
+        estado,
+        motivo,
+        documentacion_ref,
+        fecha_creacion,
+        fecha_evaluacion,
+        motivo_resolucion
+      )
+    `,
+      { count: 'exact' }
+    )
+    .eq('estado.codigo', 'NO_ASISTIO')
+    .order('fecha_hora_inicio', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (scope !== null) {
+    if (scope.length === 0) {
+      return {
+        data: [],
+        pagination: { total: 0, page, limit, totalPages: 0 },
+      };
+    }
+    dbQuery = dbQuery.in('id_salita', scope);
+  }
+
+  if (query.id_salita) {
+    dbQuery = dbQuery.eq('id_salita', query.id_salita);
+  }
+  if (query.id_profesional) {
+    dbQuery = dbQuery.eq('id_profesional', query.id_profesional);
+  }
+  if (query.id_especialidad) {
+    dbQuery = dbQuery.eq('id_especialidad', query.id_especialidad);
+  }
+  if (patientIds) {
+    dbQuery = dbQuery.in('id_paciente', patientIds);
+  }
+  if (query.fecha_desde) {
+    dbQuery = dbQuery.gte('fecha_hora_inicio', `${query.fecha_desde}T00:00:00.000Z`);
+  }
+  if (query.fecha_hasta) {
+    dbQuery = dbQuery.lte('fecha_hora_inicio', `${query.fecha_hasta}T23:59:59.999Z`);
+  }
+
+  const { data, count, error } = await dbQuery;
+  if (error) throw error;
+
+  // Enriquecer concurrentemente con el conteo determinístico de faltas de los últimos 90 días
+  const turnosEnriquecidos = await Promise.all(
+    (data || []).map(async (t: any) => {
+      const faltas90d = await countUnjustifiedAbsences(t.id_paciente, VENTANA_DIAS_DEFAULT);
+      const justificacionReciente = Array.isArray(t.justificaciones) && t.justificaciones.length > 0
+        ? t.justificaciones[0]
+        : null;
+      return {
+        ...t,
+        faltas_90d: faltas90d,
+        justificacion: justificacionReciente,
+      };
+    })
+  );
+
+  return {
+    data: turnosEnriquecidos,
+    pagination: {
+      total: count ?? 0,
+      page,
+      limit,
+      totalPages: Math.ceil((count ?? 0) / limit),
+    },
+  };
+};
+
+/**
+ * Consulta de métricas generales para los contadores (badges) del módulo
+ */
+export const obtenerMetricasInasistenciasAdmin = async (user: AuthenticatedUser) => {
+  const scope = await getTurnoScope(user);
+
+  // 1. Justificaciones pendientes
+  let justQuery = supabase
+    .from('inasistencias_justificaciones')
+    .select('id_justificacion, turno:turnos!inner(id_salita)', { count: 'exact', head: true })
+    .eq('estado', 'PENDIENTE');
+
+  if (scope !== null) {
+    justQuery = justQuery.in('turno.id_salita', scope);
+  }
+  const { count: pendientesCount } = await justQuery;
+
+  // 2. Inasistencias registradas
+  let inasQuery = supabase
+    .from('turnos')
+    .select('id_turno, estado:estados_turno!inner(codigo)', { count: 'exact', head: true })
+    .eq('estado.codigo', 'NO_ASISTIO');
+
+  if (scope !== null) {
+    inasQuery = inasQuery.in('id_salita', scope);
+  }
+  const { count: inasistenciasCount } = await inasQuery;
+
+  // 3. Advertencias y restricciones vigentes no anuladas
+  let advQuery = supabase
+    .from('advertencias_inasistencia')
+    .select('id_advertencia, turno:turnos!inner(id_salita)', { count: 'exact', head: true })
+    .eq('anulada', false);
+
+  if (scope !== null) {
+    advQuery = advQuery.in('turno.id_salita', scope);
+  }
+  const { count: advertenciasCount } = await advQuery;
+
+  let sancQuery = supabase
+    .from('sanciones')
+    .select('id_sancion, turno:turnos(id_salita)', { count: 'exact', head: true })
+    .eq('anulada', false)
+    .gt('fecha_fin', new Date().toISOString());
+
+  if (scope !== null) {
+    sancQuery = sancQuery.in('turno.id_salita', scope);
+  }
+  const { count: sancionesCount } = await sancQuery;
+
+  return {
+    justificaciones_pendientes: pendientesCount ?? 0,
+    inasistencias_registradas: inasistenciasCount ?? 0,
+    advertencias_vigentes: (advertenciasCount ?? 0) + (sancionesCount ?? 0),
   };
 };
 

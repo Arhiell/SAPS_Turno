@@ -204,6 +204,21 @@ export const findTurnos = async (
     );
   }
 
+  // Filtra por tipo de cancelación.
+  if (filters.tipo_cancelacion) {
+    query = query.eq(
+      'tipo_cancelacion',
+      filters.tipo_cancelacion
+    );
+  }
+
+  // Filtra por turnos rectificados.
+  if (filters.rectificado === 'true') {
+    query = query.not('rectificado_por', 'is', null);
+  } else if (filters.rectificado === 'false') {
+    query = query.is('rectificado_por', null);
+  }
+
   // Filtra solamente turnos que fueron reprogramados.
   if (
     !agenda &&

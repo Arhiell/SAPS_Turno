@@ -42,7 +42,19 @@ export const findOpenTurno = async (
 ) => {
   let query = supabase
     .from('turnos')
-    .select('id_turno')
+    .select(`
+      id_turno,
+      fecha_hora_inicio,
+      fecha_hora_fin,
+      id_especialidad,
+      id_profesional,
+      id_salita,
+      id_estado,
+      estado:estados_turno(id_estado,codigo,nombre),
+      especialidad:especialidades(id_especialidad,nombre),
+      profesional:profesionales(id_profesional,persona:personas(nombres,apellidos)),
+      salita:salitas(id_salita,nombre)
+    `)
     .eq('id_paciente', patient)
     .eq('id_especialidad', specialty)
     .eq('impide_otro_misma_especialidad', true);

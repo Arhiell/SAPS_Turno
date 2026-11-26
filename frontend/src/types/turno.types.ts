@@ -112,6 +112,12 @@ export interface Turno {
   motivo_cancelacion: string | null;
   fecha_cancelacion: string | null;
   cancelado_por: string | null;
+  tipo_cancelacion?: 'ANTICIPADA' | 'TARDIA' | 'ADMINISTRATIVA' | null;
+
+  // Información de rectificación.
+  rectificado_por?: string | null;
+  motivo_rectificacion?: string | null;
+  fecha_rectificacion?: string | null;
 
   // Fechas de seguimiento.
   fecha_solicitud?: string;
@@ -310,6 +316,8 @@ export interface TurnosFilters {
   periodo?: 'proximos' | 'anteriores';
   orden?: 'asc' | 'desc';
   reprogramados?: 'true';
+  tipo_cancelacion?: 'ANTICIPADA' | 'TARDIA' | 'ADMINISTRATIVA';
+  rectificado?: 'true' | 'false';
 
   fecha?: string;
   fecha_desde?: string;

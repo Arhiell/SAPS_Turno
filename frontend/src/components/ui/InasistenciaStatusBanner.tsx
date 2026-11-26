@@ -136,13 +136,13 @@ export const InasistenciaStatusBanner: React.FC<InasistenciaStatusBannerProps> =
           </div>
           <div className="flex-grow-1">
             <h3 className="h6 fw-bold text-info-emphasis mb-1">
-              Aviso sobre inasistencia (1/3)
+              Recordatorio sobre tus turnos (1/3)
             </h3>
+            <p className="small mb-2 text-dark">
+              Registramos que no pudiste asistir a un turno programado durante los últimos 90 días. Si no podés asistir, te recomendamos cancelar el turno con anticipación para que otra persona pueda aprovecharlo.
+            </p>
             <p className="small mb-0 text-dark">
-              Registramos que no concurriste a un turno programado en los últimos {estado.ventana_dias} días. Te
-              recordamos cancelar tus turnos con anticipación si no podés asistir para que otra persona pueda
-              aprovechar el lugar. Podés justificar la inasistencia desde el detalle del turno si contás con
-              certificado médico.
+              Si tuviste un motivo justificado, podés presentar una solicitud de justificación desde el detalle del turno, explicando lo sucedido y adjuntando documentación respaldatoria si corresponde.
             </p>
           </div>
         </div>

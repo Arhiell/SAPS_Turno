@@ -40,6 +40,9 @@ export default function PatientBookingForm({
   const [date, setDate] = useState('');
   const [dates, setDates] = useState<string[]>([]);
   const [calendar, setCalendar] = useState<PatientAvailableDates['dias']>([]);
+  const [proximaDisponibilidad, setProximaDisponibilidad] = useState<
+    PatientAvailableDates['proxima_disponibilidad']
+  >(null);
 
   // Controla los estados de carga y las solicitudes.
   const [loading, setLoading] = useState(true);
@@ -50,6 +53,15 @@ export default function PatientBookingForm({
   const [error, setError] = useState('');
   const [datesError, setDatesError] = useState('');
   const [pendingConflict, setPendingConflict] = useState<string | null>(null);
+  const [pendingTurno, setPendingTurno] = useState<{
+    id_turno?: string;
+    fecha?: string;
+    hora?: string;
+    especialidad?: string;
+    profesional?: string;
+    salita?: string;
+    estado?: string;
+  } | null>(null);
 
   // Permite actualizar la información de la agenda.
   const [revision, setRevision] = useState(0);
@@ -150,7 +162,9 @@ export default function PatientBookingForm({
 
     setDatesError('');
     setPendingConflict(null);
+    setPendingTurno(null);
     setCalendar([]);
+    setProximaDisponibilidad(null);
 
     // Limpia las fechas cuando falta seleccionar una atención.
     if (!professional || !specialty) {
@@ -175,6 +189,7 @@ export default function PatientBookingForm({
 
         setDates(result.fechas);
         setCalendar(result.dias ?? []);
+        setProximaDisponibilidad(result.proxima_disponibilidad ?? null);
 
         // Conserva la fecha seleccionada si sigue disponible.
         setDate((current) =>
@@ -188,20 +203,23 @@ export default function PatientBookingForm({
           setDate('');
           setDates([]);
           setCalendar([]);
+          setProximaDisponibilidad(null);
 
           if (axios.isAxiosError(cause)) {
             const status = cause.response?.status;
-            const data = cause.response?.data as { code?: string; message?: string } | undefined;
+            const data = cause.response?.data as { code?: string; message?: string; data?: { turno_pendiente?: any } } | undefined;
 
             if (
               status === 409 &&
               (data?.code === 'SPECIALTY_APPOINTMENT_PENDING' ||
+                data?.code === 'PACIENTE_TURNO_PENDIENTE' ||
                 data?.message?.toLowerCase().includes('pendiente'))
             ) {
               setPendingConflict(
                 data?.message ||
                   'Ya tenés un turno pendiente en esta especialidad.'
               );
+              setPendingTurno(data?.data?.turno_pendiente || null);
               setDatesError('');
               return;
             }
@@ -212,6 +230,7 @@ export default function PatientBookingForm({
                   'La atención seleccionada no cuenta con cupos disponibles para las fechas habilitadas.'
               );
               setPendingConflict(null);
+              setPendingTurno(null);
               return;
             }
 
@@ -220,11 +239,13 @@ export default function PatientBookingForm({
                 'No pudimos conectar con el servidor. Verificá tu conexión a internet.'
               );
               setPendingConflict(null);
+              setPendingTurno(null);
               return;
             }
           }
 
           setPendingConflict(null);
+          setPendingTurno(null);
           setDatesError(authError(cause));
         }
       })
@@ -275,28 +296,70 @@ export default function PatientBookingForm({
         </p>
       )}
 
-      {/* Alerta clara y orientadora si ya tiene un turno pendiente en esta especialidad */}
+      {/* Alerta clara y orientadora si ya tiene un turno pendiente */}
       {pendingConflict && (
         <div
           className="alert alert-warning border border-warning-subtle rounded-3 p-3 mb-3 shadow-sm"
           role="status"
         >
           <div className="d-flex align-items-start gap-3">
-            <i className="bi bi-info-circle-fill text-warning flex-shrink-0 fs-5 mt-0" aria-hidden="true" />
+            <i className="bi bi-clock-history text-warning flex-shrink-0 fs-5 mt-0" aria-hidden="true" />
             <div className="flex-grow-1">
               <strong className="d-block text-dark mb-1">
-                Turno pendiente en esta especialidad
+                Ya tenés un turno pendiente
               </strong>
               <p className="mb-2 text-secondary small">
-                {pendingConflict} Podrás reservar un nuevo turno una vez completado o cancelado el turno actual.
+                Actualmente tenés un turno en espera. Primero debés resolver ese turno antes de solicitar uno nuevo.
               </p>
+              {pendingTurno && (
+                <div className="bg-white rounded-2 p-2.5 border border-warning-subtle small mb-3">
+                  <div className="row g-2">
+                    {pendingTurno.fecha && (
+                      <div className="col-sm-6">
+                        <span className="text-muted">Fecha: </span>
+                        <strong className="text-dark">{pendingTurno.fecha}</strong>
+                      </div>
+                    )}
+                    {pendingTurno.hora && (
+                      <div className="col-sm-6">
+                        <span className="text-muted">Hora: </span>
+                        <strong className="text-dark">{pendingTurno.hora} hs</strong>
+                      </div>
+                    )}
+                    {pendingTurno.especialidad && (
+                      <div className="col-sm-6">
+                        <span className="text-muted">Especialidad: </span>
+                        <strong className="text-dark">{pendingTurno.especialidad}</strong>
+                      </div>
+                    )}
+                    {pendingTurno.profesional && (
+                      <div className="col-sm-6">
+                        <span className="text-muted">Profesional: </span>
+                        <strong className="text-dark">{pendingTurno.profesional}</strong>
+                      </div>
+                    )}
+                    {pendingTurno.salita && (
+                      <div className="col-sm-6">
+                        <span className="text-muted">Salita: </span>
+                        <strong className="text-dark">{pendingTurno.salita}</strong>
+                      </div>
+                    )}
+                    {pendingTurno.estado && (
+                      <div className="col-sm-6">
+                        <span className="text-muted">Estado: </span>
+                        <span className="badge bg-warning text-dark">{pendingTurno.estado}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="d-flex flex-wrap gap-2 mt-2">
                 <Link
-                  to={patientId ? `/mis-turnos?paciente=${patientId}` : '/mis-turnos'}
-                  className="btn btn-sm btn-outline-dark d-inline-flex align-items-center gap-1 text-nowrap"
+                  to={pendingTurno?.id_turno ? `/mis-turnos/${pendingTurno.id_turno}` : (patientId ? `/mis-turnos?paciente=${patientId}` : '/mis-turnos')}
+                  className="btn btn-sm btn-dark d-inline-flex align-items-center gap-1 text-nowrap"
                 >
                   <i className="bi bi-calendar-check" aria-hidden="true" />
-                  <span>Ver mis turnos</span>
+                  <span>Ir a Mis turnos</span>
                 </Link>
                 <button
                   type="button"
@@ -305,6 +368,7 @@ export default function PatientBookingForm({
                     setSpecialty('');
                     setProfessional('');
                     setPendingConflict(null);
+                    setPendingTurno(null);
                   }}
                 >
                   <i className="bi bi-arrow-repeat" aria-hidden="true" />
@@ -471,15 +535,31 @@ export default function PatientBookingForm({
             </div>
           )}
 
-          {/* Informa cuando no quedan fechas disponibles. */}
+          {/* Informa cuando no quedan fechas disponibles en la ventana actual. */}
           {professional &&
             !loadingDates &&
             !datesError &&
             !dates.length && (
-              <p>
-                No quedan turnos disponibles para esta
-                atención en el período habilitado.
-              </p>
+              <div
+                className="alert alert-info border-info-subtle mt-3 p-3 rounded-3 shadow-sm"
+                role="status"
+              >
+                <div className="d-flex align-items-start gap-2">
+                  <i
+                    className="bi bi-calendar-event text-info-emphasis fs-5 flex-shrink-0 mt-0.5"
+                    aria-hidden="true"
+                  />
+                  <div>
+                    <strong className="d-block text-dark mb-1">
+                      Sin turnos disponibles en el período habilitado
+                    </strong>
+                    <p className="small mb-0 text-secondary">
+                      {proximaDisponibilidad?.mensaje ||
+                        'No quedan turnos disponibles para esta atención en la ventana de reservas actual. Los turnos de la próxima semana se habilitarán el sábado a las 12:00 hs.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
             )}
         </fieldset>
       )}

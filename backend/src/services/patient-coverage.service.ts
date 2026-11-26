@@ -1,3 +1,4 @@
+import { supabase } from '../config/supabase.js';
 import {
   getOwnEntity,
 } from './auth-profile.service.js';
@@ -197,4 +198,78 @@ export const assertOwnCoverage = async (
   }
 
   return patient;
+};
+
+// ========================================
+// CONTROL TERRITORIAL DE ALCANCE Y COBERTURA
+// ========================================
+
+/**
+ * Valida de forma estricta que una salita posea cobertura territorial activa sobre un barrio.
+ * Valida también que el barrio esté activo y que, si se especifica zona, coincida con la zona del barrio.
+ */
+export const assertTerritorialCoverage = async (
+  idSalita: string,
+  idBarrio: string,
+  idZona?: string | null
+) => {
+  const today = agendaDateTime(new Date()).date;
+
+  const { data: cobertura, error } = await supabase
+    .from('salita_barrios')
+    .select(`
+      id_salita,
+      id_barrio,
+      activo,
+      fecha_desde,
+      fecha_hasta,
+      barrio:barrios!inner(
+        id_barrio,
+        id_zona,
+        nombre,
+        activo,
+        zona:zonas!inner(
+          id_zona,
+          nombre,
+          activo
+        )
+      )
+    `)
+    .eq('id_salita', idSalita)
+    .eq('id_barrio', idBarrio)
+    .eq('activo', true)
+    .lte('fecha_desde', today)
+    .or(`fecha_hasta.is.null,fecha_hasta.gte.${today}`)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  if (!cobertura) {
+    throw new AppError(
+      'La salita asignada no tiene cobertura sobre el barrio seleccionado',
+      400
+    );
+  }
+
+  const barrio = cobertura.barrio as any;
+  if (!barrio || !barrio.activo) {
+    throw new AppError('El barrio seleccionado no es válido o está inactivo', 400);
+  }
+
+  if (!barrio.zona || !barrio.zona.activo) {
+    throw new AppError('La zona del barrio seleccionado no está activa', 400);
+  }
+
+  if (idZona && String(idZona).trim() !== '' && barrio.id_zona !== idZona) {
+    throw new AppError(
+      'El barrio seleccionado no corresponde a la zona indicada',
+      400
+    );
+  }
+
+  return {
+    cobertura,
+    barrio,
+    zona: barrio.zona,
+  };
 };

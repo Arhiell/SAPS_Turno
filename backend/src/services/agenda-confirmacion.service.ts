@@ -55,10 +55,9 @@ export const confirmAgendaProposal = async (
           horario.duracion_turno_minutos * 60000
       ).toISOString();
 
-      // Valida que el destino resuelva el cambio de agenda.
+      // Valida que el horario destino no sea en el pasado y resuelva el cambio de agenda.
       if (
-        Date.parse(item.fecha_hora_inicio) <
-          Date.parse(original.fecha_hora_fin) ||
+        Date.parse(item.fecha_hora_inicio) <= Date.now() ||
         !destinationAllowed(
           input.cambio,
           item.id_horario,
@@ -67,7 +66,7 @@ export const confirmAgendaProposal = async (
         )
       ) {
         throw new AppError(
-          'El destino no resuelve el cambio de agenda solicitado',
+          'El destino no resuelve el cambio de agenda solicitado o ya transcurrió',
           409
         );
       }

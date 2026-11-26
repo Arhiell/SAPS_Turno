@@ -8,7 +8,9 @@ import {
   getSalitaById,
   createSalita,
   updateSalita,
-  deleteSalita
+  deleteSalita,
+  getAdminCoberturaTerritorial,
+  getSalitaCoberturaTerritorial,
 } from "../controllers/salita.controller.js";
 
 const router = Router();
@@ -19,6 +21,18 @@ router.get(
   authenticate,
   requireRole("SUPER_ADMIN", "ADMIN_SALITA", "RECEPCION"),
   getAdminSalitas
+);
+router.get(
+  "/cobertura-territorial",
+  authenticate,
+  requireRole("SUPER_ADMIN", "ADMIN_SALITA", "RECEPCION"),
+  getAdminCoberturaTerritorial
+);
+router.get(
+  "/:id/cobertura-territorial",
+  authenticate,
+  requireRole("SUPER_ADMIN", "ADMIN_SALITA", "RECEPCION"),
+  getSalitaCoberturaTerritorial
 );
 router.get("/:id", getSalitaById);
 router.post("/", authenticate, requireRole("SUPER_ADMIN"), createSalita);

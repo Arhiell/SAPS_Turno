@@ -90,6 +90,16 @@ export const turnoQuerySchema = z
     estado:
       turnoEstadoSchema.optional(),
 
+    // Filtra por clasificación de cancelación.
+    tipo_cancelacion: z
+      .enum(['ANTICIPADA', 'TARDIA', 'ADMINISTRATIVA'])
+      .optional(),
+
+    // Filtra por turnos rectificados.
+    rectificado: z
+      .enum(['true', 'false'])
+      .optional(),
+
     // Configuración de paginación.
     search: z.string().trim().max(150).optional(),
 

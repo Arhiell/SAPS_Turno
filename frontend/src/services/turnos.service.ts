@@ -179,6 +179,13 @@ export interface PatientAvailableDates {
     hasta: string;
     proxima_apertura: string;
   };
+  proxima_disponibilidad?: {
+    dias_atencion: number[];
+    dias_atencion_nombres: string[];
+    proxima_fecha?: string;
+    proxima_apertura: string;
+    mensaje: string;
+  } | null;
 }
 
 // Obtiene las fechas disponibles para el paciente.

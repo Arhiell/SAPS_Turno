@@ -5,7 +5,7 @@ import { getTurnos, changeTurnoStatus } from '../../services/turnos.service';
 import { getProfessionals } from '../../services/profesionales.service';
 import { useAgendaSocket } from '../../context/AgendaSocketContext';
 import ConnectionStatusBadge from '../../components/ui/ConnectionStatusBadge';
-import { FloatingFeedbackToast } from '../../components/ui/FormFeedback';
+import { FloatingFeedbackToast, type ToastContext } from '../../components/ui/FormFeedback';
 import { useAutoDismiss } from '../../utils/useAutoDismiss';
 import { getEstadoClass } from '../../utils/turno-status';
 import type { Salita } from '../../types/salita.types';
@@ -37,6 +37,7 @@ export default function RecepcionOverview({
   const [filterSearch, setFilterSearch] = useState('');
   const [filterProf, setFilterProf] = useState('');
   const [filterEstado, setFilterEstado] = useState<'TODOS' | 'POR_LLEGAR' | 'EN_ESPERA' | 'ATENDIDOS'>('TODOS');
+  const [toastContext, setToastContext] = useState<ToastContext | undefined>(undefined);
 
   useAutoDismiss(success, () => setSuccess(''), 15000);
   useAutoDismiss(error, () => setError(''), 15000);
@@ -142,6 +143,12 @@ export default function RecepcionOverview({
     setActionBusy(turno.id_turno);
     setError('');
     setSuccess('');
+    setToastContext({
+      id_turno: turno.id_turno,
+      id_paciente: turno.id_paciente,
+      estado: 'EN_ESPERA',
+      paciente: turno.paciente?.persona?.apellidos,
+    });
 
     // Actualización optimista inmediata para cero latencia visual en ventanilla
     setTurnos((prev) =>
@@ -219,9 +226,11 @@ export default function RecepcionOverview({
         <FloatingFeedbackToast
           message={error || success}
           variant={error ? 'error' : 'success'}
+          context={toastContext}
           onDismiss={() => {
             setError('');
             setSuccess('');
+            setToastContext(undefined);
           }}
         />
       )}

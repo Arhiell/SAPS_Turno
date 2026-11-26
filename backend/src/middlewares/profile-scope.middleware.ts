@@ -19,6 +19,10 @@ import {
 } from '../repositories/patient-read.repository.js';
 
 import {
+  assertTerritorialCoverage,
+} from '../services/patient-coverage.service.js';
+
+import {
   AppError,
 } from '../utils/app-error.js';
 
@@ -54,17 +58,17 @@ export const patientScope = async (
     }
 
     // Si existe un alcance limitado, valida al paciente.
-    if (scope !== null) {
-      const patient = req.params.id
-        ? await findPatientById(
-            String(req.params.id)
+    const patient = req.params.id
+      ? await findPatientById(
+          String(req.params.id)
+        )
+      : req.params.dni
+        ? await findPatientDetailsByDni(
+            String(req.params.dni)
           )
-        : req.params.dni
-          ? await findPatientDetailsByDni(
-              String(req.params.dni)
-            )
-          : null;
+        : null;
 
+    if (scope !== null) {
       // Verifica que la salita del paciente esté permitida.
       if (patient) {
         assertTurnoScope(
@@ -81,6 +85,25 @@ export const patientScope = async (
         throw new AppError(
           'Indicá la salita asignada',
           400
+        );
+      }
+    }
+
+    // Validación estricta de cobertura territorial (aplica a todos los roles, incluido SUPER_ADMIN)
+    if (req.method === 'POST' && req.body?.id_salita_asignada && req.body?.id_barrio) {
+      await assertTerritorialCoverage(
+        req.body.id_salita_asignada,
+        req.body.id_barrio,
+        req.body.id_zona
+      );
+    } else if (req.method === 'PATCH' && (req.body?.id_salita_asignada || req.body?.id_barrio)) {
+      const targetSalita = req.body?.id_salita_asignada || patient?.id_salita_asignada;
+      const targetBarrio = req.body?.id_barrio || patient?.id_barrio;
+      if (targetSalita && targetBarrio) {
+        await assertTerritorialCoverage(
+          targetSalita,
+          targetBarrio,
+          req.body.id_zona
         );
       }
     }

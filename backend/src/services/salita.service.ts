@@ -2,6 +2,10 @@ import {
   canViewAccount,
 } from '../repositories/account-display.select.js';
 
+import { supabase } from '../config/supabase.js';
+import { agendaDateTime } from '../utils/turno-time.js';
+import { AppError } from '../utils/app-error.js';
+
 export { 
   publicSalitas as getPublicSalitas 
 } from '../repositories/public-salitas.repository.js';
@@ -155,4 +159,260 @@ export const eliminarSalita = async (
   }
 
   return deleted;
+};
+
+// ========================================
+// COBERTURA TERRITORIAL PARA GESTIÓN DE PACIENTES
+// ========================================
+
+/**
+ * Obtiene la cobertura territorial autorizada para una salita específica.
+ * Devuelve únicamente las zonas y barrios que dicha salita cubre activamente.
+ */
+export const getCoberturaTerritorialSalita = async (idSalita: string) => {
+  const today = agendaDateTime(new Date()).date;
+
+  const { data: salita, error: salitaError } = await supabase
+    .from('salitas')
+    .select('id_salita, codigo, nombre, direccion, id_barrio, activo')
+    .eq('id_salita', idSalita)
+    .single();
+
+  if (salitaError || !salita) {
+    throw new AppError('Salita no encontrada', 404);
+  }
+
+  const { data: coberturas, error: cobError } = await supabase
+    .from('salita_barrios')
+    .select(`
+      id_salita,
+      id_barrio,
+      es_barrio_sede,
+      activo,
+      fecha_desde,
+      fecha_hasta,
+      barrio:barrios!inner(
+        id_barrio,
+        id_zona,
+        nombre,
+        codigo_postal,
+        activo,
+        zona:zonas!inner(
+          id_zona,
+          nombre,
+          activo
+        )
+      )
+    `)
+    .eq('id_salita', idSalita)
+    .eq('activo', true)
+    .lte('fecha_desde', today)
+    .or(`fecha_hasta.is.null,fecha_hasta.gte.${today}`);
+
+  if (cobError) throw cobError;
+
+  const zonasMap = new Map<string, { id_zona: string; nombre: string; activo: boolean }>();
+  const barriosList: Array<{
+    id_barrio: string;
+    id_zona: string;
+    nombre: string;
+    codigo_postal?: string | null;
+    es_barrio_sede: boolean;
+    activo: boolean;
+  }> = [];
+
+  for (const c of coberturas || []) {
+    const b = c.barrio as any;
+    if (b && b.activo && b.zona && b.zona.activo) {
+      if (!zonasMap.has(b.id_zona)) {
+        zonasMap.set(b.id_zona, {
+          id_zona: b.zona.id_zona,
+          nombre: b.zona.nombre,
+          activo: true,
+        });
+      }
+      barriosList.push({
+        id_barrio: b.id_barrio,
+        id_zona: b.id_zona,
+        nombre: b.nombre,
+        codigo_postal: b.codigo_postal,
+        es_barrio_sede: Boolean(c.es_barrio_sede),
+        activo: true,
+      });
+    }
+  }
+
+  const zonasList = Array.from(zonasMap.values()).sort((a, b) =>
+    a.nombre.localeCompare(b.nombre, 'es-AR')
+  );
+
+  barriosList.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es-AR'));
+
+  return {
+    salita,
+    salitas: [salita],
+    zonas: zonasList,
+    barrios: barriosList,
+    coberturas: (coberturas || []).map((c) => ({
+      id_salita: c.id_salita,
+      id_barrio: c.id_barrio,
+      es_barrio_sede: Boolean(c.es_barrio_sede),
+      activo: Boolean(c.activo),
+      fecha_desde: c.fecha_desde,
+      fecha_hasta: c.fecha_hasta,
+    })),
+  };
+};
+
+/**
+ * Obtiene la cobertura combinada para múltiples salitas autorizadas (e.g. RECEPCION).
+ */
+export const getCoberturaTerritorialSalitas = async (idsSalitas: string[]) => {
+  const today = agendaDateTime(new Date()).date;
+
+  const { data: salitas, error: salitasError } = await supabase
+    .from('salitas')
+    .select('id_salita, codigo, nombre, direccion, id_barrio, activo')
+    .in('id_salita', idsSalitas)
+    .eq('activo', true)
+    .order('nombre', { ascending: true });
+
+  if (salitasError) throw salitasError;
+
+  const { data: coberturas, error: cobError } = await supabase
+    .from('salita_barrios')
+    .select(`
+      id_salita,
+      id_barrio,
+      es_barrio_sede,
+      activo,
+      fecha_desde,
+      fecha_hasta,
+      barrio:barrios!inner(
+        id_barrio,
+        id_zona,
+        nombre,
+        codigo_postal,
+        activo,
+        zona:zonas!inner(
+          id_zona,
+          nombre,
+          activo
+        )
+      )
+    `)
+    .in('id_salita', idsSalitas)
+    .eq('activo', true)
+    .lte('fecha_desde', today)
+    .or(`fecha_hasta.is.null,fecha_hasta.gte.${today}`);
+
+  if (cobError) throw cobError;
+
+  const zonasMap = new Map<string, { id_zona: string; nombre: string; activo: boolean }>();
+  const barriosMap = new Map<
+    string,
+    {
+      id_barrio: string;
+      id_zona: string;
+      nombre: string;
+      codigo_postal?: string | null;
+      es_barrio_sede: boolean;
+      activo: boolean;
+    }
+  >();
+
+  for (const c of coberturas || []) {
+    const b = c.barrio as any;
+    if (b && b.activo && b.zona && b.zona.activo) {
+      if (!zonasMap.has(b.id_zona)) {
+        zonasMap.set(b.id_zona, {
+          id_zona: b.zona.id_zona,
+          nombre: b.zona.nombre,
+          activo: true,
+        });
+      }
+      if (!barriosMap.has(b.id_barrio)) {
+        barriosMap.set(b.id_barrio, {
+          id_barrio: b.id_barrio,
+          id_zona: b.id_zona,
+          nombre: b.nombre,
+          codigo_postal: b.codigo_postal,
+          es_barrio_sede: Boolean(c.es_barrio_sede),
+          activo: true,
+        });
+      }
+    }
+  }
+
+  const zonasList = Array.from(zonasMap.values()).sort((a, b) =>
+    a.nombre.localeCompare(b.nombre, 'es-AR')
+  );
+
+  const barriosList = Array.from(barriosMap.values()).sort((a, b) =>
+    a.nombre.localeCompare(b.nombre, 'es-AR')
+  );
+
+  return {
+    salitas: salitas || [],
+    zonas: zonasList,
+    barrios: barriosList,
+    coberturas: (coberturas || []).map((c) => ({
+      id_salita: c.id_salita,
+      id_barrio: c.id_barrio,
+      es_barrio_sede: Boolean(c.es_barrio_sede),
+      activo: Boolean(c.activo),
+      fecha_desde: c.fecha_desde,
+      fecha_hasta: c.fecha_hasta,
+    })),
+  };
+};
+
+/**
+ * Cobertura territorial global (para SUPER_ADMIN).
+ */
+export const getCoberturaTerritorialGlobal = async () => {
+  const today = agendaDateTime(new Date()).date;
+
+  const [salitasRes, zonasRes, barriosRes, cobRes] = await Promise.all([
+    supabase
+      .from('salitas')
+      .select('id_salita, codigo, nombre, direccion, id_barrio, activo')
+      .eq('activo', true)
+      .order('nombre', { ascending: true }),
+    supabase
+      .from('zonas')
+      .select('id_zona, nombre, descripcion, activo')
+      .eq('activo', true)
+      .order('nombre', { ascending: true }),
+    supabase
+      .from('barrios')
+      .select('id_barrio, id_zona, nombre, codigo_postal, activo')
+      .eq('activo', true)
+      .order('nombre', { ascending: true }),
+    supabase
+      .from('salita_barrios')
+      .select('id_salita, id_barrio, es_barrio_sede, activo, fecha_desde, fecha_hasta')
+      .eq('activo', true)
+      .lte('fecha_desde', today)
+      .or(`fecha_hasta.is.null,fecha_hasta.gte.${today}`),
+  ]);
+
+  if (salitasRes.error) throw salitasRes.error;
+  if (zonasRes.error) throw zonasRes.error;
+  if (barriosRes.error) throw barriosRes.error;
+  if (cobRes.error) throw cobRes.error;
+
+  return {
+    salitas: salitasRes.data || [],
+    zonas: zonasRes.data || [],
+    barrios: barriosRes.data || [],
+    coberturas: (cobRes.data || []).map((c) => ({
+      id_salita: c.id_salita,
+      id_barrio: c.id_barrio,
+      es_barrio_sede: Boolean(c.es_barrio_sede),
+      activo: Boolean(c.activo),
+      fecha_desde: c.fecha_desde,
+      fecha_hasta: c.fecha_hasta,
+    })),
+  };
 };

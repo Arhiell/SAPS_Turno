@@ -37,6 +37,10 @@ import {
 } from './person.service.js';
 
 import {
+  assertTerritorialCoverage,
+} from './patient-coverage.service.js';
+
+import {
   emitirCambioPaciente,
 } from './socket.service.js';
 
@@ -78,14 +82,17 @@ export const registerPatient = async (
     throw duplicatePatient();
   }
 
+  // Valida y crea el perfil del paciente.
+  const parsedProfile = patientProfileSchema.parse(parts.patient);
+  await assertTerritorialCoverage(
+    parsedProfile.id_salita_asignada,
+    parsedProfile.id_barrio
+  );
+
   try {
-    // Valida y crea el perfil del paciente.
     const created = await createPatient({
-      ...patientProfileSchema.parse(
-        parts.patient
-      ),
-      id_persona:
-        person.id_persona,
+      ...parsedProfile,
+      id_persona: person.id_persona,
     });
 
     try {

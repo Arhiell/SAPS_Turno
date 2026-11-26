@@ -329,7 +329,7 @@ export default function PatientAppointmentDetailPage() {
                   <div>
                     <strong className="d-block text-dark">Inasistencia registrada en este turno</strong>
                     <span className="small text-secondary">
-                      Si tuviste un motivo justificado (reposo médico, guardia médica o fuerza mayor), podés presentar tu justificación para que la salita revise el caso.
+                      Si tuviste un motivo justificado, podés presentar una solicitud de justificación explicando lo sucedido y adjuntando documentación respaldatoria si corresponde.
                     </span>
                   </div>
                 </div>

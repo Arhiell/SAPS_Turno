@@ -23,6 +23,7 @@ import { AppError } from '../utils/app-error.js';
 import type { CreateTurnoInput } from '../validators/turno.validator.js';
 import { findCierres } from '../repositories/cierre-calendario.repository.js';
 import { cierreAfecta } from '../utils/cierre-calendario.js';
+import { formatProfesionalNombre } from '../utils/profesional-format.js';
 
 type Horario = NonNullable<
   Awaited<ReturnType<typeof getHorarioById>>
@@ -190,17 +191,35 @@ export const validateTurnoAgenda = async (
   }
 
   // Impide tener otro turno abierto de la misma especialidad.
-  if (
-    await findOpenTurno(
-      input.id_paciente,
-      input.id_especialidad,
-      exclude
-    )
-  ) {
+  const openTurno = await findOpenTurno(
+    input.id_paciente,
+    input.id_especialidad,
+    exclude
+  );
+
+  if (openTurno) {
+    const raw = openTurno as Record<string, any>;
+    const fechaHora = raw.fecha_hora_inicio ? agendaDateTime(raw.fecha_hora_inicio) : null;
+    const profesionalNombre = raw.profesional
+      ? formatProfesionalNombre(raw.profesional)
+      : undefined;
+
     throw new AppError(
-      'El paciente ya posee un turno abierto para esa especialidad',
+      'Ya tenés un turno pendiente. Para solicitar otro, primero debés resolver el actual.',
       409,
-      'SPECIALTY_APPOINTMENT_PENDING'
+      'PACIENTE_TURNO_PENDIENTE',
+      {
+        turno_pendiente: {
+          id_turno: raw.id_turno,
+          fecha: fechaHora?.date,
+          hora: fechaHora?.time?.slice(0, 5),
+          especialidad: raw.especialidad?.nombre,
+          profesional: profesionalNombre,
+          salita: raw.salita?.nombre,
+          estado: raw.estado?.nombre || 'En espera',
+          estado_codigo: raw.estado?.codigo || 'EN_ESPERA',
+        },
+      }
     );
   }
 

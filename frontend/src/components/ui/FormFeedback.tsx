@@ -1,4 +1,11 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useAgendaSocket } from '../../context/AgendaSocketContext';
+import {
+  hasEquivalentNotification,
+  type ToastContext,
+} from '../../utils/notification-deduplication';
+
+export type { ToastContext };
 
 interface ActionInlineFeedbackProps {
   variant: 'error' | 'success';
@@ -82,6 +89,7 @@ interface FloatingFeedbackToastProps {
   actionLabel?: string;
   onAction?: () => void;
   onDismiss?: () => void;
+  context?: ToastContext;
 }
 
 const variantStyles: Record<
@@ -120,6 +128,9 @@ const variantStyles: Record<
  * - Radios de 12px, paleta semántica armonizada (verde, rojo, naranja/amarillo, azul).
  * - Botón de cierre ("X") siempre accesible.
  * - Soporta título opcional y acción rápida contextual.
+ * - Deduplicación inteligente: si existe una notificación blanca equivalente activa en el
+ *   panel de notificaciones (o recibida vía WebSocket), suprime el toast verde para ese mismo
+ *   evento y contexto visual, evitando duplicidad en pantalla.
  */
 export function FloatingFeedbackToast({
   variant,
@@ -128,23 +139,60 @@ export function FloatingFeedbackToast({
   actionLabel,
   onAction,
   onDismiss,
+  context,
 }: FloatingFeedbackToastProps) {
+  const { notificaciones, estadoConexion } = useAgendaSocket();
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
+
   const hasMessage = Boolean(message && message.trim());
+  const isSuccess = variant === 'success';
+
+  // Deduplicación contra el panel de notificaciones en tiempo real
+  const hasEquivalent = isSuccess && hasEquivalentNotification(message, notificaciones, context);
+
+  // Si se detecta un evento equivalente activo, se descarta el toast y se limpia el estado
+  useEffect(() => {
+    if (hasEquivalent && onDismissRef.current) {
+      onDismissRef.current();
+    }
+  }, [hasEquivalent]);
+
+  // Micro-pausa de sincronización (100ms) solo para toasts de éxito con WebSocket conectado,
+  // permitiendo que si el evento WebSocket llega inmediatamente tras la respuesta de API,
+  // se suprima el toast verde sin provocar parpadeos visuales.
+  const [readyToRender, setReadyToRender] = useState(() => {
+    if (!isSuccess || estadoConexion !== 'conectado') {
+      return true;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (readyToRender || !isSuccess) return;
+    const timer = window.setTimeout(() => {
+      setReadyToRender(true);
+    }, 100);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [readyToRender, isSuccess]);
 
   // Garantiza auto-cierre estricto a los 15 segundos para no quedar flotando
   useEffect(() => {
-    if (!hasMessage || !onDismiss) return;
+    if (!hasMessage || !onDismissRef.current) return;
     const timer = window.setTimeout(() => {
-      onDismiss();
+      onDismissRef.current?.();
     }, 15_000);
 
     return () => {
       window.clearTimeout(timer);
     };
-  }, [hasMessage, onDismiss]);
+  }, [hasMessage]);
 
-  // Si no hay mensaje real, nunca renderizar un cartel flotante vacío
-  if (!hasMessage) {
+  // Si no hay mensaje, si hay notificación blanca equivalente o si aguarda sync inicial, no renderizar
+  if (!hasMessage || hasEquivalent || !readyToRender) {
     return null;
   }
 

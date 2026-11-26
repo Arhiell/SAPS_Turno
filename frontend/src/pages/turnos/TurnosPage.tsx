@@ -8,7 +8,7 @@ import {
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAgendaSocket } from '../../context/AgendaSocketContext';
 import ConnectionStatusBadge from '../../components/ui/ConnectionStatusBadge';
-import { FloatingFeedbackToast } from '../../components/ui/FormFeedback';
+import { FloatingFeedbackToast, type ToastContext } from '../../components/ui/FormFeedback';
 import PaginationControls from '../../components/ui/PaginationControls';
 import { useAutoDismiss } from '../../utils/useAutoDismiss';
 
@@ -165,6 +165,7 @@ const TurnosPage = () => {
   const [loadingFilters, setLoadingFilters] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [toastContext, setToastContext] = useState<ToastContext | undefined>(undefined);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   const { ultimoEvento, resyncTick } = useAgendaSocket();
@@ -344,6 +345,11 @@ const TurnosPage = () => {
     try {
       setActionLoadingId(turnoId);
       setError('');
+      setToastContext({
+        id_turno: turnoId,
+        estado: 'EN_ESPERA',
+        paciente: pacienteNombre,
+      });
 
       // Actualización optimista inmediata
       setTurnos((prev) =>
@@ -417,9 +423,11 @@ const TurnosPage = () => {
         <FloatingFeedbackToast
           message={message || error}
           variant={error ? 'error' : 'success'}
+          context={toastContext}
           onDismiss={() => {
             setMessage('');
             setError('');
+            setToastContext(undefined);
           }}
         />
       )}

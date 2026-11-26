@@ -196,6 +196,17 @@ const NuevoTurnoPage = () => {
   const [error, setError] =
     useState('');
 
+  const [turnoPendiente, setTurnoPendiente] = useState<{
+    id_turno?: string;
+    fecha?: string;
+    hora?: string;
+    especialidad?: string;
+    profesional?: string;
+    salita?: string;
+    estado?: string;
+    estado_codigo?: string;
+  } | null>(null);
+
   const [message, setMessage] =
     useState('');
 
@@ -477,10 +488,26 @@ const NuevoTurnoPage = () => {
         }, 500);
       } catch (error) {
         console.error(error);
+        const err = error as any;
+        const errCode = err?.response?.data?.code;
+        const errMsg = err?.response?.data?.message;
+        const pendienteData = err?.response?.data?.data?.turno_pendiente;
 
-        setError(
-          'No se pudo crear el turno. El horario puede haber sido ocupado o no cumplir las reglas de agenda.',
-        );
+        if (errCode === 'PACIENTE_TURNO_PENDIENTE' || pendienteData) {
+          setTurnoPendiente(pendienteData || null);
+          setError(
+            errMsg ||
+              'Ya tenés un turno pendiente. Para solicitar otro, primero debés resolver el actual.'
+          );
+        } else if (errMsg) {
+          setTurnoPendiente(null);
+          setError(errMsg);
+        } else {
+          setTurnoPendiente(null);
+          setError(
+            'No se pudo crear el turno. El horario puede haber sido ocupado o no cumplir las reglas de agenda.'
+          );
+        }
       } finally {
         setSaving(false);
       }
@@ -1011,7 +1038,41 @@ const NuevoTurnoPage = () => {
               </div>
 
               <div className="card-footer bg-white border-0 d-flex flex-column gap-2">
-                {error && (
+                {turnoPendiente && (
+                  <div className="alert alert-warning border border-warning-subtle shadow-sm p-3 mb-2 rounded-3 text-start" role="alert">
+                    <div className="d-flex align-items-start gap-2">
+                      <i className="bi bi-clock-history text-warning fs-5 mt-0.5 flex-shrink-0" />
+                      <div className="flex-grow-1">
+                        <strong className="d-block text-dark mb-1">Ya tenés un turno pendiente</strong>
+                        <p className="text-secondary small mb-2">
+                          Actualmente tenés un turno en espera. Primero debés resolver ese turno antes de solicitar uno nuevo.
+                        </p>
+                        <div className="bg-white rounded-2 p-2.5 border border-warning-subtle small mb-2">
+                          {turnoPendiente.fecha && <div><span className="text-muted">Fecha: </span><strong>{turnoPendiente.fecha}</strong></div>}
+                          {turnoPendiente.hora && <div><span className="text-muted">Hora: </span><strong>{turnoPendiente.hora} hs</strong></div>}
+                          {turnoPendiente.especialidad && <div><span className="text-muted">Especialidad: </span><strong>{turnoPendiente.especialidad}</strong></div>}
+                          {turnoPendiente.profesional && <div><span className="text-muted">Profesional: </span><strong>{turnoPendiente.profesional}</strong></div>}
+                          {turnoPendiente.salita && <div><span className="text-muted">Salita: </span><strong>{turnoPendiente.salita}</strong></div>}
+                          {turnoPendiente.estado && (
+                            <div className="mt-1">
+                              <span className="text-muted">Estado: </span>
+                              <span className="badge bg-warning text-dark">{turnoPendiente.estado}</span>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-dark d-inline-flex align-items-center gap-1"
+                          onClick={() => navigate(turnoPendiente.id_turno ? `/turnos/${turnoPendiente.id_turno}` : '/turnos')}
+                        >
+                          <i className="bi bi-calendar-check" />
+                          Consultar turno pendiente
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {error && !turnoPendiente && (
                   <ActionInlineFeedback
                     variant="error"
                     message={error}

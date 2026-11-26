@@ -86,5 +86,11 @@ export type AgendaConfirmation = z.infer<typeof agendaConfirmSchema>;
 export const agendaAvailabilitySchema = z.object({
   cambio: agendaChangeSchema,
   id_turno: z.string().uuid(),
-  fecha: z.string().date(),
-}).strict();
+  fecha: z.string().date().optional(),
+  dias: z.number().int().min(1).max(90).optional(),
+}).strict().refine(
+  (data) => data.fecha !== undefined || data.dias !== undefined,
+  {
+    message: 'Debe especificarse una fecha o una cantidad de días de búsqueda',
+  }
+);

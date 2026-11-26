@@ -13,7 +13,12 @@ import { getAgendaAvailability } from '../services/agenda-disponibilidad.service
 
 export const agendaAvailabilityController: RequestHandler = async (req, res) => {
   const input = agendaAvailabilitySchema.parse(req.body);
-  res.json(await getAgendaAvailability(input.cambio, input.id_turno, input.fecha, req.user!));
+  res.json(await getAgendaAvailability(
+    input.cambio,
+    input.id_turno,
+    { fecha: input.fecha, dias: input.dias },
+    req.user!
+  ));
 };
 
 // Obtiene los turnos afectados por un cambio de agenda.

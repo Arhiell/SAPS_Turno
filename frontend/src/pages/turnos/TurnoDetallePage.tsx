@@ -258,10 +258,22 @@ const TurnoDetallePage = () => {
         await loadTurno();
       } catch (error) {
         console.error(error);
+        const err = error as any;
+        const errCode = err?.response?.data?.code;
+        const errMsg = err?.response?.data?.message;
 
-        setError(
-          'No se pudo actualizar el estado del turno.',
-        );
+        if (errCode === 'TURNO_AUN_NO_INASISTIBLE') {
+          setError(
+            errMsg ||
+              'Todavía no se puede registrar la inasistencia. El horario asignado para este turno todavía no ha finalizado. Podrás registrar la inasistencia una vez que haya terminado el horario de atención correspondiente.'
+          );
+        } else if (errMsg) {
+          setError(errMsg);
+        } else {
+          setError(
+            'No se pudo actualizar el estado del turno.',
+          );
+        }
       } finally {
         setChangingStatus(
           false,
@@ -376,6 +388,7 @@ const TurnoDetallePage = () => {
         <FloatingFeedbackToast
           message={message || error}
           variant={error ? 'error' : 'success'}
+          context={id ? { id_turno: id } : undefined}
           onDismiss={() => {
             setMessage('');
             setError('');
@@ -430,13 +443,17 @@ const TurnoDetallePage = () => {
             <div className="text-muted small mt-1">
               {dt.fechaCorta} — {dt.horaInicio} · <span className="font-monospace">Ref. #{shortRef}</span>
             </div>
+            {error && <div className="alert alert-danger mb-0 mt-2" role="alert">{error}</div>}
           </>
         }
         confirmText={statusModalInfo.confirmText}
         variant={statusModalInfo.variant}
         icon={statusModalInfo.icon}
         loading={changingStatus}
-        onClose={() => setStatusTarget(null)}
+        onClose={() => {
+          setStatusTarget(null);
+          setError('');
+        }}
         onConfirm={() => void confirmStatusChange()}
       />
 

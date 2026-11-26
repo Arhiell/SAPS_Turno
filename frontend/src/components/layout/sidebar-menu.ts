@@ -65,6 +65,12 @@ export const configuracionOperativaSubItems: SidebarMenuItem[] = [
 // Opciones de administración avanzada del sistema
 export const administracionSubItems: SidebarMenuItem[] = [
   {
+    label: 'Gestión de inasistencias',
+    path: '/administracion/gestion-inasistencias',
+    icon: 'bi-calendar-x',
+    roles: ['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION'],
+  },
+  {
     label: 'Cuentas de acceso',
     path: '/administracion',
     icon: 'bi-person-lock',

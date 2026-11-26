@@ -16,20 +16,29 @@ import ValidatedInput from '../../components/ui/ValidatedInput';
 import { focusFirstInvalidControl } from '../../utils/form-feedback';
 
 import {
-  getBarrios,
-} from '../../services/barrios.service';
+  useAuth,
+} from '../../context/AuthContext';
+
+import {
+  coveredClinics,
+} from '../../context/usePatientCoverage';
 
 import {
   createPatient,
 } from '../../services/patients.service';
 
 import {
-  getAdminSalitas,
+  getCoberturaTerritorial,
 } from '../../services/salitas.service';
 
 import type {
   Barrio,
 } from '../../types/barrio.types';
+
+import type {
+  Zona,
+  Cobertura,
+} from '../../types/configuracion.types';
 
 import type {
   CreatePatientRequest,
@@ -47,6 +56,8 @@ import {
 const NuevoPacientePage = () => {
   const navigate =
     useNavigate();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.rol === 'SUPER_ADMIN';
 
   // Listados disponibles para asignar al paciente.
   const [barrios, setBarrios] =
@@ -54,6 +65,12 @@ const NuevoPacientePage = () => {
 
   const [salitas, setSalitas] =
     useState<Salita[]>([]);
+
+  const [zonas, setZonas] =
+    useState<Zona[]>([]);
+
+  const [coberturas, setCoberturas] =
+    useState<Cobertura[]>([]);
 
   // Estados de carga y guardado.
   const [loading, setLoading] =
@@ -93,70 +110,55 @@ const NuevoPacientePage = () => {
       contacto_emergencia_telefono: '',
     });
 
-  // Carga los barrios y las salitas activas.
+  // Carga los datos de cobertura territorial autorizados para el usuario.
   useEffect(() => {
-    const loadData =
-      async () => {
-        try {
-          setLoading(true);
-          setError('');
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError('');
 
-          const [
-            barriosResponse,
-            salitasResponse,
-          ] = await Promise.all([
-            getBarrios(),
-            getAdminSalitas(),
-          ]);
+        const response = await getCoberturaTerritorial();
+        const {
+          salitas: loadedSalitas,
+          zonas: loadedZonas,
+          barrios: loadedBarrios,
+          coberturas: loadedCoberturas,
+        } = response.data;
 
-          setBarrios(
-            barriosResponse.data.barrios.filter(
-              (barrio) =>
-                barrio.activo
-            )
-          );
+        const activeSalitas = (loadedSalitas || []).filter((salita) => salita.activo !== false);
+        const activeBarrios = (loadedBarrios || []).filter((barrio) => barrio.activo !== false);
+        const activeZonas = (loadedZonas || []).filter((zona) => zona.activo !== false);
 
-          const activeSalitas = salitasResponse.data.filter(
-            (salita) => salita.activo
-          );
-          setSalitas(activeSalitas);
+        setSalitas(activeSalitas);
+        setBarrios(activeBarrios);
+        setZonas(activeZonas);
+        setCoberturas(loadedCoberturas);
 
-          if (activeSalitas.length === 1) {
-            setForm((prev) => ({
-              ...prev,
-              id_salita_asignada: activeSalitas[0].id_salita,
-            }));
-          }
-        } catch (error) {
-          console.error(error);
-
-          setError(
-            'No se pudieron cargar los barrios y las salitas.'
-          );
-        } finally {
-          setLoading(false);
+        // Si el usuario es de salita única (ADMIN_SALITA / RECEPCION asignado), preasignar
+        if (!isSuperAdmin && activeSalitas.length === 1) {
+          setForm((prev) => ({
+            ...prev,
+            id_salita_asignada: activeSalitas[0].id_salita,
+          }));
         }
-      };
+      } catch (error) {
+        console.error(error);
+        setError('No se pudieron cargar los datos de cobertura territorial.');
+      } finally {
+        setLoading(false);
+      }
+    };
 
     void loadData();
-  }, []);
+  }, [isSuperAdmin]);
 
-  // Filtra las salitas según el barrio seleccionado.
-  const salitasDisponibles =
-    useMemo(() => {
-      if (!form.id_barrio) {
-        return [];
-      }
-
-      return salitas.filter(
-        (salita) =>
-          salita.id_barrio ===
-          form.id_barrio
-      );
-    }, [
-      salitas,
-      form.id_barrio,
-    ]);
+  // Filtra las salitas según el barrio seleccionado y cobertura territorial vigente.
+  const salitasDisponibles = useMemo(() => {
+    if (!form.id_barrio) {
+      return salitas;
+    }
+    return coveredClinics(form.id_barrio, salitas, coberturas);
+  }, [salitas, coberturas, form.id_barrio]);
 
   // Actualiza un campo del formulario.
   const handleChange = (
@@ -171,17 +173,31 @@ const NuevoPacientePage = () => {
     );
   };
 
-  // Cambia el barrio y limpia la salita seleccionada.
-  const handleBarrioChange = (
-    value: string
-  ) => {
-    setForm(
-      (current) => ({
+  // Cambia el barrio y actualiza la salita asignada según cobertura y rol.
+  const handleBarrioChange = (value: string) => {
+    setForm((current) => {
+      // Si el usuario es ADMIN_SALITA o RECEPCION con salita fija, preserva su salita
+      if (!isSuperAdmin && salitas.length === 1) {
+        return {
+          ...current,
+          id_barrio: value,
+        };
+      }
+
+      // Si es SUPER_ADMIN o tiene múltiples salitas, evalúa compatibilidad territorial
+      const eligible = value ? coveredClinics(value, salitas, coberturas) : [];
+      const keepsCurrent = eligible.some((s) => s.id_salita === current.id_salita_asignada);
+
+      return {
         ...current,
         id_barrio: value,
-        id_salita_asignada: '',
-      })
-    );
+        id_salita_asignada: keepsCurrent
+          ? current.id_salita_asignada
+          : eligible.length === 1
+            ? eligible[0].id_salita
+            : '',
+      };
+    });
   };
 
   // Normaliza y registra los datos del paciente.
@@ -617,7 +633,7 @@ const NuevoPacientePage = () => {
           <div className="card-header bg-white py-3">
             <h5 className="mb-0 fw-bold">
               <i className="bi bi-hospital me-2 text-success" />
-              Asignación
+              Asignación Territorial
             </h5>
           </div>
 
@@ -625,6 +641,7 @@ const NuevoPacientePage = () => {
             <div className="row g-3">
               <div className="col-md-6">
                 <ZonaBarrioSelect
+                  zonas={zonas}
                   barrios={barrios}
                   value={form.id_barrio}
                   onChange={handleBarrioChange}
@@ -636,43 +653,56 @@ const NuevoPacientePage = () => {
                   Salita asignada *
                 </label>
 
-                <select
-                  className="form-select"
-                  value={
-                    form.id_salita_asignada
-                  }
-                  onChange={(event) =>
-                    handleChange(
-                      'id_salita_asignada',
-                      event.target.value
-                    )
-                  }
-                  disabled={
-                    !form.id_barrio
-                  }
-                  required
-                >
-                  <option value="">
-                    {!form.id_barrio
-                      ? 'Seleccione primero un barrio'
-                      : 'Seleccionar salita'}
-                  </option>
-
-                  {salitasDisponibles.map(
-                    (salita) => (
-                      <option
-                        key={
-                          salita.id_salita
-                        }
-                        value={
-                          salita.id_salita
-                        }
-                      >
-                        {salita.nombre}
+                {!isSuperAdmin && salitas.length === 1 ? (
+                  <div className="p-3 border rounded bg-light d-flex align-items-center">
+                    <i className="bi bi-building-check text-success fs-4 me-3" />
+                    <div>
+                      <div className="fw-semibold text-dark">
+                        {salitas[0]?.nombre || 'Salita asignada'}
+                      </div>
+                      <small className="text-muted">
+                        Asignada automáticamente según el alcance institucional de su usuario
+                      </small>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <select
+                      className="form-select"
+                      value={form.id_salita_asignada}
+                      onChange={(event) =>
+                        handleChange(
+                          'id_salita_asignada',
+                          event.target.value
+                        )
+                      }
+                      disabled={!form.id_barrio}
+                      required
+                    >
+                      <option value="">
+                        {!form.id_barrio
+                          ? 'Seleccione primero un barrio'
+                          : salitasDisponibles.length === 0
+                            ? 'No hay salitas con cobertura para este barrio'
+                            : 'Seleccionar salita'}
                       </option>
-                    )
-                  )}
-                </select>
+
+                      {salitasDisponibles.map((salita) => (
+                        <option
+                          key={salita.id_salita}
+                          value={salita.id_salita}
+                        >
+                          {salita.nombre}
+                        </option>
+                      ))}
+                    </select>
+                    {form.id_barrio && salitasDisponibles.length > 0 && (
+                      <small className="text-muted d-block mt-1">
+                        {salitasDisponibles.length} salita{salitasDisponibles.length === 1 ? '' : 's'} con cobertura en este barrio
+                      </small>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           </div>

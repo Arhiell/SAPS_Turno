@@ -1,12 +1,8 @@
-
-import { useEffect, useRef, useState } from 'react';
-
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-
 import ConfirmationModal from '../ui/ConfirmationModal';
 import AgendaAffectedList from './AgendaAffectedList';
 import AgendaReview from './AgendaReview';
-
 import {
   getAgendaImpact,
   getAgendaProposal,
@@ -16,17 +12,14 @@ import {
   type AgendaProposal,
   type AgendaResult,
 } from '../../services/agenda-impacto.service';
-
 import {
   guardarHorario,
   guardarBloqueo,
 } from '../../services/configuracion.service';
-
 import { authError } from '../../utils/auth-errors';
-import { agendaDate } from '../../utils/agenda-display';
+import { agendaDate, agendaDateTime } from '../../utils/agenda-display';
 import { guardarCierre } from '../../services/cierre-calendario.service';
 
-// Define las propiedades del panel de reprogramación.
 interface Props {
   cambio: AgendaChange;
   onClose: () => void;
@@ -35,7 +28,6 @@ interface Props {
   persistido?: boolean;
 }
 
-// Gestiona los turnos afectados por cambios en la agenda.
 export default function AgendaImpactPanel({
   cambio,
   onClose,
@@ -44,105 +36,87 @@ export default function AgendaImpactPanel({
   persistido = false,
 }: Props) {
   const panelRef = useRef<HTMLElement>(null);
-
   const { user } = useAuth();
 
-  // Verifica los roles autorizados según el tipo de cambio.
   const authorized = (
     cambio.tipo === 'cierre'
       ? ['SUPER_ADMIN', 'ADMIN_SALITA']
       : ['SUPER_ADMIN', 'ADMIN_SALITA', 'RECEPCION']
   ).includes(user?.rol ?? '');
 
-  // Almacena los turnos afectados y sus propuestas.
+  // Flujo guiado en 4 pasos:
+  // 1: Identificación de turnos afectados
+  // 2: Propuestas de reprogramación y alternativas
+  // 3: Resumen y confirmación estructurada
+  // 4: Resultado auditado y notificaciones
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
+
   const [turnos, setTurnos] = useState<AffectedTurno[]>([]);
   const [propuestas, setPropuestas] = useState<AgendaProposal[]>([]);
-
   const [resultados, setResultados] = useState<
-    (AgendaResult & { paciente: string })[]
+    (AgendaResult & { paciente: string; detalleTurno?: string })[]
   >([]);
 
-  // Establece el motivo inicial según el cambio solicitado.
   const [motivo, setMotivo] = useState(
     cambio.tipo === 'cierre'
       ? `Cierre institucional: ${cambio.datos.titulo}`
       : cambio.tipo === 'bloqueo'
-        ? cambio.datos.motivo
-        : 'Cambio de horario de atención.'
+      ? cambio.datos.motivo
+      : 'Cambio de horario de atención.'
   );
 
-  // Controla el período de búsqueda y los estados del panel.
   const [dias, setDias] = useState(30);
   const [busy, setBusy] = useState(false);
-  const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
   const [confirming, setConfirming] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [revision, setRevision] = useState(0);
 
-  // Obtiene las propuestas que tienen un destino seleccionado.
-  const selected = propuestas.filter((p) => p.destino);
+  const selected = useMemo(
+    () => propuestas.filter((p) => p.destino),
+    [propuestas]
+  );
 
-  // Consulta los turnos afectados al cargar o modificar el cambio.
   useEffect(() => {
     panelRef.current?.scrollIntoView({
       behavior: 'smooth',
       block: 'start',
     });
 
-    if (!authorized) {
-      return;
-    }
+    if (!authorized) return;
 
     let active = true;
-
     setBusy(true);
 
     void getAgendaImpact(cambio)
       .then((data) => {
-        if (active) {
-          setTurnos(data.afectados);
-          setReady(true);
-        }
+        if (!active) return;
+        setTurnos(data.afectados);
       })
       .catch((cause) => {
-        if (active) {
-          setError(authError(cause));
-        }
+        if (!active) return;
+        setError(authError(cause));
       })
       .finally(() => {
-        if (active) {
-          setBusy(false);
-        }
+        if (!active) return;
+        setBusy(false);
       });
 
-    // Evita actualizar el estado después de desmontar el componente.
     return () => {
       active = false;
     };
   }, [cambio, authorized]);
 
-  // Actualiza los turnos afectados y limpia las propuestas anteriores.
   const refresh = async () => {
-    setReady(false);
-
     const data = await getAgendaImpact(cambio);
-
     setTurnos(data.afectados);
     setPropuestas([]);
-    setReady(true);
     setRevision((v) => v + 1);
   };
 
-  // Ejecuta acciones asíncronas y centraliza el manejo de errores.
   const run = async (action: () => Promise<void>) => {
-    if (busy) {
-      return;
-    }
-
+    if (busy) return;
     setBusy(true);
     setError('');
-
     try {
       await action();
     } catch (cause) {
@@ -152,33 +126,24 @@ export default function AgendaImpactPanel({
     }
   };
 
-  // Actualiza la propuesta seleccionada para un turno.
   const choose = (p: AgendaProposal) =>
     setPropuestas((values) => [
-      ...values.filter(
-        (v) => v.id_turno !== p.id_turno
-      ),
+      ...values.filter((v) => v.id_turno !== p.id_turno),
       p,
     ]);
 
-  // Impide acceder al panel sin los permisos correspondientes.
   if (!authorized) {
     return (
-      <div className="alert alert-warning">
+      <div className="alert alert-warning" role="alert">
         No tenés permisos para gestionar esta agenda.
       </div>
     );
   }
 
-  // Identifica el tipo y estado del cambio de agenda.
   const absence = cambio.tipo === 'bloqueo';
   const closure = cambio.tipo === 'cierre';
+  const inactive = (absence || closure) && !cambio.datos.activo;
 
-  const inactive =
-    (absence || closure) &&
-    !cambio.datos.activo;
-
-  // Genera la descripción del cambio solicitado.
   const description = closure
     ? `${cambio.datos.titulo}: ${agendaDate(cambio.datos.fecha_inicio)} hasta ${agendaDate(cambio.datos.fecha_fin)} · ${
         cambio.datos.dia_completo
@@ -186,441 +151,595 @@ export default function AgendaImpactPanel({
           : `${cambio.datos.hora_inicio} a ${cambio.datos.hora_fin} cada día`
       }`
     : absence
-      ? `${agendaDate(cambio.datos.fecha)} · ${
-          cambio.datos.dia_completo
-            ? 'Todo el día'
-            : `${cambio.datos.hora_inicio} a ${cambio.datos.hora_fin}`
-        }`
-      : 'Modificación del horario habitual';
+    ? `${agendaDate(cambio.datos.fecha)} · ${
+        cambio.datos.dia_completo
+          ? 'Todo el día'
+          : `${cambio.datos.hora_inicio} a ${cambio.datos.hora_fin}`
+      }`
+    : 'Modificación del horario habitual';
+
+  const executeFinalSave = async () => {
+    // 1. Si hay turnos seleccionados para reprogramar, confirmarlos
+    let confirmResults: (AgendaResult & { paciente: string; detalleTurno?: string })[] = [];
+    if (selected.length > 0) {
+      const data = await confirmAgendaProposal(cambio, motivo.trim(), selected);
+      confirmResults = data.resultados.map((r) => {
+        const t = turnos.find((turn) => turn.id_turno === r.id_turno);
+        return {
+          ...r,
+          paciente: t
+            ? `${t.paciente.persona.apellidos}, ${t.paciente.persona.nombres}`
+            : 'Paciente',
+          detalleTurno: t ? agendaDateTime(t.fecha_hora_inicio) : undefined,
+        };
+      });
+    }
+
+    // 2. Turnos que quedaron pendientes (sin destino asignado)
+    const pendingResults = turnos
+      .filter((t) => !selected.some((s) => s.id_turno === t.id_turno))
+      .map((t) => ({
+        id_turno: t.id_turno,
+        confirmado: false,
+        mensaje: 'Pendiente de reprogramación manual',
+        paciente: `${t.paciente.persona.apellidos}, ${t.paciente.persona.nombres}`,
+        detalleTurno: agendaDateTime(t.fecha_hora_inicio),
+      }));
+
+    setResultados([...confirmResults, ...pendingResults]);
+
+    // 3. Guardar la configuración (bloqueo / horario / cierre) si no está persistido
+    if (!persistido) {
+      if (cambio.tipo === 'horario') {
+        await guardarHorario(cambio.datos, cambio.id);
+      } else if (cambio.tipo === 'cierre') {
+        await guardarCierre(cambio.datos, cambio.id);
+      } else {
+        await guardarBloqueo(cambio.datos, cambio.id);
+      }
+    }
+
+    setConfirming(false);
+    setCurrentStep(4);
+  };
 
   return (
     <section
       ref={panelRef}
-      className="dashboard-panel p-3 mb-4"
-      aria-label="Reprogramación de turnos afectados"
+      className="dashboard-panel p-4 mb-4 border shadow-sm"
+      aria-label="Proceso de reprogramación de turnos afectados"
       aria-busy={busy}
     >
-      {/* Encabezado del panel según el tipo de cambio. */}
-      <h2 className="h5">
-        {inactive
-          ? 'Desactivar ausencia o cierre'
-          : closure
-            ? 'Reprogramación por cierre institucional'
-            : absence
-              ? 'Reprogramación por ausencia o cierre'
-              : 'Reprogramación por cambio de horario'}
-      </h2>
+      {/* Stepper visual de 4 pasos */}
+      <div className="mb-4">
+        <div className="d-flex justify-content-between align-items-center mb-2">
+          <h2 className="h5 mb-0 text-saps fw-bold">
+            <i className="bi bi-diagram-3 me-2" />
+            Gestión y reprogramación de turnos
+          </h2>
+          <span className="badge text-bg-light border text-secondary">
+            Paso {currentStep} de 4
+          </span>
+        </div>
 
-      {/* Información contextual del cambio de agenda. */}
-      {context && (
-        <p className="fw-semibold mb-1 text-break">
-          {context}
-        </p>
-      )}
+        <div className="progress" style={{ height: '6px' }}>
+          <div
+            className="progress-bar bg-saps"
+            role="progressbar"
+            style={{ width: `${(currentStep / 4) * 100}%` }}
+            aria-valuenow={currentStep}
+            aria-valuemin={1}
+            aria-valuemax={4}
+          />
+        </div>
 
-      <p className="mb-1">
-        {description}
-      </p>
+        <div className="d-none d-md-flex justify-content-between mt-2 small text-muted">
+          <span className={currentStep === 1 ? 'fw-bold text-saps' : ''}>
+            1. Turnos afectados
+          </span>
+          <span className={currentStep === 2 ? 'fw-bold text-saps' : ''}>
+            2. Alternativas de reprogramación
+          </span>
+          <span className={currentStep === 3 ? 'fw-bold text-saps' : ''}>
+            3. Revisión y confirmación
+          </span>
+          <span className={currentStep === 4 ? 'fw-bold text-saps' : ''}>
+            4. Resultado y notificaciones
+          </span>
+        </div>
+      </div>
 
-      {absence && (
-        <p className="text-break">
-          Motivo interno: {cambio.datos.motivo}
-        </p>
-      )}
+      {/* Resumen contextual del cambio */}
+      <div className="alert alert-light border d-flex flex-wrap align-items-center justify-content-between gap-2 py-2 mb-3">
+        <div>
+          {context && <span className="fw-semibold me-2">{context}</span>}
+          <span className="text-secondary">{description}</span>
+          {absence && cambio.datos.motivo && (
+            <span className="d-block small text-muted">
+              Motivo interno: {cambio.datos.motivo}
+            </span>
+          )}
+        </div>
+        {inactive && (
+          <span className="badge text-bg-secondary">
+            Desactivación de regla
+          </span>
+        )}
+      </div>
 
-      {/* Explica el procedimiento según el estado de la configuración. */}
-      {persistido ? (
-        <p>
-          El feriado ya está vigente y bloquea nuevas reservas.
-          Elegí los nuevos horarios, revisá y confirmá los turnos
-          afectados de tu alcance.
-        </p>
-      ) : inactive ? (
-        <p>
-          La regla quedará inactiva. Los turnos reprogramados
-          anteriormente no vuelven a su fecha original.
-        </p>
-      ) : (
-        <p>
-          1. Elegí nuevos horarios. 2. Revisá y confirmá los turnos.
-          3. Guardá{' '}
-          {closure
-            ? 'el cierre institucional'
-            : absence
-              ? 'la ausencia'
-              : 'el cambio de horario'}.
-        </p>
-      )}
-
-      <p className="small text-muted">
-        {!persistido &&
-          'El cambio de agenda todavía no está guardado. '}
-        Se conservan profesional, especialidad y salita.
-        Elegir horarios no reserva lugares.
-      </p>
-
-      {/* Muestra errores y el estado de procesamiento. */}
       {error && (
-        <div
-          className="alert alert-danger"
-          role="alert"
-        >
-          {error}
+        <div className="alert alert-danger d-flex align-items-center justify-content-between mb-3" role="alert">
+          <span>{error}</span>
+          <button
+            type="button"
+            className="btn-close"
+            aria-label="Cerrar"
+            onClick={() => setError('')}
+          />
         </div>
       )}
 
       {busy && (
-        <p role="status">
-          <span className="spinner-border spinner-border-sm me-2" />
-          Procesando agenda…
-        </p>
-      )}
-
-      {/* Resume los turnos afectados y las propuestas seleccionadas. */}
-      {ready && (
-        <p className="fw-semibold">
-          {closure
-            ? `Este cierre afecta ${turnos.length} turnos.`
-            : `${turnos.length} afectados.`}{' '}
-          {selected.length} listos para revisar ·{' '}
-          {turnos.length - selected.length} sin nuevo horario
-        </p>
-      )}
-
-      {/* Presenta los resultados de la última confirmación. */}
-      {!!resultados.length && (
-        <div
-          className="alert alert-info"
-          role="status"
-        >
-          <strong>
-            Resultado de la última confirmación
-          </strong>
-
-          {resultados.map((r) => (
-            <div
-              key={r.id_turno}
-              className="text-break"
-            >
-              <span
-                className={`badge me-2 ${
-                  r.confirmado
-                    ? 'text-bg-success'
-                    : 'text-bg-warning'
-                }`}
-              >
-                {r.confirmado
-                  ? 'Reprogramado'
-                  : 'Pendiente'}
-              </span>
-
-              {r.paciente}: {r.mensaje}
-            </div>
-          ))}
+        <div className="text-center py-4 text-muted" role="status">
+          <div className="spinner-border text-saps mb-2" role="status" />
+          <p className="mb-0">Procesando disponibilidad y agenda…</p>
         </div>
       )}
 
-      {/* Bloquea las acciones durante los procesos activos. */}
-      <fieldset disabled={busy || confirming || saving}>
-        <div className="d-flex flex-wrap gap-2 mb-3">
-          <button
-            type="button"
-            className="btn btn-outline-secondary"
-            onClick={() => void run(refresh)}
-          >
-            Actualizar afectados y limpiar selección
-          </button>
+      {!busy && (
+        <fieldset disabled={busy || confirming}>
+          {/* ======================================================== */}
+          {/* PASO 1: IDENTIFICACIÓN DE TURNOS AFECTADOS */}
+          {/* ======================================================== */}
+          {currentStep === 1 && (
+            <div>
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h3 className="h6 mb-0 text-dark fw-bold">
+                  Paso 1: Identificación de turnos afectados
+                </h3>
+                <div className="d-flex align-items-center gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1"
+                    onClick={() => void run(refresh)}
+                    title="Actualizar lista de turnos afectados"
+                  >
+                    <i className="bi bi-arrow-clockwise" />
+                    <span>Actualizar</span>
+                  </button>
+                  <span className={`badge ${turnos.length ? 'text-bg-warning' : 'text-bg-success'} fs-6`}>
+                    {turnos.length} turno{turnos.length === 1 ? '' : 's'} afectado{turnos.length === 1 ? '' : 's'}
+                  </span>
+                </div>
+              </div>
 
-          <button
-            type="button"
-            className="btn btn-outline-secondary"
-            onClick={onClose}
-          >
-            {persistido
-              ? 'Volver al calendario'
-              : 'Volver al formulario'}
-          </button>
-        </div>
-
-        {/* Permite seleccionar destinos para los turnos afectados. */}
-        {ready && !!turnos.length && (
-          <>
-            <p>
-              Elegí la nueva fecha de cada paciente y después
-              uno de los horarios disponibles. Los pacientes
-              sin horario quedarán pendientes.
-            </p>
-
-            <AgendaAffectedList
-              cambio={cambio}
-              turnos={turnos}
-              propuestas={propuestas}
-              busy={busy || confirming}
-              revision={revision}
-              onChoose={choose}
-            />
-
-            {/* Permite solicitar sugerencias automáticas de horarios. */}
-            <details className="border rounded p-3 my-3">
-              <summary>
-                Ayuda opcional: sugerir horarios
-              </summary>
-
-              <p className="small mt-2">
-                Busca horarios posteriores. Completa solamente
-                pacientes que todavía no tienen una elección.
-              </p>
-
-              <label className="form-label">
-                Período de búsqueda
-
-                <select
-                  className="form-select"
-                  value={dias}
-                  onChange={(e) =>
-                    setDias(Number(e.target.value))
-                  }
-                >
-                  {[7, 14, 30, 60, 90].map((d) => (
-                    <option
-                      key={d}
-                      value={d}
+              {turnos.length === 0 ? (
+                <div className="card text-center p-4 my-3 bg-light border-0">
+                  <div className="mb-2">
+                    <i className="bi bi-check-circle-fill text-success fs-1" />
+                  </div>
+                  <h4 className="h5 text-success">
+                    No se encontraron turnos afectados
+                  </h4>
+                  <p className="text-muted small mb-3">
+                    Ningún paciente tiene turnos programados que coincidan con esta salita, profesional y franja horaria.
+                  </p>
+                  <div className="d-flex justify-content-center gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary"
+                      onClick={onClose}
                     >
-                      {d} días
-                    </option>
-                  ))}
-                </select>
-              </label>
+                      Volver
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-saps"
+                      onClick={() => void run(executeFinalSave)}
+                    >
+                      {inactive
+                        ? 'Confirmar desactivación'
+                        : 'Confirmar y guardar ausencia'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <p className="small text-muted mb-3">
+                    Los siguientes turnos coinciden con la ausencia indicada y deberán ser reprogramados o quedarán pendientes para gestión manual.
+                  </p>
 
-              <button
-                type="button"
-                className="btn btn-outline-secondary ms-2"
-                onClick={() =>
-                  void run(async () => {
-                    const data = await getAgendaProposal(
-                      cambio,
-                      dias
-                    );
+                  <div className="table-responsive border rounded mb-3">
+                    <table className="table saps-responsive-table align-middle mb-0">
+                      <thead className="table-light">
+                        <tr>
+                          <th scope="col">Paciente</th>
+                          <th scope="col">DNI</th>
+                          <th scope="col">Horario original</th>
+                          <th scope="col">Especialidad</th>
+                          <th scope="col">Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {turnos.map((t) => (
+                          <tr key={t.id_turno}>
+                            <td data-label="Paciente">
+                              <strong>
+                                {t.paciente.persona.apellidos}, {t.paciente.persona.nombres}
+                              </strong>
+                            </td>
+                            <td data-label="DNI">
+                              <span className="small">
+                                {t.paciente.persona.dni ? `DNI: ${t.paciente.persona.dni}` : 'Sin DNI'}
+                              </span>
+                            </td>
+                            <td data-label="Horario original">
+                              <span className="fw-semibold text-danger">
+                                {agendaDateTime(t.fecha_hora_inicio)}
+                              </span>
+                            </td>
+                            <td data-label="Especialidad">
+                              <span className="small">
+                                {t.especialidad.nombre}
+                              </span>
+                            </td>
+                            <td data-label="Estado">
+                              <span className="badge text-bg-light border">
+                                {t.estado.nombre}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
 
-                    // Conserva las elecciones existentes y agrega sugerencias.
-                    setPropuestas((old) => [
-                      ...old.filter((p) => p.destino),
-                      ...data.propuestas.filter(
-                        (p) =>
-                          !old.some(
-                            (v) =>
-                              v.id_turno === p.id_turno &&
-                              v.destino
-                          )
-                      ),
-                    ]);
-                  })
-                }
-              >
-                Sugerir horarios
-              </button>
-            </details>
+                  <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 pt-2">
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary"
+                      onClick={onClose}
+                    >
+                      Cancelar y volver al formulario
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-saps d-inline-flex align-items-center gap-2"
+                      onClick={() => setCurrentStep(2)}
+                    >
+                      <span>Continuar a propuestas de reprogramación</span>
+                      <i className="bi bi-arrow-right" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
-            {/* Motivo interno de la reprogramación. */}
-            <label className="form-label w-100">
-              Motivo interno de reprogramación (no se envía al paciente)
+          {/* ======================================================== */}
+          {/* PASO 2: PROPUESTAS Y ALTERNATIVAS DE REPROGRAMACIÓN */}
+          {/* ======================================================== */}
+          {currentStep === 2 && (
+            <div>
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h3 className="h6 mb-0 text-dark fw-bold">
+                  Paso 2: Alternativas de reprogramación
+                </h3>
+                <div className="d-flex gap-2">
+                  <span className="badge text-bg-success">
+                    {selected.length} con nuevo horario
+                  </span>
+                  <span className="badge text-bg-warning text-dark">
+                    {turnos.length - selected.length} pendientes
+                  </span>
+                </div>
+              </div>
 
-              <textarea
-                className="form-control"
-                rows={2}
-                maxLength={500}
-                value={motivo}
-                onChange={(e) => setMotivo(e.target.value)}
-              />
-            </label>
+              <div className="card p-3 mb-3 bg-light-subtle border">
+                <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                  <div>
+                    <strong className="d-block">Sugerir horarios automáticamente</strong>
+                    <span className="small text-muted">
+                      Busca los próximos turnos disponibles para los pacientes sin horario asignado.
+                    </span>
+                  </div>
+                  <div className="d-flex align-items-center gap-2">
+                    <select
+                      className="form-select form-select-sm"
+                      style={{ width: 'auto' }}
+                      value={dias}
+                      onChange={(e) => setDias(Number(e.target.value))}
+                    >
+                      {[7, 14, 30, 60, 90].map((d) => (
+                        <option key={d} value={d}>
+                          Próximos {d} días
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="btn btn-outline-saps btn-sm d-inline-flex align-items-center gap-1"
+                      onClick={() =>
+                        void run(async () => {
+                          const data = await getAgendaProposal(cambio, dias);
+                          setPropuestas((old) => [
+                            ...old.filter((p) => p.destino),
+                            ...data.propuestas.filter(
+                              (p) =>
+                                !old.some(
+                                  (v) => v.id_turno === p.id_turno && v.destino
+                                )
+                            ),
+                          ]);
+                        })
+                      }
+                    >
+                      <i className="bi bi-magic" />
+                      <span>Sugerir</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
 
-            {/* Abre la revisión de las propuestas seleccionadas. */}
-            <button
-              type="button"
-              className="btn btn-saps"
-              disabled={
-                !selected.length ||
-                selected.length > 100 ||
-                motivo.trim().length < 3
-              }
-              onClick={() => setConfirming(true)}
-            >
-              Revisar {selected.length} reprogramaciones
-            </button>
-
-            {selected.length > 100 && (
-              <p role="alert">
-                Confirmá hasta 100 turnos por vez; dejá el resto pendiente.
+              <p className="small text-muted mb-2">
+                Elegí la nueva fecha y horario para cada paciente. Los turnos que queden sin horario continuarán pendientes de gestión manual:
               </p>
-            )}
-          </>
-        )}
 
-        {/* Permite guardar cuando no existen turnos afectados. */}
-        {ready && !turnos.length && (
-          <div className="alert alert-success">
-            <p>
-              {persistido
-                ? 'No quedan turnos afectados en tu alcance. El feriado permanece vigente.'
-                : 'No quedan turnos afectados. Falta confirmar el cambio de agenda.'}
-            </p>
+              <AgendaAffectedList
+                cambio={cambio}
+                turnos={turnos}
+                propuestas={propuestas}
+                busy={busy || confirming}
+                revision={revision}
+                onChoose={choose}
+              />
 
-            {persistido ? (
-              <button
-                type="button"
-                className="btn btn-saps"
-                onClick={onClose}
-              >
-                Volver al calendario
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="btn btn-saps"
-                onClick={() => setSaving(true)}
-              >
-                {inactive
-                  ? 'Revisar desactivación'
-                  : closure
-                    ? 'Revisar y guardar cierre institucional'
-                    : absence
-                      ? 'Revisar y guardar ausencia / cierre'
-                      : 'Revisar y guardar horario'}
-              </button>
-            )}
-          </div>
-        )}
-      </fieldset>
+              <div className="mt-4 p-3 border rounded bg-white">
+                <label className="form-label fw-semibold" htmlFor="motivo-reprogramacion">
+                  Motivo interno de la reprogramación (para auditoría)
+                </label>
+                <textarea
+                  id="motivo-reprogramacion"
+                  className="form-control"
+                  rows={2}
+                  maxLength={500}
+                  value={motivo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                  placeholder="Detalle el motivo institucional de la reprogramación..."
+                />
+                <span className="form-text small text-muted">
+                  Quedará registrado en la auditoría del turno.
+                </span>
+              </div>
 
-      {/* Confirma las reprogramaciones seleccionadas. */}
+              <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-4">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary d-inline-flex align-items-center gap-1"
+                  onClick={() => setCurrentStep(1)}
+                >
+                  <i className="bi bi-arrow-left" />
+                  <span>Volver a turnos afectados</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-saps d-inline-flex align-items-center gap-2"
+                  onClick={() => setCurrentStep(3)}
+                >
+                  <span>Continuar a revisión final ({selected.length} listos)</span>
+                  <i className="bi bi-arrow-right" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ======================================================== */}
+          {/* PASO 3: CONFIRMACIÓN ESTRUCTURADA */}
+          {/* ======================================================== */}
+          {currentStep === 3 && (
+            <div>
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h3 className="h6 mb-0 text-dark fw-bold">
+                  Paso 3: Revisión y confirmación estructurada
+                </h3>
+                <span className="badge text-bg-primary fs-6">
+                  Listo para confirmar
+                </span>
+              </div>
+
+              <div className="row g-3 mb-4">
+                <div className="col-md-4">
+                  <div className="p-3 border rounded bg-light h-100">
+                    <span className="text-muted small d-block mb-1">Total de afectados</span>
+                    <strong className="fs-3 text-dark">{turnos.length}</strong>
+                    <span className="small text-muted d-block mt-1">turnos en la ventana de ausencia</span>
+                  </div>
+                </div>
+                <div className="col-md-4">
+                  <div className="p-3 border rounded bg-success-subtle border-success-subtle h-100">
+                    <span className="text-success small d-block mb-1">A reprogramar inmediatamente</span>
+                    <strong className="fs-3 text-success">{selected.length}</strong>
+                    <span className="small text-success d-block mt-1">con nuevo horario asignado</span>
+                  </div>
+                </div>
+                <div className="col-md-4">
+                  <div className="p-3 border rounded bg-warning-subtle border-warning-subtle h-100">
+                    <span className="text-warning-emphasis small d-block mb-1">Quedarán pendientes</span>
+                    <strong className="fs-3 text-warning-emphasis">
+                      {turnos.length - selected.length}
+                    </strong>
+                    <span className="small text-warning-emphasis d-block mt-1">para gestión administrativa manual</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card mb-4 border">
+                <div className="card-header bg-light">
+                  <strong className="small">Detalle de turnos a procesar</strong>
+                </div>
+                <div className="card-body p-0">
+                  <div className="p-3">
+                    <AgendaReview turnos={turnos} propuestas={selected} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="alert alert-info d-flex align-items-center gap-2 mb-4">
+                <i className="bi bi-bell-fill fs-5" />
+                <span className="small">
+                  Al confirmar, los turnos reprogramados actualizarán su horario en la base de datos y se generarán las notificaciones correspondientes a los pacientes a través de sus canales habilitados.
+                </span>
+              </div>
+
+              <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary d-inline-flex align-items-center gap-1"
+                  onClick={() => setCurrentStep(2)}
+                >
+                  <i className="bi bi-arrow-left" />
+                  <span>Modificar propuestas</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-success d-inline-flex align-items-center gap-2 px-4 py-2"
+                  onClick={() => setConfirming(true)}
+                >
+                  <i className="bi bi-check2-circle" />
+                  <span>Confirmar y aplicar cambios</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ======================================================== */}
+          {/* PASO 4: RESULTADO AUDITADO */}
+          {/* ======================================================== */}
+          {currentStep === 4 && (
+            <div>
+              <div className="text-center py-3 mb-4">
+                <div className="mb-2">
+                  <i className="bi bi-check-circle-fill text-success" style={{ fontSize: '3rem' }} />
+                </div>
+                <h3 className="h4 text-success fw-bold">
+                  Proceso completado exitosamente
+                </h3>
+                <p className="text-muted">
+                  La ausencia fue registrada en el calendario y se procesó el circuito de reprogramaciones.
+                </p>
+              </div>
+
+              <div className="row g-3 mb-4">
+                <div className="col-sm-6">
+                  <div className="p-3 border rounded text-center bg-light">
+                    <strong className="fs-3 text-success">
+                      {resultados.filter((r) => r.confirmado).length}
+                    </strong>
+                    <span className="d-block small text-muted">
+                      Turnos reprogramados con nuevo horario
+                    </span>
+                  </div>
+                </div>
+                <div className="col-sm-6">
+                  <div className="p-3 border rounded text-center bg-light">
+                    <strong className="fs-3 text-warning-emphasis">
+                      {resultados.filter((r) => !r.confirmado).length}
+                    </strong>
+                    <span className="d-block small text-muted">
+                      Turnos pendientes de asignación manual
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card mb-4 border">
+                <div className="card-header bg-light">
+                  <strong className="small">Resultado individual por paciente</strong>
+                </div>
+                <div className="table-responsive">
+                  <table className="table saps-responsive-table align-middle mb-0">
+                    <thead className="table-light">
+                      <tr>
+                        <th scope="col">Paciente</th>
+                        <th scope="col">Turno original</th>
+                        <th scope="col">Estado</th>
+                        <th scope="col">Detalle</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {resultados.map((r) => (
+                        <tr key={r.id_turno}>
+                          <td data-label="Paciente">
+                            <strong>{r.paciente}</strong>
+                          </td>
+                          <td data-label="Turno original">
+                            <span className="small text-muted">
+                              {r.detalleTurno ?? '–'}
+                            </span>
+                          </td>
+                          <td data-label="Estado">
+                            <span
+                              className={`badge ${
+                                r.confirmado ? 'text-bg-success' : 'text-bg-warning text-dark'
+                              }`}
+                            >
+                              {r.confirmado ? 'Reprogramado' : 'Pendiente'}
+                            </span>
+                          </td>
+                          <td data-label="Detalle">
+                            <span className="small">{r.mensaje}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="d-flex justify-content-end">
+                <button
+                  type="button"
+                  className="btn btn-saps px-4 py-2"
+                  onClick={onSaved}
+                >
+                  Finalizar y volver a Ausencias
+                </button>
+              </div>
+            </div>
+          )}
+        </fieldset>
+      )}
+
+      {/* Confirmation Modal para ejecutar el cambio */}
       <ConfirmationModal
         open={confirming}
-        title="Revisar reprogramaciones"
-        confirmText="Confirmar reprogramaciones"
+        title="Confirmar cambios y reprogramaciones"
+        confirmText="Confirmar y aplicar"
+        variant="primary"
         loading={busy}
-        message={`Se intentarán reprogramar ${selected.length} turnos. Se enviarán avisos por los canales disponibles del paciente.`}
+        message={`Se reprogramarán ${selected.length} turnos y se registrará la ausencia en la agenda.`}
         detail={
-          <>
-            {error && (
-              <p
-                className="text-danger"
-                role="alert"
-              >
-                {error}
-              </p>
-            )}
-
-            <AgendaReview
-              turnos={turnos}
-              propuestas={selected}
-            />
-          </>
-        }
-        notice={`El servidor vuelve a comprobar cada horario y cupo. Si alguno dejó de estar disponible, queda pendiente; los confirmados se conservan. ${
-          persistido
-            ? 'El feriado ya está guardado.'
-            : 'Después debés guardar el cambio de agenda.'
-        }`}
-        onClose={() => {
-          if (!busy) {
-            setConfirming(false);
-          }
-        }}
-        onConfirm={() =>
-          void run(async () => {
-            // Envía las propuestas seleccionadas al servidor.
-            const data = await confirmAgendaProposal(
-              cambio,
-              motivo.trim(),
-              selected
-            );
-
-            // Asocia cada resultado con el nombre del paciente.
-            setResultados(
-              data.resultados.map((r) => {
-                const t = turnos.find(
-                  (t) => t.id_turno === r.id_turno
-                );
-
-                return {
-                  ...r,
-                  paciente: t
-                    ? `${t.paciente.persona.apellidos}, ${t.paciente.persona.nombres}`
-                    : 'Paciente',
-                };
-              })
-            );
-
-            // Limpia las propuestas y actualiza los turnos afectados.
-            setConfirming(false);
-            setPropuestas([]);
-
-            await refresh();
-          })
-        }
-      />
-
-      {/* Confirma y guarda la configuración de agenda. */}
-      <ConfirmationModal
-        open={saving}
-        title="Confirmar cambio de agenda"
-        confirmText="Guardar cambio"
-        loading={busy}
-        message={description}
-        detail={
-          <>
-            {error && (
-              <p
-                className="text-danger"
-                role="alert"
-              >
-                {error}
-              </p>
-            )}
-
-            <p>{context}</p>
-
-            <p>
-              {inactive
-                ? 'La regla quedará inactiva.'
-                : closure
-                  ? 'Se cerrará la atención en el alcance y período indicados.'
-                  : absence
-                    ? cambio.datos.motivo
-                    : 'Se actualizará el horario habitual.'}
+          <div>
+            <p className="mb-2">
+              <strong>Alcance:</strong> {context}
             </p>
-          </>
+            <p className="mb-2">
+              <strong>Período:</strong> {description}
+            </p>
+            <p className="mb-2">
+              <strong>Turnos que se reprograman:</strong> {selected.length}
+            </p>
+            <p className="mb-0">
+              <strong>Turnos que quedan pendientes:</strong>{' '}
+              {turnos.length - selected.length}
+            </p>
+          </div>
         }
-        notice="Esta acción guarda la configuración. Los turnos ya reprogramados conservan sus cambios."
+        notice="Esta acción modificará los turnos y bloqueará las nuevas reservas en la fecha y franja horaria seleccionadas."
         onClose={() => {
-          if (!busy) {
-            setSaving(false);
-          }
+          if (!busy) setConfirming(false);
         }}
-        onConfirm={() =>
-          void run(async () => {
-            // Guarda la configuración según el tipo de cambio.
-            if (cambio.tipo === 'horario') {
-              await guardarHorario(
-                cambio.datos,
-                cambio.id
-              );
-            } else if (cambio.tipo === 'cierre') {
-              await guardarCierre(
-                cambio.datos,
-                cambio.id
-              );
-            } else {
-              await guardarBloqueo(
-                cambio.datos,
-                cambio.id
-              );
-            }
-
-            // Informa al componente padre que el cambio fue guardado.
-            onSaved();
-          })
-        }
+        onConfirm={() => void run(executeFinalSave)}
       />
     </section>
   );

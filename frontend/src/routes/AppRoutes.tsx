@@ -24,6 +24,7 @@ import ProtectedRoute from './ProtectedRoute';
 
 // Páginas cargadas solo cuando el usuario visita su ruta.
 const AccountManagementPage = lazy(() => import('../pages/auth/AccountManagementPage'));
+const GestionInasistenciasPage = lazy(() => import('../pages/administracion/gestion-inasistencias/GestionInasistenciasPage'));
 const RegisterPage = lazy(() => import('../pages/auth/RegisterPage'));
 const PasswordRecoveryPage = lazy(() => import('../pages/auth/PasswordRecoveryPage'));
 const VerifyEmailCodePage = lazy(() => import('../pages/auth/VerifyEmailCodePage'));
@@ -462,7 +463,7 @@ const AppRoutes = () => {
                 {/* Redirección directa del menú Administración al apartado principal */}
                 <Route
                   path="/admin-sistema"
-                  element={<Navigate to="/administracion" replace />}
+                  element={<Navigate to="/administracion/gestion-inasistencias" replace />}
                 />
 
                 <Route
@@ -475,7 +476,22 @@ const AppRoutes = () => {
                   element={<ParametrosPage />}
                 />
 
+                {/* Gestión administrativa de inasistencias, justificaciones y cancelaciones */}
+                <Route
+                  path="/administracion/gestion-inasistencias"
+                  element={<GestionInasistenciasPage />}
+                />
 
+                {/* Alias directos para acceso rápido a la pestaña de cancelaciones */}
+                <Route
+                  path="/administracion/cancelaciones"
+                  element={<Navigate to="/administracion/gestion-inasistencias?tab=cancelaciones" replace />}
+                />
+
+                <Route
+                  path="/cancelaciones"
+                  element={<Navigate to="/administracion/gestion-inasistencias?tab=cancelaciones" replace />}
+                />
 
                 {/* Administración de cuentas de acceso. */}
                 <Route
