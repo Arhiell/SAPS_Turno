@@ -104,14 +104,11 @@ const envSchema = z.object({
     MAIL_PASSWORD: z.string().min(1),
     MAIL_FROM_NAME: z.string().min(1),
     MAIL_FROM_EMAIL: z.string().email(),
-    MAIL_PROVIDER: z
-      .string()
-      .optional()
-      .transform((v) => (v?.trim() ? v.trim().toLowerCase() : undefined)),
-    BREVO_API_KEY: z
-      .string()
-      .optional()
-      .transform((v) => (v?.trim() ? v.trim() : undefined)),
+    BREVO_API_KEY: z.preprocess(
+      (value) =>
+        typeof value === "string" && value.trim() === "" ? undefined : value,
+      z.string().trim().min(1).optional(),
+    ),
 });
 
 const result = envSchema.safeParse(process.env);

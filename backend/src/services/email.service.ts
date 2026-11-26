@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import nodemailer, { type Transporter } from "nodemailer";
 import type SMTPTransport from "nodemailer/lib/smtp-transport/index.js";
 import { env } from "../config/env.js";
 
@@ -15,40 +15,35 @@ type EmailSendResult = {
   messageId?: string;
 };
 
-const smtpOptions: SMTPTransport.Options & { family?: number } = {
-  host: env.MAIL_HOST,
-  port: env.MAIL_PORT,
-  secure: env.MAIL_SECURE,
-  family: 4,
-  connectionTimeout: 10_000,
-  greetingTimeout: 10_000,
-  socketTimeout: 15_000,
-  auth: {
-    user: env.MAIL_USER,
-    pass: env.MAIL_PASSWORD,
-  },
-};
+let smtpTransporter: Transporter | null = null;
 
-const transporter = nodemailer.createTransport(smtpOptions);
-
-const CLOUD_SMTP_NETWORK_ERRORS = new Set([
-  "ENETUNREACH",
-  "ETIMEDOUT",
-  "ESOCKET",
-  "ECONNREFUSED",
-  "ECONNRESET",
-  "EHOSTUNREACH",
-]);
-
-const isSmtpNetworkError = (error: unknown): boolean => {
-  if (!error || typeof error !== "object") return false;
-  const err = error as { code?: string; message?: string };
-  if (err.code && CLOUD_SMTP_NETWORK_ERRORS.has(err.code.toUpperCase())) {
-    return true;
+const getSmtpTransporter = (): Transporter => {
+  if (!smtpTransporter) {
+    const smtpOptions: SMTPTransport.Options & { family?: number } = {
+      host: env.MAIL_HOST,
+      port: env.MAIL_PORT,
+      secure: env.MAIL_SECURE,
+      family: 4,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+      auth: {
+        user: env.MAIL_USER,
+        pass: env.MAIL_PASSWORD,
+      },
+    };
+    smtpTransporter = nodemailer.createTransport(smtpOptions);
   }
-  const msg = (err.message ?? "").toUpperCase();
-  return Array.from(CLOUD_SMTP_NETWORK_ERRORS).some((code) => msg.includes(code));
+  return smtpTransporter;
 };
+
+const escapeHtml = (raw: string): string =>
+  raw
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
 const sendViaBrevo = async ({
   to,
@@ -56,15 +51,23 @@ const sendViaBrevo = async ({
   text,
   html,
 }: SendEmailInput): Promise<EmailSendResult> => {
-  if (!env.BREVO_API_KEY) {
-    throw new Error("BREVO_API_KEY no está configurada para el fallback HTTP.");
+  const apiKey = env.BREVO_API_KEY;
+  if (!apiKey) {
+    throw new Error("BREVO_API_KEY no está configurada.");
   }
+
+  const recipient = to.trim();
+  const htmlContent =
+    html ??
+    (text
+      ? `<div style="font-family: Arial, sans-serif; white-space: pre-wrap;">${escapeHtml(text)}</div>`
+      : "<p></p>");
 
   const response = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
     headers: {
       accept: "application/json",
-      "api-key": env.BREVO_API_KEY,
+      "api-key": apiKey,
       "content-type": "application/json",
     },
     body: JSON.stringify({
@@ -72,30 +75,26 @@ const sendViaBrevo = async ({
         name: env.MAIL_FROM_NAME,
         email: env.MAIL_FROM_EMAIL,
       },
-      to: [{ email: to }],
+      to: [{ email: recipient }],
       subject,
-      ...(html ? { htmlContent: html } : {}),
+      htmlContent,
       ...(text ? { textContent: text } : {}),
     }),
   });
 
   if (!response.ok) {
-    const errorBody = await response.text().catch(() => "");
-    throw new Error(
-      `Brevo API respondió ${response.status} ${response.statusText}: ${errorBody}`,
-    );
+    const errorDetail = await response.text().catch(() => "");
+    const message = `[email][Brevo] Error HTTP ${response.status} ${response.statusText} al enviar correo a ${recipient}: ${errorDetail || "sin detalle"}`;
+    console.error(message);
+    throw new Error(message);
   }
 
   const payload = (await response.json().catch(() => ({}))) as {
     messageId?: string;
   };
 
-  console.info(
-    `[email] Envío exitoso vía fallback Brevo HTTP API hacia ${to} (messageId: ${payload.messageId ?? "sin-id"}).`,
-  );
-
   return {
-    accepted: [to],
+    accepted: [recipient],
     rejected: [],
     ...(payload.messageId ? { messageId: payload.messageId } : {}),
   };
@@ -107,52 +106,40 @@ export const sendEmail = async ({
   text,
   html,
 }: SendEmailInput): Promise<EmailSendResult> => {
-  try {
-    const result = await transporter.sendMail({
-      from: {
-        name: env.MAIL_FROM_NAME,
-        address: env.MAIL_FROM_EMAIL,
-      },
-      to,
+  const recipient = to.trim();
+
+  if (env.BREVO_API_KEY) {
+    return sendViaBrevo({
+      to: recipient,
       subject,
-      text,
-      html,
+      ...(text !== undefined ? { text } : {}),
+      ...(html !== undefined ? { html } : {}),
     });
-
-    const accepted = Array.isArray(result.accepted)
-      ? result.accepted.map(String)
-      : [];
-    const rejected = Array.isArray(result.rejected)
-      ? result.rejected.map(String)
-      : [];
-
-    if (accepted.length === 0) {
-      throw new Error(
-        `El servidor SMTP no aceptó el destinatario ${to} (rejected: ${rejected.join(", ") || "ninguno"}).`,
-      );
-    }
-
-    return {
-      accepted,
-      rejected,
-      ...(result.messageId ? { messageId: result.messageId } : {}),
-    };
-  } catch (smtpError) {
-    if (env.BREVO_API_KEY && isSmtpNetworkError(smtpError)) {
-      console.warn(
-        `[email] Falló conexión SMTP hacia ${to}; intentando fallback por Brevo HTTP API...`,
-        smtpError,
-      );
-      return sendViaBrevo({
-        to,
-        subject,
-        ...(text !== undefined ? { text } : {}),
-        ...(html !== undefined ? { html } : {}),
-      });
-    }
-
-    throw smtpError;
   }
+
+  const result = await getSmtpTransporter().sendMail({
+    from: {
+      name: env.MAIL_FROM_NAME,
+      address: env.MAIL_FROM_EMAIL,
+    },
+    to: recipient,
+    subject,
+    text,
+    html,
+  });
+
+  const accepted = Array.isArray(result.accepted)
+    ? result.accepted.map(String)
+    : [];
+  const rejected = Array.isArray(result.rejected)
+    ? result.rejected.map(String)
+    : [];
+
+  return {
+    accepted,
+    rejected,
+    ...(result.messageId ? { messageId: result.messageId } : {}),
+  };
 };
 
 export const sendAuthEmail = async (to: string, path: "verificar-email" | "restablecer-contrasena", token: string) => {
