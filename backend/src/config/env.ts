@@ -97,11 +97,21 @@ const envSchema = z.object({
     MAIL_PORT: z.coerce.number().int().positive(),
     MAIL_SECURE: z
       .string()
-      .transform((value) => value === "true"),
+      .optional()
+      .default("false")
+      .transform((value) => value.trim().toLowerCase() === "true"),
     MAIL_USER: z.string().email(),
     MAIL_PASSWORD: z.string().min(1),
     MAIL_FROM_NAME: z.string().min(1),
     MAIL_FROM_EMAIL: z.string().email(),
+    MAIL_PROVIDER: z
+      .string()
+      .optional()
+      .transform((v) => (v?.trim() ? v.trim().toLowerCase() : undefined)),
+    BREVO_API_KEY: z
+      .string()
+      .optional()
+      .transform((v) => (v?.trim() ? v.trim() : undefined)),
 });
 
 const result = envSchema.safeParse(process.env);

@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import { sendSystemNotification } from
   "./notificacion.service.js";
 
@@ -8,6 +10,8 @@ import {
   findUsuarioByTurno,
   findTutorUsersByTurno,
   findTurnoEmailContextById,
+  findUserEmailByPersonaId,
+  findTutorEmailsByTurno,
 } from "../repositories/notificacion-turno.repository.js";
 
 import {
@@ -50,6 +54,47 @@ const formatTurnoDateTime = (
   };
 };
 
+const normalizeValidEmail = (
+  raw: string | null | undefined,
+): string | null => {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const parsed = z.string().email().safeParse(trimmed);
+  return parsed.success ? parsed.data : null;
+};
+
+const resolveTurnoRecipientEmails = async (
+  idTurno: string,
+  idPersona?: string | null,
+  personaEmail?: string | null,
+): Promise<string[]> => {
+  const directEmail = normalizeValidEmail(personaEmail);
+  if (directEmail) {
+    return [directEmail];
+  }
+
+  if (idPersona) {
+    const userEmail = normalizeValidEmail(
+      await findUserEmailByPersonaId(idPersona),
+    );
+    if (userEmail) {
+      return [userEmail];
+    }
+  }
+
+  const tutorEmails = await findTutorEmailsByTurno(idTurno);
+  const validTutorEmails = Array.from(
+    new Set(
+      tutorEmails
+        .map((email) => normalizeValidEmail(email))
+        .filter((email): email is string => Boolean(email)),
+    ),
+  );
+
+  return validTutorEmails;
+};
+
 const sendTurnoEmail = async (
   idTurno: string,
   tipo: TipoNotificacionTurno,
@@ -59,6 +104,9 @@ const sendTurnoEmail = async (
     await findTurnoEmailContextById(idTurno);
 
   if (!context) {
+    console.warn(
+      `[notificacion-turno] No se encontró contexto para enviar correo del turno ${idTurno}.`,
+    );
     return null;
   }
 
@@ -68,7 +116,16 @@ const sendTurnoEmail = async (
   const personaPaciente =
     firstRelation(paciente?.persona);
 
-  if (!personaPaciente?.email) {
+  const recipientEmails = await resolveTurnoRecipientEmails(
+    idTurno,
+    paciente?.id_persona,
+    personaPaciente?.email,
+  );
+
+  if (recipientEmails.length === 0) {
+    console.warn(
+      `[notificacion-turno] No se encontró un correo válido para el turno ${idTurno} (id_paciente: ${paciente?.id_paciente ?? "desconocido"}). Se omite el envío de email.`,
+    );
     return null;
   }
 
@@ -90,8 +147,8 @@ const sendTurnoEmail = async (
     );
 
   const pacienteNombre = [
-    personaPaciente.nombres,
-    personaPaciente.apellidos,
+    personaPaciente?.nombres,
+    personaPaciente?.apellidos,
   ]
     .filter(Boolean)
     .join(" ");
@@ -166,12 +223,26 @@ const sendTurnoEmail = async (
       break;
   }
 
-  return sendEmail({
-    to: personaPaciente.email,
-    subject: email.subject,
-    text: email.text,
-    html: email.html,
-  });
+  const results = await Promise.all(
+    recipientEmails.map(async (recipientEmail) => {
+      const result = await sendEmail({
+        to: recipientEmail,
+        subject: email.subject,
+        text: email.text,
+        html: email.html,
+      });
+
+      if (!result.accepted || result.accepted.length === 0) {
+        throw new Error(
+          `El servicio de correo no confirmó la aceptación para ${recipientEmail} (turno ${idTurno}).`,
+        );
+      }
+
+      return result;
+    }),
+  );
+
+  return results[0] ?? null;
 };
 
 // Genera la notificación solo si el paciente posee una cuenta de usuario.

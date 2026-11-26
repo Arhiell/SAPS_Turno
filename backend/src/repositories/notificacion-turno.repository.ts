@@ -90,6 +90,7 @@ export const findTurnoEmailContextById = async (
 
       paciente:pacientes(
         id_paciente,
+        id_persona,
         persona:personas(
           nombres,
           apellidos,
@@ -187,4 +188,74 @@ export const findTurnoEmailContextById = async (
     ...data,
     zona,
   };
+};
+
+// Obtiene el email desde la cuenta de usuario activa asociada a una persona.
+export const findUserEmailByPersonaId = async (
+  idPersona: string,
+): Promise<string | null> => {
+  const { data, error } = await supabase
+    .from("usuarios")
+    .select("email")
+    .eq("id_persona", idPersona)
+    .eq("activo", true)
+    .maybeSingle();
+
+  if (error) {
+    console.warn(
+      `[notificacion-turno] No se pudo consultar usuarios.email para persona ${idPersona}:`,
+      error,
+    );
+    return null;
+  }
+
+  return data?.email ?? null;
+};
+
+// Obtiene correos de tutores autorizados (usuarios.email con fallback a personas.email).
+export const findTutorEmailsByTurno = async (
+  idTurno: string,
+): Promise<string[]> => {
+  const tutorUserIds = await findTutorUsersByTurno(idTurno);
+
+  if (tutorUserIds.length > 0) {
+    const { data: users, error } = await supabase
+      .from("usuarios")
+      .select("email, id_persona")
+      .in("id_usuario", tutorUserIds)
+      .eq("activo", true);
+
+    if (error) {
+      console.warn(
+        `[notificacion-turno] No se pudieron consultar correos de tutores para turno ${idTurno}:`,
+        error,
+      );
+      return [];
+    }
+
+    const userEmails = (users ?? [])
+      .map((row) => row.email)
+      .filter((email): email is string => Boolean(email));
+
+    if (userEmails.length > 0) {
+      return userEmails;
+    }
+
+    const personaIds = (users ?? [])
+      .map((row) => row.id_persona)
+      .filter((id): id is string => Boolean(id));
+
+    if (personaIds.length > 0) {
+      const { data: personas } = await supabase
+        .from("personas")
+        .select("email")
+        .in("id_persona", personaIds);
+
+      return (personas ?? [])
+        .map((row) => row.email)
+        .filter((email): email is string => Boolean(email));
+    }
+  }
+
+  return [];
 };
