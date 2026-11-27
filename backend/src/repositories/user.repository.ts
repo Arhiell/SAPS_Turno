@@ -58,7 +58,7 @@ export const findUserByEmail = async (
 ) => {
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id_usuario, email')
+    .select('id_usuario, email, id_persona')
     .ilike('email', literalLikePattern(email))
     .limit(1)
     .maybeSingle();

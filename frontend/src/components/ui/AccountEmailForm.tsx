@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import {
   requestEmailChange,
@@ -14,6 +15,7 @@ import ValidatedInput from './ValidatedInput';
 // Gestiona el cambio de correo mediante un código de verificación.
 export default function AccountEmailForm() {
   const { user, reloadProfile } = useAuth();
+  const navigate = useNavigate();
 
   // Controla el formulario y los datos del nuevo correo.
   const [open, setOpen] = useState(false);
@@ -44,14 +46,25 @@ export default function AccountEmailForm() {
     setMessage('');
 
     try {
+      const targetEmail = email.trim().toLowerCase();
       // Envía el código al nuevo correo e invalida el anterior.
-      await requestEmailChange(email.trim());
+      const result = await requestEmailChange(targetEmail);
 
       setSent(true);
       setCode('');
       setMessage(
         'Enviamos un código al nuevo correo. Vence en 10 minutos. Podés reenviarlo después de un minuto.'
       );
+
+      // Muestra inmediatamente la pantalla de ingreso del código de 4 dígitos.
+      navigate('/verificar-codigo', {
+        state: {
+          email: targetEmail,
+          verificationExpiresAt: result?.verificationExpiresAt ?? null,
+          returnTo: '/mi-perfil',
+          returnLabel: 'Volver a mi perfil',
+        },
+      });
     } catch (cause) {
       setError(authError(cause));
     } finally {

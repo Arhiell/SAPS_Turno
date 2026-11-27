@@ -311,3 +311,41 @@ export const registerEmailCodeAttempt = async (
 
   return Boolean(data);
 };
+
+// Busca el último cambio de correo pendiente por su nuevo_email.
+export const findPendingEmailChangeByNewEmail = async (
+  email: string
+) => {
+  const {
+    data,
+    error,
+  } = await supabase
+    .from('tokens_verificacion_email')
+    .select(
+      `
+        id_token,
+        id_usuario,
+        token_hash,
+        fecha_expiracion,
+        fecha_creacion,
+        intentos,
+        nuevo_email,
+        email_anterior
+      `
+    )
+    .ilike('nuevo_email', email)
+    .is('fecha_uso', null)
+    .order('fecha_creacion', {
+      ascending: false,
+    })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `Error buscando cambio de correo pendiente: ${error.message}`
+    );
+  }
+
+  return data;
+};

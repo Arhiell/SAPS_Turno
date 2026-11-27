@@ -127,11 +127,15 @@ const EditarProfesionalPage = () => {
       return;
     }
 
+    const previousEmail = (professional.persona.email ?? '').trim().toLowerCase();
+    const nextEmail = (data.email ?? '').trim().toLowerCase();
+    const emailChanged = Boolean(nextEmail && nextEmail !== previousEmail);
+
     try {
       setSaving(true);
       setError('');
 
-      await updateProfessional(id, {
+      const response = await updateProfessional(id, {
         dni: data.dni,
         nombres: data.nombres,
         apellidos: data.apellidos,
@@ -153,42 +157,30 @@ const EditarProfesionalPage = () => {
 
       const updatedProfessional: Professional = {
         ...professional,
-
-        matricula: data.matricula,
-
+        ...response.data,
+        salitas: response.data.salitas ?? professional.salitas,
         persona: {
           ...professional.persona,
-
-          dni: data.dni,
-          nombres: data.nombres,
-          apellidos: data.apellidos,
-
-          fecha_nacimiento:
-            data.fecha_nacimiento || null,
-
-          sexo: data.sexo,
-
-          telefono:
-            data.telefono || null,
-
-          email:
-            data.email || null,
-
-          direccion:
-            data.direccion || null,
-
-          localidad: data.localidad,
-
-          provincia: data.provincia,
-
-          codigo_postal:
-            data.codigo_postal || null,
+          ...response.data.persona,
+          cuenta: response.data.persona.cuenta ?? professional.persona.cuenta,
         },
       };
 
       setProfessional(
         updatedProfessional,
       );
+
+      if (emailChanged && updatedProfessional.persona.cuenta) {
+        navigate('/verificar-codigo', {
+          replace: true,
+          state: {
+            email: nextEmail,
+            returnTo,
+            returnLabel,
+          },
+        });
+        return;
+      }
 
       /*
        * Si editamos desde el detalle,

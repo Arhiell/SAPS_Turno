@@ -177,9 +177,10 @@ export const editPatient = async (
       );
     }
 
-    // Devuelve el paciente con sus datos actualizados.
+    // Devuelve el paciente con sus datos actualizados (incluyendo estado de cuenta sincronizado).
     const updated = await findPatientById(
-      idPatient
+      idPatient,
+      true
     );
 
     if (updated) {

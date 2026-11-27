@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase.js';
+import { literalLikePattern } from '../utils/like-pattern.js';
 
 // Busca una cuenta asociada a una persona.
 export const findAccountByPersonId = async (
@@ -6,7 +7,7 @@ export const findAccountByPersonId = async (
 ) => {
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id_usuario')
+    .select('id_usuario, email, activo, email_verificado, id_persona')
     .eq('id_persona', idPerson)
     .maybeSingle();
 
@@ -15,6 +16,60 @@ export const findAccountByPersonId = async (
   }
 
   return data;
+};
+
+// Sincroniza el correo de la cuenta de usuario vinculada a una persona y reinicia su verificación.
+export const syncAccountEmailForPerson = async (
+  idPerson: string,
+  previousEmail: string | null,
+  nextEmail: string
+) => {
+  let account = await findAccountByPersonId(idPerson);
+
+  if (!account && previousEmail) {
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('id_usuario, email, activo, email_verificado, id_persona')
+      .ilike('email', literalLikePattern(previousEmail))
+      .is('id_persona', null)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    account = data;
+  }
+
+  if (!account) {
+    return null;
+  }
+
+  const { error: updateError } = await supabase
+    .from('usuarios')
+    .update({
+      email: nextEmail,
+      email_verificado: false,
+      id_persona: idPerson,
+    })
+    .eq('id_usuario', account.id_usuario);
+
+  if (updateError) {
+    throw updateError;
+  }
+
+  // Limpia tokens pendientes anteriores para permitir emitir el nuevo código sin bloqueo de 60s.
+  await supabase
+    .from('tokens_verificacion_email')
+    .delete()
+    .eq('id_usuario', account.id_usuario)
+    .is('fecha_uso', null);
+
+  return {
+    id_usuario: account.id_usuario,
+    email: nextEmail,
+  };
 };
 
 // Obtiene las credenciales y el estado de seguridad de una cuenta.

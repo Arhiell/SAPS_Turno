@@ -222,22 +222,22 @@ export const actualizarProfesional = async (
   }
 
   // Actualiza los datos profesionales si existen cambios.
-  let updated = null;
   if (
     Object.keys(
       profesionalData
     ).length > 0
   ) {
-    updated = await updateProfesional(
+    await updateProfesional(
       id,
       profesionalData
     );
-  } else {
-    // Devuelve el profesional actualizado cuando solo cambió la persona.
-    updated = await getProfesionalById(
-      id
-    );
   }
+
+  // Devuelve el profesional actualizado con el estado de su cuenta sincronizado.
+  const updated = await getProfesionalById(
+    id,
+    true
+  );
 
   if (updated) {
     try {

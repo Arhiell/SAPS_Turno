@@ -13,6 +13,7 @@ import {
 } from 'react-router-dom';
 
 import ValidatedInput from '../../components/ui/ValidatedInput';
+import { useAuth } from '../../context/AuthContext';
 
 import {
   requestEmailVerification,
@@ -32,6 +33,8 @@ interface VerificationLocationState {
   resendAvailableAt?: string | null;
   loginVerificationToken?: string;
   fromLogin?: boolean;
+  returnTo?: string;
+  returnLabel?: string;
 }
 
 const RESEND_COOLDOWN_MS =
@@ -113,6 +116,7 @@ const messageForError = (
 };
 
 export default function VerifyEmailCodePage() {
+  const { isAuthenticated, reloadProfile } = useAuth();
   const location =
     useLocation();
 
@@ -410,11 +414,21 @@ export default function VerifyEmailCodePage() {
         code,
       });
 
+      if (isAuthenticated) {
+        await reloadProfile().catch(() => {});
+      }
+
       setVerified(true);
 
       setNotice(
         'Correo verificado correctamente.'
       );
+
+      if (initialState?.returnTo) {
+        window.setTimeout(() => {
+          navigate(initialState.returnTo!, { replace: true });
+        }, 1200);
+      }
     } catch (cause) {
       const message =
         messageForError(
@@ -525,9 +539,9 @@ export default function VerifyEmailCodePage() {
 
           <Link
             className="btn btn-saps w-100"
-            to="/login"
+            to={initialState?.returnTo ?? (isAuthenticated ? '/panel' : '/login')}
           >
-            Iniciar sesión
+            {initialState?.returnLabel ?? (isAuthenticated ? 'Continuar' : 'Iniciar sesión')}
           </Link>
         </div>
       </AuthForm>

@@ -13,6 +13,18 @@ import {
 } from '../repositories/person-update.repository.js';
 
 import {
+  syncAccountEmailForPerson,
+} from '../repositories/account.repository.js';
+
+import {
+  findUserByEmail,
+} from '../repositories/user.repository.js';
+
+import {
+  createEmailCode,
+} from './email-verification.service.js';
+
+import {
   AppError,
 } from '../utils/app-error.js';
 
@@ -37,7 +49,7 @@ export {
   findPersonByDni,
 };
 
-// Verifica que el correo no pertenezca a otra persona.
+// Verifica que el correo no pertenezca a otra persona ni a otra cuenta de usuario.
 const ensurePersonEmailAvailable = async (
   email: string | null | undefined,
   idPerson?: string
@@ -46,10 +58,12 @@ const ensurePersonEmailAvailable = async (
     return;
   }
 
-  const persons =
-    await findPersonsByEmail(
-      email
-    );
+  const normalized = email.trim().toLowerCase();
+
+  const [persons, existingUser] = await Promise.all([
+    findPersonsByEmail(normalized),
+    findUserByEmail(normalized),
+  ]);
 
   if (
     persons.some(
@@ -57,6 +71,16 @@ const ensurePersonEmailAvailable = async (
         person.id_persona !==
         idPerson
     )
+  ) {
+    throw new AppError(
+      duplicateMessages.email,
+      409
+    );
+  }
+
+  if (
+    existingUser &&
+    existingUser.id_persona !== idPerson
   ) {
     throw new AppError(
       duplicateMessages.email,
@@ -188,11 +212,50 @@ export const editPerson = async (
     return current;
   }
 
+  const previousEmail = current.email
+    ? current.email.trim().toLowerCase()
+    : null;
+  const nextEmail =
+    typeof validated.email === 'string' && validated.email.trim()
+      ? validated.email.trim().toLowerCase()
+      : null;
+
+  if (validated.email !== undefined) {
+    validated.email = nextEmail;
+  }
+
   try {
-    return await updatePerson(
+    const updated = await updatePerson(
       idPerson,
       validated
     );
+
+    if (
+      validated.email !== undefined &&
+      nextEmail &&
+      nextEmail !== previousEmail
+    ) {
+      const syncedAccount = await syncAccountEmailForPerson(
+        idPerson,
+        previousEmail,
+        nextEmail
+      );
+
+      if (syncedAccount) {
+        await createEmailCode(
+          syncedAccount.id_usuario,
+          nextEmail,
+          null
+        ).catch((err) => {
+          console.error(
+            `[person.service] No se pudo enviar el código de verificación al nuevo correo ${nextEmail}:`,
+            err
+          );
+        });
+      }
+    }
+
+    return updated;
   } catch (error) {
     throw (
       duplicateError(error) ??

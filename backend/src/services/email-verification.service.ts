@@ -10,6 +10,7 @@ import {
   createEmailVerificationToken,
   findEmailVerificationToken,
   findLatestPendingEmailToken,
+  findPendingEmailChangeByNewEmail,
   findUserForEmailVerification,
   invalidatePreviousEmailTokens,
   markEmailAsVerified,
@@ -144,13 +145,53 @@ export const requestEmailVerification = async (
       email
     );
 
-  // No revelamos si el correo existe.
+  // Si no coincide con usuarios.email o ya estaba verificado, comprueba si hay un cambio de correo pendiente hacia ese email.
   if (
     !user ||
     !user.activo ||
     user.email_verificado
   ) {
-    return null;
+    const pendingChange = await findPendingEmailChangeByNewEmail(email);
+
+    if (!pendingChange) {
+      return null;
+    }
+
+    const now = Date.now();
+    if (new Date(pendingChange.fecha_expiracion).getTime() > now) {
+      const resendAvailableAt = new Date(
+        new Date(pendingChange.fecha_creacion).getTime() +
+          EMAIL_CODE_RESEND_COOLDOWN_SECONDS * 1000
+      );
+
+      if (now < resendAvailableAt.getTime()) {
+        return {
+          verificationExpiresAt: pendingChange.fecha_expiracion,
+          resendAvailableAt: resendAvailableAt.toISOString(),
+        };
+      }
+    }
+
+    const verificationExpiresAt = await createEmailCode(
+      pendingChange.id_usuario,
+      email,
+      ip,
+      pendingChange.nuevo_email && pendingChange.email_anterior
+        ? {
+            nuevo_email: pendingChange.nuevo_email,
+            email_anterior: pendingChange.email_anterior,
+          }
+        : undefined
+    );
+
+    return {
+      verificationExpiresAt,
+      resendAvailableAt: new Date(
+        Date.parse(verificationExpiresAt) -
+          EMAIL_CODE_TTL_SECONDS * 1000 +
+          EMAIL_CODE_RESEND_COOLDOWN_SECONDS * 1000
+      ).toISOString(),
+    };
   }
 
   // Busca un código pendiente del usuario.
@@ -287,6 +328,18 @@ export const verifyEmailCode = async (
   // Normaliza el correo.
   const email =
     input.email.trim().toLowerCase();
+
+  // Primero comprueba si existe un token de cambio de correo pendiente hacia ese email.
+  const pendingChange = await findPendingEmailChangeByNewEmail(email);
+
+  if (pendingChange && pendingChange.nuevo_email) {
+    await consumeVerificationCode(
+      pendingChange.id_usuario,
+      input.code,
+      pendingChange.nuevo_email
+    );
+    return;
+  }
 
   // Busca el usuario asociado.
   const user =

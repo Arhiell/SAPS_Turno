@@ -172,6 +172,10 @@ const PacienteDetallePage = () => {
   const handleSavePatient = async (form: UpdatePatientRequest) => {
     if (!id) return;
 
+    const previousEmail = (patient?.email ?? '').trim().toLowerCase();
+    const nextEmail = (form.email ?? '').trim().toLowerCase();
+    const emailChanged = Boolean(nextEmail && nextEmail !== previousEmail);
+
     try {
       setSaving(true);
       setModalError('');
@@ -179,6 +183,7 @@ const PacienteDetallePage = () => {
       setSuccess('');
 
       const response = await updatePatient(id, form);
+      const updatedAccount = response.data.patient.cuenta ?? patient?.cuenta;
 
       // Conserva los datos de cuenta si la actualización no los devuelve.
       setPatient((current) => ({
@@ -187,6 +192,18 @@ const PacienteDetallePage = () => {
       }));
 
       setEditModalOpen(false);
+
+      if (emailChanged && updatedAccount) {
+        navigate('/verificar-codigo', {
+          state: {
+            email: nextEmail,
+            returnTo: `/pacientes/${id}`,
+            returnLabel: 'Volver a la ficha del paciente',
+          },
+        });
+        return;
+      }
+
       setSuccess('Los datos del paciente se actualizaron correctamente.');
     } catch (err) {
       console.error(err);

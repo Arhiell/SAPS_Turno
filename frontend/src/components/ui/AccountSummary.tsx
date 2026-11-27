@@ -1,3 +1,4 @@
+import { Link, useLocation } from 'react-router-dom';
 import type {
   AccountDisplay,
 } from '../../types/account-display.types';
@@ -10,6 +11,8 @@ interface AccountSummaryProps {
 export default function AccountSummary({
   account,
 }: AccountSummaryProps) {
+  const location = useLocation();
+
   if (!account) {
     return null;
   }
@@ -37,6 +40,20 @@ export default function AccountSummary({
           ? 'Verificado'
           : 'No verificado'}
       </span>
+
+      {!account.email_verificado && account.email && (
+        <Link
+          to="/verificar-codigo"
+          state={{
+            email: account.email,
+            returnTo: location.pathname,
+            returnLabel: 'Volver',
+          }}
+          className="badge text-bg-warning text-decoration-none me-1"
+        >
+          Verificar código
+        </Link>
+      )}
 
       {!account.activo && (
         <span className="badge text-bg-secondary">
