@@ -48,6 +48,11 @@ const NuevoProfesionalPage = () => {
 
       navigate(`/profesionales/${response.data.id_profesional}#salitas`, {
         replace: true,
+        state: {
+          professional: response.data,
+          message: 'Profesional registrado correctamente.',
+          messageTitle: 'Profesional registrado',
+        },
       });
     } catch (error) {
       console.error(error);

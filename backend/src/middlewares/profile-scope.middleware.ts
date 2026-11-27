@@ -161,8 +161,8 @@ export const professionalScope = async (
       new Date()
     ).date;
 
-    // Busca profesionales con asignaciones vigentes
-    // dentro de las salitas permitidas.
+    // Busca profesionales con asignaciones activas vigentes o futuras
+    // (no finalizadas) dentro de las salitas permitidas.
     const {
       data,
       error,
@@ -171,7 +171,6 @@ export const professionalScope = async (
       .select('id_profesional')
       .in('id_salita', scope)
       .eq('activo', true)
-      .lte('fecha_desde', today)
       .or(
         `fecha_hasta.is.null,fecha_hasta.gte.${today}`
       );

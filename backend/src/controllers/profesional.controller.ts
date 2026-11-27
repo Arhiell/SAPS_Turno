@@ -7,6 +7,7 @@ import type {
 import { 
   agregarSalitaProfesional 
 } from "../services/profesional-salita.service.js";
+import { agendaDateTime } from "../utils/turno-time.js";
 
 import {
   getProfesionales,
@@ -71,7 +72,12 @@ export const createProfesional = async (
     const { id_salita, ...input } = req.body;
     const profesional = await crearProfesional(input);
     const salita = id_salita ?? res.locals.salitaScope?.[0];
-    if (salita) await agregarSalitaProfesional(profesional.id_profesional, { id_salita: salita });
+    if (salita) {
+      await agregarSalitaProfesional(profesional.id_profesional, {
+        id_salita: salita,
+        fecha_desde: agendaDateTime(new Date()).date,
+      });
+    }
 
     return res.status(201).json({
       success: true,
